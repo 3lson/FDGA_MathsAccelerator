@@ -24,6 +24,12 @@ John L. Hennessy, David A. Patterson](https://library-search.imperial.ac.uk/disc
 [Computer organization and design RISC-V edition : the hardware software interface ; Second edition.; RISC-V edition.
 David A. Patterson, John L. Hennessy](https://library-search.imperial.ac.uk/discovery/fulldisplay?docid=alma991000613172401591&context=L&vid=44IMP_INST:ICL_VU1&lang=en&search_scope=MyInst_and_CI&adaptor=Local%20Search%20Engine&isFrbr=true&tab=Everything&query=any,contains,computer%20architecture%20john%20hennessy&sortby=date_d&facet=frbrgroupid,include,9035044794922040673&offset=0)
 
+## The Vision
+
+![1st iteration of k-means Cluster Diagram](/img/WhatsApp%20Image%202025-05-21%20at%2018.31.02_8aaf1383.jpg)
+
+As seen above, we can create clusters and graph them from the data set that we use.
+
 ## Previous Plans
 
 We previously considered multiple different algorithms to run on the PYNQ board.

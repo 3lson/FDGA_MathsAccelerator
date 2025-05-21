@@ -1,4 +1,5 @@
-# Custom ISA
+# Elson-V ISA: IPPro-Inspired 
+
 
 ## Overview  
 The custom ISA is designed to efficiently execute K-means clustering algorithms on custom FPGA-based hardware.
