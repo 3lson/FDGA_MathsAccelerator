@@ -5,7 +5,7 @@ TB_DIR=tb
 all: sim
 
 sim: 
-	verilator -Wall -Wno-UNUSEDSIGNAL \
+	verilator -Wall -Wno-UNUSED \
 		--top-module $(TOP_MODULE) \
 		--cc $(RTL_DIR)/$(TOP_MODULE).sv \
         $(RTL_DIR)/fetch.sv \
