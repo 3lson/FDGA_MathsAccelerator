@@ -47,7 +47,7 @@ All instr are 32 bit wide
 |--------|----|-----|---------|----|--|
 |opcode| pred | IMM [13:0] (14 bits) | FUNCT4 | RS1 | RD |
 
-|Mnemonic|FUNCT5|Description|
+|Mnemonic|FUNCT4|Description|
 | -------| -----|-----------|
 | `ADDI` | 0000| rd = rs1 + imm |
 | `MULI` | 0001 | rd = rs1 * imm |

@@ -1,3 +1,6 @@
+`include "define.sv"
+
+
 module alu (
     input  logic [3:0] alu_op,
     input  logic [31:0] op1,
