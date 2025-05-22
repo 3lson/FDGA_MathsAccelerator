@@ -1,6 +1,9 @@
 .DS_Store
 obj_dir/
+<<<<<<< HEAD
 tb/obj_dir/
 tb/logs/
 tb/waveform.vcd
+=======
+>>>>>>> 445fde9 (instructions in falu, fdiv still not working properly, temporary fix in place)
 .vscode/
