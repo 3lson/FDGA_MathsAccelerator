@@ -1,6 +1,7 @@
+// need to remowe the use of that library and the #define as I dont want to implement them in a compiler
 #include <stdio.h>
-#include <math.h>
 
+// can make those numbers larger later
 #define MAX_POINTS 100
 #define MAX_K 3
 
@@ -8,12 +9,15 @@ struct Point {
     float x, y;
 };
 
+float fabsf(float x) {
+    return x < 0 ? -x : x;
+}
 // Manhattan distance between two points
 float MDistance(struct Point a, struct Point b) {
     return fabsf(a.x - b.x) + fabsf(a.y - b.y);
 }
 
-// K means clustering using manhattan distance
+// K-means clustering using Manhattan distance
 void Clustering(struct Point centroids[], struct Point points[], int num_points, struct Point clusters[][MAX_POINTS], int cluster_sizes[], int k) {
     for (int i = 0; i < k; i++) {
         cluster_sizes[i] = 0;
@@ -100,15 +104,22 @@ int main() {
         }
         if (done) break;
     }
+// changed it so it outputs the result in a file instead of a terminal
+FILE *fout = fopen("output.txt", "w");
+if (!fout) {
+    printf("Error opening output.txt for writing.\n");
+    return 1;
+}
 
-    printf("Final Clusters:\n");
-    for (int i = 0; i < k; i++) {
-        printf("C%d (%.2f, %.2f): ", i, centroids[i].x, centroids[i].y);
-        for (int j = 0; j < cluster_sizes[i]; j++) {
-            printf("(%.2f, %.2f) ", clusters[i][j].x, clusters[i][j].y);
-        }
-        printf("\n");
+for (int i = 0; i < k; i++) {
+    fprintf(fout, "C%d (%.2f, %.2f): ", i, centroids[i].x, centroids[i].y);
+    for (int j = 0; j < cluster_sizes[i]; j++) {
+        fprintf(fout, "(%.2f, %.2f) ", clusters[i][j].x, clusters[i][j].y);
     }
+    fprintf(fout, "\n");
+}
+
+fclose(fout);
 
     return 0;
 }
