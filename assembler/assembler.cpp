@@ -179,39 +179,57 @@ void assemble_line(const string& line) {
 }
 
 int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        cerr << "Usage: " << argv[0] << " <input.asm>" << endl;
-        return 1;
-    }
+if (argc < 2) {
+    cerr << "Usage: " << argv[0] << " <input.asm>" << endl;
+    return 1;
+}
 
-    ifstream infile(argv[1]);
-    if (!infile.is_open()) {
-        cerr << "Error: Cannot open file " << argv[1] << endl;
-        return 1;
-    }
+ifstream infile(argv[1]);
+if (!infile.is_open()) {
+    cerr << "Error: Cannot open file " << argv[1] << endl;
+    return 1;
+}
 
-    // Open output file in rtl folder (relative path from assembler folder)
-    ofstream outfile("../rtl/instr_mem.mem");
-    if (!outfile.is_open()) {
-        cerr << "Error: Cannot open output file ../rtl/instr_mem.mem" << endl;
-        return 1;
-    }
+ofstream outfile("../rtl/program.hex");
+if (!outfile.is_open()) {
+    cerr << "Error: Cannot open output file ../rtl/program.hex" << endl;
+    return 1;
+}
 
-    string line;
+string line;
+while (getline(infile, line)) {
+    if (line.empty() || line[0] == '#') continue;
 
-    while (getline(infile, line)) {
-        if (line.empty() || line[0] == '#') continue;
-
-        // reroute output print into mem file
+    try {
+        // Redirect cout to a stringstream to capture the hex instruction
+        ostringstream temp;
         streambuf* coutbuf = cout.rdbuf();
-        cout.rdbuf(outfile.rdbuf()); 
+        cout.rdbuf(temp.rdbuf());
+
         assemble_line(line);
 
-        cout.rdbuf(coutbuf); 
+        cout.rdbuf(coutbuf); // Restore cout
+
+        // Extract instruction hex from captured string
+        string output_line = temp.str();
+        if (output_line.length() < 8) continue; // skip malformed lines
+
+        unsigned int instr;
+        stringstream ss(output_line.substr(0, 8));
+        ss >> hex >> instr;
+
+        // Write bytes in little-endian order
+        for (int i = 0; i < 4; ++i) {
+            int byte = (instr >> (8 * i)) & 0xFF;
+            outfile << hex << setw(2) << setfill('0') << byte << "\n";
+        }
+
+    } catch (const exception& e) {
+        cerr << "Error processing line: '" << line << "' -> " << e.what() << endl;
     }
+}
 
-    infile.close();
-    outfile.close();
-
-    return 0;
+infile.close();
+outfile.close();
+return 0;
 }

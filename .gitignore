@@ -1,2 +1,6 @@
 .DS_Store
 obj_dir/
+tb/obj_dir/
+tb/logs/
+tb/waveform.vcd
+.vscode/

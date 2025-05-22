@@ -1,21 +1,31 @@
 `include "define.sv"
 
-
 module alu (
-    input  logic [3:0] alu_op,
-    input  logic [31:0] op1,
-    input  logic [31:0] op2,
-    output logic [31:0] result
+    input  logic [31:0] ALUop1,    
+    input  logic [31:0] ALUop2,    
+    input  logic [3:0]  ALUctrl,    
+    output logic [31:0] Result, 
+    output logic EQ      
 );
+
     always_comb begin
-        case (alu_op)
-            4'd1:  result = op1 + op2;         // ADD/ADDI
-            4'd2:  result = op1 - op2;         // SUB
-            4'd3:  result = op1 * op2;         // MUL/MULI (simple)
-            4'd6:  result = op1 << op2[4:0];  // SLL
-            4'd7:  result = op1 >> op2[4:0];  // SRL
-            4'd8:  result = ($signed(op1) < $signed(op2)) ? 32'd1 : 32'd0; // SLT
-            default: result = 32'd0;
+        Result = 32'b0;
+        EQ = 1'b0;
+
+        case (ALUctrl)
+            `ALU_ADD: Result = ALUop1 + ALUop2; // ADD 
+            `ALU_SUB: Result = ALUop1 - ALUop2; // SUB
+            `ALU_MUL: Result = ALUop1 * ALUop2; // MULTIPLY
+            `ALU_DIV: Result = ALUop1 / ALUop2; // DIVIDE
+            `ALU_ABS: Result = {1'b0,ALUop1[30:0]}; //ABSOLUTE (AS PER IEEE 754 SINGLE PRECISION FLOATING POINT NUMBERS)
+            `ALU_SLT: Result = (ALUop1 < ALUop2) ? 1:0; //LESS THAN
+            `ALU_SEQ: begin //EQUALS
+                Result = (ALUop1 == ALUop2) ? 1:0; 
+                EQ = (ALUop1 == ALUop2) ? 1:0;
+            end
+            `ALU_MIN: Result = (ALUop1 < ALUop2) ? ALUop1:ALUop2; //MINIMUM INSTRUCTION
+            default: Result = 32'b0;    
         endcase
     end
 endmodule
+

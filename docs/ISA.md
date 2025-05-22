@@ -27,18 +27,11 @@ All instr are 32 bit wide
 | `ADD` | 0000| rd = rs1 + rs2 |
 | `SUB` | 0001 | rd = rs1 - rs2 |
 | `MUL` | 0010 | rd = rs1 * rs2 |
-| `MAC` | 0011 | rd = rd + (rs1 * rs2) |
-| `DIV` | 0100 | rd = rs1 / rs2 |
-| `REM` | 0101 | rd = rs1 % rs2 |
-| `SLL` | 0110 | rd = rs1 << rs2 |
-| `SRL` | 0111 | rd = rs1 >> rs2 (logical) |
-| `SQRT` | 1000 | rd = sqrt(rs1) |
-| `SLT` | 1001 | rd = (rs1 < rs2) ? 1 : 0 |
-| `SEQ` | 1010 | rd = (rs1 == rs2) ? 1 : 0 |
-| `MAX` | 1011 | rd = max(rs1, rs2) |
-| `MIN` | 1100 | rd = min(rs1, rs2) |
-| `ABS` | 1101 | absolute value |
-| `NOP` | 1111 | No operation  |
+| `DIV` | 0011 | rd = rs1 / rs2 |
+| `SLT` | 0100 | rd = (rs1 < rs2) ? 1 : 0 |
+| `SEQ` | 0101 | rd = (rs1 == rs2) ? 1 : 0 |
+| `MIN` | 0110 | rd = min(rs1, rs2) |
+| `ABS` | 0111 | absolute value |
 
 ### I-type (Immediate Arith)
 `opcode = 001`
@@ -51,7 +44,6 @@ All instr are 32 bit wide
 | -------| -----|-----------|
 | `ADDI` | 0000| rd = rs1 + imm |
 | `MULI` | 0001 | rd = rs1 * imm |
-| `MACI` | 0011 | rd = rd + (rs1 * imm) |
 | `DIVI` | 0100 | rd = rs1 / imm |
 
 ### M-type (Memory Access)
@@ -61,13 +53,13 @@ All instr are 32 bit wide
 
 | [31:29] | [28:14] | [13:10] | [9:5] | [4:0]
 |--------|----|-------|--|-----|
-|opcode| 15(x) | FUNCT4 = 0000 | RS1 | RD |
+|opcode| IMM [14:0] (15 bits) | FUNCT4 = 0000 | RS1 | RD |
 
 **STORE** `sw rs2, (rs1)`
 
 | [31:29] | [28:19] | [18:14] | [13:10] | [9:5] | [4:0]|
 |--------|----|-----|------|---|-----|
-|opcode| 10(x) | RS2|FUNCT4=0001 | RS1 | 5(x) |
+|opcode| IMM [14:5] | RS2|FUNCT4=0001 | RS1 | IMM [4:0] |
 
 
 ### C-type  (Control Flow)
@@ -92,11 +84,11 @@ All instr are 32 bit wide
 | -------| -------- | ------- | ------ | ------ |
 | opcode | Imm[17:2] | FUNCT3 = 010 | RS1 | RD|
 
-**RET** `ret rd`
+**RET** `ret`
 
 | [31:29] | [28:13] | [12:10] | [9:5] | [4:0]
 | -------| -------- | ------- | ------ | ------ |
-| opcode | 16(x) | FUNCT3 = 011 | RS1 | 5(x)|
+| opcode | 16{1'b0} | FUNCT3 = 011 | 5'b00001 | 5(x)|
 
 **SYNC** 
 
