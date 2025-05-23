@@ -27,6 +27,12 @@ int shift_count;
 logic sticky_bit;
 /* verilator lint_on UNUSED */
 
+//floating point divs internal regs
+logic signed [8:0]  norm_exponent;
+logic        [22:0] norm_mantissa;
+logic        [8:0] intermediary_exponent;
+logic signed [8:0] shift;
+
 always_comb begin
     result = 32'd0;
     cmp = 0;
@@ -58,6 +64,12 @@ always_comb begin
     sticky_bit = 0;
     shift_count = 0;
 
+    //Fdiv internal reg sets to 0
+    norm_exponent = 0;
+    norm_mantissa = 0;
+    intermediary_exponent = 0;
+    shift = 0;
+
     case (alu_op)
         4'd1, 4'd2: begin
             if (op1_biased_exponent > op2_biased_exponent) begin
@@ -79,8 +91,7 @@ always_comb begin
                 // Addition part
                 sum = mantissa_shift_op1 + mantissa_shift_op2;
 
-                // Normalisation
-                if (sum[24]) begin // overflow so shift right
+                if (sum[24]) begin
                     sum = sum >> 1;
                     result_exp = result_exp + 1;
                 end else begin
@@ -90,7 +101,7 @@ always_comb begin
                     end
                 end
 
-                // Rounding to nearest even - IEEE standard 
+                // Rounding
                 guard_bit = sum[1];
                 round_bit = sum[0];
                 round_up = guard_bit & (round_bit | sum[2]);
@@ -178,9 +189,45 @@ always_comb begin
             numerator = {op1_significand, 24'd0};
             denominator = {24'd0, op2_significand};
             quotient = numerator / denominator;
-            result_exp = op1_biased_exponent - op2_biased_exponent + 127;
+            intermediary_exponent  = {1'b0, op1_biased_exponent} - {1'b0, op2_biased_exponent} + 9'sd127; //to accomodate for overflow
             result_sign_bit = op1_sign_bit ^ op2_sign_bit;
-            result = {result_sign_bit, result_exp, quotient[22:0]};
+
+            /*
+            NORMALIZATION
+            */
+
+            
+            if(quotient[25])begin
+                quotient = quotient >> 1;
+                norm_exponent = intermediary_exponent + 9'sd1;
+                norm_mantissa = quotient[23:1]; //implicit one removed 
+            end
+            else if(!quotient[24])begin
+                shift = 9'sd0;
+                for(int i = 24; i >= 0; i-- )begin
+                    if(quotient[i])begin
+                       break;
+                    end
+                    shift = shift + 9'sd1;
+                end
+
+                quotient = quotient << shift;
+                
+                norm_exponent = intermediary_exponent - shift;
+                norm_mantissa = quotient[23:1];
+            end
+            else begin
+                norm_exponent = intermediary_exponent;
+                norm_mantissa = quotient[23:1];
+            end
+            
+            //clamping
+            if(norm_exponent <= 0) norm_exponent = 9'sd0;
+            else if(norm_exponent >= 255) norm_exponent = 9'sd255;
+
+            result = {result_sign_bit, norm_exponent[7:0], norm_mantissa};
+
+
             // if (quotient[47]) begin
             //     quotient = quotient >> 1;
             //     //result_exp = result_exp + 1;
