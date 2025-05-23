@@ -2,7 +2,7 @@
 #include <stdio.h>
 
 // can make those numbers larger later
-#define MAX_POINTS 100
+#define MAX_POINTS 50
 #define MAX_K 3
 
 struct Point {
@@ -40,7 +40,7 @@ void Clustering(struct Point centroids[], struct Point points[], int num_points,
 }
 
 // recalculate centroids
-void UpdateCentroids(struct Point centroids[], struct Point clusters[][MAX_POINTS], int cluster_sizes[], int k) {
+int UpdateCentroids(struct Point centroids[], struct Point clusters[][MAX_POINTS], int cluster_sizes[], int k) {
     for (int i = 0; i < k; i++) {
         float sum_x = 0, sum_y = 0;
         int size = cluster_sizes[i];
@@ -54,11 +54,12 @@ void UpdateCentroids(struct Point centroids[], struct Point clusters[][MAX_POINT
             centroids[i].y = sum_y / size;
         }
     }
+    return 0;
 }
 
 //Had to add that cause != gave me wrong results sometimes with floats chat said that it is because of floating point precision issues
 int Equal(struct Point a, struct Point b) {
-    const float EPS = 1e-6f;
+    float EPS = 0.000001;
     return (fabsf(a.x - b.x) < EPS) && (fabsf(a.y - b.y) < EPS);
 }
 
