@@ -26,7 +26,6 @@ class ControlunitTestbench : public BaseTestbench {
 protected:
     void initializeInputs() override {
         top->instr = 0;
-        top->EQ = 0;
     }
 
     // Helper to create instruction with op and funct4/funct3
@@ -95,7 +94,8 @@ TEST_F(ControlunitTestbench, DefaultCase) {
     EXPECT_EQ(top->RegWrite, 0);
     EXPECT_EQ(top->ALUsrc, 0);
     EXPECT_EQ(top->ImmSrc, 0);
-    EXPECT_EQ(top->PCsrc, 0);
+    EXPECT_EQ(top->Jump, 0);       // Replaces PCsrc
+    EXPECT_EQ(top->branch, 0);
 }
 
 // ------------------ C-TYPE CONTROL TESTS ------------------
@@ -103,31 +103,29 @@ TEST_F(ControlunitTestbench, CType_Jump) {
     top->instr = makeInstr(CTYPE, 0b000); // JUMP
     top->eval();
     EXPECT_EQ(top->ImmSrc, 3);
-    EXPECT_EQ(top->PCsrc, 1);
+    EXPECT_EQ(top->Jump, 2);  // Jump = 2'b10
     EXPECT_EQ(top->WD3Src, 1);
     EXPECT_EQ(top->RegWrite, 1);
 }
 
 TEST_F(ControlunitTestbench, CType_BranchTaken) {
     top->instr = makeInstr(CTYPE, 0b001);
-    top->EQ = 1; // Branch should be taken
     top->eval();
     EXPECT_EQ(top->ALUctrl, ALU_SEQ);
-    EXPECT_EQ(top->PCsrc, 1);
+    EXPECT_EQ(top->branch, 1);
 }
 
 TEST_F(ControlunitTestbench, CType_BranchNotTaken) {
     top->instr = makeInstr(CTYPE, 0b001);
-    top->EQ = 0; // Branch not taken
     top->eval();
-    EXPECT_EQ(top->PCsrc, 0);
+    EXPECT_EQ(top->branch, 1); 
 }
 
 TEST_F(ControlunitTestbench, CType_Call) {
     top->instr = makeInstr(CTYPE, 0b010);
     top->eval();
     EXPECT_EQ(top->ImmSrc, 4);
-    EXPECT_EQ(top->PCsrc, 1);
+    EXPECT_EQ(top->Jump, 2); // Jump = 2'b10
     EXPECT_EQ(top->RegWrite, 1);
     EXPECT_EQ(top->WD3Src, 1);
 }
@@ -135,7 +133,7 @@ TEST_F(ControlunitTestbench, CType_Call) {
 TEST_F(ControlunitTestbench, CType_Ret) {
     top->instr = makeInstr(CTYPE, 0b011);
     top->eval();
-    EXPECT_EQ(top->PCsrc, 2);
+    EXPECT_EQ(top->Jump, 3); // Jump = 2'b11 (ret)
     EXPECT_EQ(top->RegWrite, 0);
 }
 
@@ -152,6 +150,7 @@ TEST_F(ControlunitTestbench, CType_Sync) {
     EXPECT_EQ(top->RegWrite, 0);
     EXPECT_EQ(top->exit, 0);
 }
+
 
 // ------------------ MAIN ------------------
 int main(int argc, char **argv) {

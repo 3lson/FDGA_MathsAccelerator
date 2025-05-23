@@ -5,11 +5,11 @@ module controlunit #(
 ) (
     /* verilator lint_off UNUSEDSIGNAL */
     input logic [DATA_WIDTH-1:0] instr,  // Instruction input
-    input logic                 EQ,     // Equality flag (for branch comparison)
     output logic [3:0]          ALUctrl, // ALU control signal
     output logic                ALUsrc,  // ALU source (1 for immediate, 0 for register)
     output logic [2:0]          ImmSrc,  // Immediate source selection
-    output logic  [1:0]         PCsrc,   // Program counter source (for branches and jumps)
+    output logic                branch, 
+    output logic [1:0]          Jump,      // 2 bit Jump signal: MSB for jump confirmation, LSB for Jump type
     output logic                RegWrite, // Register write enable
     output logic                ResultSrc, // control signal for output mux
     output logic                WD3Src,     // control unit signal for write port for register allowing Jump instruction implementation
@@ -35,7 +35,8 @@ module controlunit #(
         ALUctrl = `ALU_ADD;
         ALUsrc = 1'b0;
         ImmSrc = 3'b000;
-        PCsrc = 2'b00;
+        Jump = 2'b00;
+        branch = 1'b0;
         ResultSrc = 1'b0;
         RegWrite = 1'b0;
         WD3Src = 1'b0;
@@ -104,21 +105,21 @@ module controlunit #(
                     ImmSrc = 3'b011;
                     ALUsrc = 1'b1;
                     RegWrite =1'b1;
-                    PCsrc = 2'b01;
+                    Jump = 2'b10;
                     WD3Src = 1'b1;
                 end
 
                 // BRANCH
                 3'b001: begin
                     ALUctrl = `ALU_SEQ;
+                    branch = 1'b1;
                     ImmSrc = 3'b011;
-                    PCsrc = EQ ? 2'b01 : 2'b00; 
                 end
 
                 // CALL 
                 3'b010: begin
                     ImmSrc = 3'b100;
-                    PCsrc = 2'b01;
+                    Jump = 2'b10;
                     WD3Src = 1'b1;
                     RegWrite = 1'b1;
                 end
@@ -126,7 +127,7 @@ module controlunit #(
                 // RET (ADDI X1 0)
                 3'b011: begin
                     ALUctrl = `ALU_ADD;  
-                    PCsrc = 2'b10;    // return from saved address in register
+                    Jump = 2'b11;    // return from saved address in register
                     RegWrite = 1'b0;
                     ALUsrc = 1'b1;
                     ImmSrc = 3'b000;
@@ -152,7 +153,8 @@ module controlunit #(
                 ALUctrl = `ALU_ADD;
                 ALUsrc = 1'b0;
                 ImmSrc = 3'b000;
-                PCsrc = 2'b00;
+                branch = 1'b0;
+                Jump = 2'b00;
                 RegWrite = 1'b0;
                 ResultSrc = 1'b0;
                 WD3Src = 1'b0;

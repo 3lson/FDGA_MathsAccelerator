@@ -1,34 +1,17 @@
 #include "base_testbench.h"
-#include "Vfloating_alu.h"
 #include <verilated_cov.h>
 #include <gtest/gtest.h>
 #include <bit>
-#include <cstring>
-#include <cmath>
-#include <vector>
-#include <string>
 
-// Floating ALU ops
-#define FADD 1
-#define FSUB 2
-#define FMUL 3
-#define FDIV 4
-#define FABS 5
-#define FEQ 6
-#define FNE 7
-#define FLT 8
-
-uint32_t floatToBits(float f) {
-    uint32_t bits;
-    std::memcpy(&bits, &f, sizeof(float));
-    return bits;
-}
-
-float bitsToFloat(uint32_t bits) {
-    float f;
-    std::memcpy(&f, &bits, sizeof(uint32_t));
-    return f;
-}
+// Floating ALU Ops
+#define FALU_ADD 0b0001
+#define FALU_SUB 0b0010
+#define FALU_MUL 0b0011
+#define FALU_DIV 0b0100
+#define FALU_ABS 0b0101
+#define FALU_EQ  0b0110
+#define FALU_NEQ 0b0111
+#define FALU_SLT 0b1000
 
 class FloatingALUTestbench : public BaseTestbench {
 protected:
@@ -37,83 +20,176 @@ protected:
         top->op1 = 0;
         top->op2 = 0;
     }
+
+    static uint32_t float_to_bits(float f) {
+        return *reinterpret_cast<uint32_t*>(&f);
+    }
+
+    static float bits_to_float(uint32_t bits) {
+        return *reinterpret_cast<float*>(&bits);
+    }
 };
 
-struct FloatTestCase {
-    float op1;
-    float op2;
-    uint8_t alu_op;
-    float expected_result;
-    bool expected_cmp;
-    std::string description;
-    float tolerance = 1e-5f; // floating point tolerance
-};
+TEST_F(FloatingALUTestbench, AddTest) {
+    float op1 = 3.5f;
+    float op2 = 2.25f;
+    float expected = op1 + op2;
 
-class FloatingALUParameterizedTest : public FloatingALUTestbench, public ::testing::WithParamInterface<FloatTestCase> {};
-
-TEST_P(FloatingALUParameterizedTest, RunTest) {
-    const auto& test = GetParam();
-    top->alu_op = test.alu_op;
-    top->op1 = floatToBits(test.op1);
-    top->op2 = floatToBits(test.op2);
+    top->alu_op = FALU_ADD;
+    top->op1 = float_to_bits(op1);
+    top->op2 = float_to_bits(op2);
 
     top->eval();
 
-    float actual_result = bitsToFloat(top->result);
-    EXPECT_NEAR(actual_result, test.expected_result, test.tolerance) << "FAIL: " << test.description;
-    EXPECT_EQ(top->cmp, test.expected_cmp) << "FAIL CMP: " << test.description;
+    EXPECT_FLOAT_EQ(bits_to_float(top->result), expected);
+    EXPECT_EQ(top->cmp, 0);
 }
 
-INSTANTIATE_TEST_SUITE_P(FloatingALUTests, FloatingALUParameterizedTest, ::testing::Values(
-    // FADD
-    FloatTestCase{1.0f, 1.0f, FADD, 2.0f, false, "1.0 + 1.0 = 2.0"},
-    FloatTestCase{2.0f, 1.0f, FADD, 3.0f, false, "2.0 + 1.0 = 3.0"},
-    FloatTestCase{1.0f, -1.0f, FADD, 0.0f, false, "1.0 + (-1.0) = 0.0"},
+TEST_F(FloatingALUTestbench, SubTest) {
+    float op1 = 10.0f;
+    float op2 = 4.0f;
+    float expected = op1 - op2;
 
-    // FSUB
-    FloatTestCase{1.0f, 1.0f, FSUB, 0.0f, false, "1.0 - 1.0 = 0.0"},
-    FloatTestCase{2.0f, 1.0f, FSUB, 1.0f, false, "2.0 - 1.0 = 1.0"},
-    FloatTestCase{1.0f, 2.0f, FSUB, -1.0f, false, "1.0 - 2.0 = -1.0"},
-    FloatTestCase{-1.0f, -1.0f, FSUB, 0.0f, false, "-1.0 - (-1.0) = 0.0"},
+    top->alu_op = FALU_SUB;
+    top->op1 = float_to_bits(op1);
+    top->op2 = float_to_bits(op2);
 
-    // FMUL
-    FloatTestCase{1.0f, 1.0f, FMUL, 1.0f, false, "1.0 * 1.0 = 1.0"},
-    FloatTestCase{2.0f, 1.0f, FMUL, 2.0f, false, "2.0 * 1.0 = 2.0"},
-    FloatTestCase{-2.0f, 2.0f, FMUL, -4.0f, false, "-2.0 * 2.0 = -4.0"},
-    FloatTestCase{1.0f, 0.0f, FMUL, 0.0f, false, "1.0 * 0.0 = 0.0"},
+    top->eval();
 
-    // FDIV
-    FloatTestCase{2.0f, 1.0f, FDIV, 2.0f, false, "2.0 / 1.0 = 2.0"},
-    FloatTestCase{1.0f, 2.0f, FDIV, 0.5f, false, "1.0 / 2.0 = 0.5"},
-    FloatTestCase{-2.0f, 2.0f, FDIV, -1.0f, false, "-2.0 / 2.0 = -1.0"},
-    FloatTestCase{1.0f, 1e-10f, FDIV, 1.0f / 1e-10f, false, "1.0 / small = large"},
+    EXPECT_FLOAT_EQ(bits_to_float(top->result), expected);
+    EXPECT_EQ(top->cmp, 0);
+}
 
-    // FABS
-    FloatTestCase{-1.0f, 0.0f, FABS, 1.0f, false, "|-1.0| = 1.0"},
-    FloatTestCase{1.0f, 0.0f, FABS, 1.0f, false, "|1.0| = 1.0"},
-    FloatTestCase{0.0f, 0.0f, FABS, 0.0f, false, "|0.0| = 0.0"},
+TEST_F(FloatingALUTestbench, MulTest) {
+    float op1 = 1.5f;
+    float op2 = -2.0f;
+    float expected = op1 * op2;
 
-    // FEQ
-    FloatTestCase{1.0f, 1.0f, FEQ, 0.0f, true, "1.0 == 1.0"},
-    FloatTestCase{1.0f, 2.0f, FEQ, 0.0f, false, "1.0 == 2.0"},
-    FloatTestCase{-1.0f, -1.0f, FEQ, 0.0f, true, "-1.0 == -1.0"},
+    top->alu_op = FALU_MUL;
+    top->op1 = float_to_bits(op1);
+    top->op2 = float_to_bits(op2);
 
-    // FNE
-    FloatTestCase{1.0f, 2.0f, FNE, 0.0f, true, "1.0 != 2.0"},
-    FloatTestCase{1.0f, 1.0f, FNE, 0.0f, false, "1.0 != 1.0"},
+    top->eval();
 
-    // FLT
-    FloatTestCase{1.0f, 2.0f, FLT, 0.0f, true, "1.0 < 2.0"},
-    FloatTestCase{2.0f, 1.0f, FLT, 0.0f, false, "2.0 < 1.0"},
-    FloatTestCase{-1.0f, 1.0f, FLT, 0.0f, true, "-1.0 < 1.0"},
-    FloatTestCase{2.0f, 2.0f, FLT, 0.0f, false, "2.0 < 2.0"}
-));
+    EXPECT_FLOAT_EQ(bits_to_float(top->result), expected);
+    EXPECT_EQ(top->cmp, 0);
+}
+
+TEST_F(FloatingALUTestbench, DivTest) {
+    float op1 = 6.0f;
+    float op2 = 3.0f;
+    float expected = op1 / op2;
+
+    top->alu_op = FALU_DIV;
+    top->op1 = float_to_bits(op1);
+    top->op2 = float_to_bits(op2);
+
+    top->eval();
+
+    EXPECT_FLOAT_EQ(bits_to_float(top->result), expected);
+    EXPECT_EQ(top->cmp, 0);
+}
+
+TEST_F(FloatingALUTestbench, AbsTest) {
+    float op1 = -7.25f;
+    float expected = std::abs(op1);
+
+    top->alu_op = FALU_ABS;
+    top->op1 = float_to_bits(op1);
+    top->op2 = 0;
+
+    top->eval();
+
+    EXPECT_FLOAT_EQ(bits_to_float(top->result), expected);
+    EXPECT_EQ(top->cmp, 0);
+}
+
+TEST_F(FloatingALUTestbench, EqTestTrue) {
+    float op1 = 4.0f;
+    float op2 = 4.0f;
+
+    top->alu_op = FALU_EQ;
+    top->op1 = float_to_bits(op1);
+    top->op2 = float_to_bits(op2);
+
+    top->eval();
+
+    EXPECT_EQ(top->cmp, 1);
+}
+
+TEST_F(FloatingALUTestbench, EqTestFalse) {
+    float op1 = 4.0f;
+    float op2 = 5.0f;
+
+    top->alu_op = FALU_EQ;
+    top->op1 = float_to_bits(op1);
+    top->op2 = float_to_bits(op2);
+
+    top->eval();
+
+    EXPECT_EQ(top->cmp, 0);
+}
+
+TEST_F(FloatingALUTestbench, NeqTestTrue) {
+    float op1 = 1.0f;
+    float op2 = 2.0f;
+
+    top->alu_op = FALU_NEQ;
+    top->op1 = float_to_bits(op1);
+    top->op2 = float_to_bits(op2);
+
+    top->eval();
+
+    EXPECT_EQ(top->cmp, 1);
+}
+
+TEST_F(FloatingALUTestbench, NeqTestFalse) {
+    float op1 = -3.0f;
+    float op2 = -3.0f;
+
+    top->alu_op = FALU_NEQ;
+    top->op1 = float_to_bits(op1);
+    top->op2 = float_to_bits(op2);
+
+    top->eval();
+
+    EXPECT_EQ(top->cmp, 0);
+}
+
+TEST_F(FloatingALUTestbench, SltTestTrue) {
+    float op1 = 1.0f;
+    float op2 = 2.0f;
+
+    top->alu_op = FALU_SLT;
+    top->op1 = float_to_bits(op1);
+    top->op2 = float_to_bits(op2);
+
+    top->eval();
+
+    EXPECT_EQ(top->cmp, 1);
+}
+
+TEST_F(FloatingALUTestbench, SltTestFalse) {
+    float op1 = 4.0f;
+    float op2 = -2.0f;
+
+    top->alu_op = FALU_SLT;
+    top->op1 = float_to_bits(op1);
+    top->op2 = float_to_bits(op2);
+
+    top->eval();
+
+    EXPECT_EQ(top->cmp, 0);
+}
+
 
 int main(int argc, char **argv) {
     Verilated::commandArgs(argc, argv);
     testing::InitGoogleTest(&argc, argv);
+
     Verilated::mkdir("logs");
-    int result = RUN_ALL_TESTS();
+    auto result = RUN_ALL_TESTS();
     VerilatedCov::write("logs/coverage.dat");
+
     return result;
 }

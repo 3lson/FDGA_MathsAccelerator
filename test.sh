@@ -1,7 +1,6 @@
 # Basic test script for asm to CPU output
 # Will be changed 
 
-
 # Assemble the ASM code
 
 g++ -o assembler/assembler assembler/assembler.cpp
@@ -9,6 +8,8 @@ g++ -o assembler/assembler assembler/assembler.cpp
 
 
 # Compiling the CPU output
-cd ..
-make clean
-make
+
+cd "$(dirname "$0")/tb" || exit 1
+
+# Run the test script, pass all arguments
+./doit.sh "$@"

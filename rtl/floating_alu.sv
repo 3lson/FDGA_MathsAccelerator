@@ -79,7 +79,8 @@ always_comb begin
                 // Addition part
                 sum = mantissa_shift_op1 + mantissa_shift_op2;
 
-                if (sum[24]) begin
+                // Normalisation
+                if (sum[24]) begin // overflow so shift right
                     sum = sum >> 1;
                     result_exp = result_exp + 1;
                 end else begin
@@ -89,7 +90,7 @@ always_comb begin
                     end
                 end
 
-                // Rounding
+                // Rounding to nearest even - IEEE standard 
                 guard_bit = sum[1];
                 round_bit = sum[0];
                 round_up = guard_bit & (round_bit | sum[2]);

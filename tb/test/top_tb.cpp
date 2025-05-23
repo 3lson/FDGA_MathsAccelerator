@@ -15,9 +15,9 @@ protected:
 };
 
 TEST_F(TopTestbench, ExecuteSimpleProgram) {
-    runSimulation(2);  // Run enough cycles for instructions to complete
-    // We are starting at cycle 0 -> 1 -> 2 so right result in 3 cycles
-    EXPECT_EQ(top->Result, 40);
+    runSimulation(8);  // Run enough cycles for instructions to complete
+
+    EXPECT_EQ(top->a0, 80);
 }
 
 int main(int argc, char **argv) {
