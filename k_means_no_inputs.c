@@ -1,10 +1,6 @@
 // need to remowe the use of that library and the #define as I dont want to implement them in a compiler
 #include <stdio.h>
 
-// can make those numbers larger later
-#define MAX_POINTS 50
-#define MAX_K 3
-
 struct Point {
     float x, y;
 };
@@ -14,27 +10,24 @@ float fabsf(float x) {
 }
 
 int main() {
+    int MAX_K = 3;
+    int MAX_POINTS = 50;
     float EPS = 0.000001;
-    int k;
+    int k = 3;
     struct Point centroids[MAX_K];
     struct Point points[MAX_POINTS];
     struct Point old_centroids[MAX_K];
-    int num_points;
+    int num_points = 9;
 
-    printf("Enter number of centroids: ");
-    scanf("%d", &k);
-
-    printf("Enter %d initial centroids (x y):\n", k);
+    // geberates initial centroids  need to change that!!!!!!!!!!!!!
     for (int i = 0; i < k; i++) {
-        scanf("%f %f", &centroids[i].x, &centroids[i].y);
+        centroids[i].x = 1+ 2*i;
+        centroids[i].y = 2+ 2*i;
     }
-
-    printf("Enter number of points: ");
-    scanf("%d", &num_points);
-
-    printf("Enter %d points (x y):\n", num_points);
+    // generates poitns             need to change that !!!!!!!!!!!!!!
     for (int i = 0; i < num_points; i++) {
-        scanf("%f %f", &points[i].x, &points[i].y);
+        points[i].x = 1 + 2*i;
+        points[i].y = 2 + 2*i;
     }
 
     struct Point clusters[MAX_K][MAX_POINTS];
