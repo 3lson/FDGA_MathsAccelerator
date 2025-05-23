@@ -25,14 +25,14 @@ All instr are 32 bit wide
 
 |Mnemonic|FUNCT4|Description|
 | -------| -----|-----------|
-| `ADD` | 0000| rd = rs1 + rs2 |
-| `SUB` | 0001 | rd = rs1 - rs2 |
-| `MUL` | 0010 | rd = rs1 * rs2 |
-| `DIV` | 0011 | rd = rs1 / rs2 |
-| `SLT` | 0100 | rd = (rs1 < rs2) ? 1 : 0 |
-| `SEQ` | 0101 | rd = (rs1 == rs2) ? 1 : 0 |
-| `MIN` | 0110 | rd = min(rs1, rs2) |
-| `ABS` | 0111 | absolute value |
+| `add` | 0000| rd = rs1 + rs2 |
+| `sub` | 0001 | rd = rs1 - rs2 |
+| `mul` | 0010 | rd = rs1 * rs2 |
+| `div` | 0011 | rd = rs1 / rs2 |
+| `slt` | 0100 | rd = (rs1 < rs2) ? 1 : 0 |
+| `seq` | 0101 | rd = (rs1 == rs2) ? 1 : 0 |
+| `min` | 0110 | rd = min(rs1, rs2) |
+| `abs` | 0111 | absolute value |
 
 ### I-type (Immediate Arith)
 `opcode = 001`
@@ -43,9 +43,9 @@ All instr are 32 bit wide
 
 |Mnemonic|FUNCT4|Description|
 | -------| -----|-----------|
-| `ADDI` | 0000| rd = rs1 + imm |
-| `MULI` | 0001 | rd = rs1 * imm |
-| `DIVI` | 0100 | rd = rs1 / imm |
+| `addi` | 0000| rd = rs1 + imm |
+| `muli` | 0001 | rd = rs1 * imm |
+| `divi` | 0100 | rd = rs1 / imm |
 
 ### M-type (Memory Access)
 `opcode = 100`
@@ -66,38 +66,38 @@ All instr are 32 bit wide
 ### C-type  (Control Flow)
 `opcode = 111`
 
-**JUMP**
+**jump**
 
 | [31:29] | [28:13] | [12:10] | [9:0] |
 | -------| -------- | ------- | ------ |
 | opcode | Imm[27:12] | FUNCT3 = 000 | Imm[11:2] |
 
 
-**BRANCH** 
+**branch** 
 
 | [31:29] | [28:13] | [12:10] | [9:0] |
 | -------| -------- | ------- | ------ |
 | opcode | Imm[27:12] | FUNCT3 = 001 | Imm[11:2] |
 
-**CALL** `call rd, imm(rs1)`
+**call** `call rd, imm(rs1)`
 
 | [31:29] | [28:13] | [12:10] | [9:5] | [4:0]
 | -------| -------- | ------- | ------ | ------ |
 | opcode | Imm[17:2] | FUNCT3 = 010 | RS1 | RD|
 
-**RET** `ret`
+**ret** `ret`
 
 | [31:29] | [28:13] | [12:10] | [9:5] | [4:0]
 | -------| -------- | ------- | ------ | ------ |
 | opcode | 16{1'b0} | FUNCT3 = 011 | 5'b00001 | 5(x)|
 
-**SYNC** 
+**sync** 
 
 | [31:29] | [28:13] | [12:10] | [9:0]
 | -------| -------- | ------- | ------ |
 | opcode | 16(x) | FUNCT3 = 110 | 10(x) |
 
-**EXIT** 
+**exit** 
 
 | [31:29] | [28:13] | [12:10] | [9:0] |
 | -------| -------- | ------- | ------ | 
