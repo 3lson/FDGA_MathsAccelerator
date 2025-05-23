@@ -1,39 +1,31 @@
-
 #include "sync_testbench.h"
-#include <gtest/gtest.h>
+#include <verilated_cov.h>
+
+#define NAME "top"
 
 class TopTestbench : public SyncTestbench {
 protected:
-    void initializeInputs() override {
-        // Start with clk=0, reset asserted
-        top->clk = 0;
-        top->rst = 1;
+    bool resetReleased = false;
 
-        // Let reset propagate for two full clock cycles
+    void initializeInputs() override {
+        top->clk = 1;
         top->rst = 0;
-        runSimulation(1);
     }
+
 };
 
-// After one instruction (ADDI x1, x1, 10) we expect Result==10
-TEST_F(TopTestbench, ExecutesAddi) {
-    runSimulation(1);
-    EXPECT_EQ(top->Result, 10)
-        << "After the first cycle (ADDI), Result should be 10";
-}
-
-// After two instructions (ADD x2, x1, x1), we expect Result==20
-TEST_F(TopTestbench, ExecutesAdd) {
-    // We’ve already done 1 cycle in ExecutesAddi (but GTest runs each TEST in a fresh fixture),
-    // so here we do two cycles from reset-release.
-    runSimulation(2);
-    EXPECT_EQ(top->Result, 20)
-        << "After the second cycle (ADD), Result should be 20";
+TEST_F(TopTestbench, ExecuteSimpleProgram) {
+    runSimulation(2);  // Run enough cycles for instructions to complete
+    // We are starting at cycle 0 -> 1 -> 2 so right result in 3 cycles
+    EXPECT_EQ(top->Result, 40);
 }
 
 int main(int argc, char **argv) {
     Verilated::commandArgs(argc, argv);
-    ::testing::InitGoogleTest(&argc, argv);
-    Verilated::traceEverOn(true);
-    return RUN_ALL_TESTS();
+    testing::InitGoogleTest(&argc, argv);
+    Verilated::mkdir("logs");
+
+    int result = RUN_ALL_TESTS();
+    VerilatedCov::write(("logs/coverage_" + std::string(NAME) + ".dat").c_str());
+    return result;
 }

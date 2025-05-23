@@ -16,7 +16,9 @@ protected:
             // dump variables into VCD file and toggle clock
             for (int clk = 0; clk < 2; ++clk)
             {
-                tfp->dump(2*ticks + clk);    // picoseconds
+                #ifndef __APPLE__
+                tfp->dump(2 * ticks + clk); // picoseconds
+                #endif
                 top->clk = !top->clk;
                 top->eval();
             }

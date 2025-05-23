@@ -1,3 +1,3 @@
-# Simple test program
-ADDI x1, x1, 10
-ADD x2, x1, x1
+addi x1, x1, 10
+add x2, x1, x1
+add x3, x2, x2

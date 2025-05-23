@@ -3,6 +3,7 @@
 module controlunit #(
     parameter DATA_WIDTH = 32
 ) (
+    /* verilator lint_off UNUSEDSIGNAL */
     input logic [DATA_WIDTH-1:0] instr,  // Instruction input
     input logic                 EQ,     // Equality flag (for branch comparison)
     output logic [3:0]          ALUctrl, // ALU control signal
@@ -20,6 +21,7 @@ module controlunit #(
     logic [2:0] op;
     logic [3:0] funct4;
     logic [2:0] funct3;
+    /* verilator lint_off UNUSEDSIGNAL */
     logic predicate;
 
     assign op = instr[31:29];

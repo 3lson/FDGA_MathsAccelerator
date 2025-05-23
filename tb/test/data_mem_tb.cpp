@@ -37,6 +37,7 @@ TEST_F(DataMemTestbench, WriteAndReadBack) {
     }
 
     top->WDME = 0; // disable write mode
+    toggleClock();
 
     // Read and print back the data
     for (int i = 0; i < test_count; ++i) {

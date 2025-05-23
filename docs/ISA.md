@@ -23,7 +23,7 @@ All instr are 32 bit wide
 |--------|----|-----|------|-----|-----|----|
 |opcode| pred |  9(x) | RS2 | FUNCT4 | RS1 | RD |
 
-|Mnemonic|FUNCT5|Description|
+|Mnemonic|FUNCT4|Description|
 | -------| -----|-----------|
 | `ADD` | 0000| rd = rs1 + rs2 |
 | `SUB` | 0001 | rd = rs1 - rs2 |

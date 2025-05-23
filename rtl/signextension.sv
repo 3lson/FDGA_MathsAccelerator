@@ -1,6 +1,7 @@
 module signextension #(
     parameter DATA_WIDTH = 32
 )(
+    /* verilator lint_off UNUSEDSIGNAL */
     input  logic [31:0] instr,           // I-type immediate field
     input  logic  [2:0] ImmSrc,          // Immediate source select
     output logic [DATA_WIDTH-1:0] ImmOp  // Sign-extended output

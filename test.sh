@@ -4,9 +4,8 @@
 
 # Assemble the ASM code
 
-cd assembler
-g++ -std=c++17 assembler.cpp -o assembler
-./assembler program.asm  
+g++ -o assembler/assembler assembler/assembler.cpp
+./assembler/assembler     
 
 
 # Compiling the CPU output

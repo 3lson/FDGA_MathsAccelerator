@@ -11,7 +11,7 @@ module top (
     logic [31:0] ImmOp;                   // Sign-extended immediate value
     logic [31:0] ALUop1, ALUop2, ALUout;  // ALU operands and result
     logic EQ;                             // Equality output from ALU
-    logic [31:0] RD2;                // Register file read/write data
+    logic [31:0] RD2, WD3;                // Register file read/write data
     logic RegWrite, ALUsrc, WD3Src;               // Control signals
     logic [1:0] PCsrc;                    // PC mux controls signal
     logic [2:0] ImmSrc;                   // 2-bit Immediate source signal
@@ -52,7 +52,12 @@ module top (
         .ImmOp(ImmOp)
     );
 
-    assign AD3in = WD3Src ? 5'b00001 : instr[4:0];
+    always_comb begin
+        case(WD3Src) 
+            1'b0: WD3 = Result;
+            1'b1: WD3 = PC + 32'd4;
+        endcase
+    end
 
     // Register File with reset
     registerfile RegFile (
@@ -61,7 +66,7 @@ module top (
         .WE3(RegWrite),
         .AD1(instr[9:5]),
         .AD2(instr[18:14]),
-        .AD3(AD3in),
+        .AD3(instr[4:0]),
         .WD3(Result),
         .RD1(ALUop1),
         .RD2(RD2)
@@ -104,6 +109,21 @@ module top (
     );
 
     //Result mux
-    assign Result = ResultSrc ? ReadData : ALUout;
+    always_comb begin
+        case(ResultSrc)
+            1'b0: Result = ALUout;
+            1'b1: Result = ReadData;
+        endcase
+    end
+
+    // Debug Output
+
+    always_ff @(posedge clk) begin
+        if (!rst) begin
+            $display("PC = 0x%08x | Instr = 0x%08x | ALUop1 = %0d | ALUop2 = %0d | ALUout = %0d | Result = %0d | RegWrite = %0d",
+                    PC, instr, ALUop1, ALUop2, ALUout, Result, RegWrite);
+        end
+    end
+
     
 endmodule
