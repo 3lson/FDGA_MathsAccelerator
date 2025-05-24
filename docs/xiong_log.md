@@ -12,6 +12,10 @@ Researching how to implement SIMD, implementing vector operations into the ALU.
 Finished ALU except for FDIV instruction, unknown reason as to why it's not working.
 To run the testbench, place tb_floating_alu.cpp in the obj_dir in the rtl folder and run the following:
 
+## 24/5/2025
+
+Created a regfile for the multithreading, doesn't seem to be writing properly yet but structure should be there
+
 ```
 verilator -Wall --cc floating_alu.sv --exe tb_floating_alu.cpp
 make -C obj_dir -j -f Vfloating_alu.mk Vfloating_alu
