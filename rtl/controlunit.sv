@@ -3,7 +3,7 @@
 module controlunit #(
     parameter DATA_WIDTH = 32
 ) (
-    /* verilator lint_off UNUSEDSIGNAL */
+    /* verilator lint_off UNUSED */
     input logic [DATA_WIDTH-1:0] instr,  // Instruction input
     output logic [3:0]          ALUctrl, // ALU control signal
     output logic                ALUsrc,  // ALU source (1 for immediate, 0 for register)
@@ -21,7 +21,7 @@ module controlunit #(
     logic [2:0] op;
     logic [3:0] funct4;
     logic [2:0] funct3;
-    /* verilator lint_off UNUSEDSIGNAL */
+    /* verilator lint_off UNUSED */
     logic predicate;
 
     assign op = instr[31:29];
