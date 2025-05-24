@@ -1,11 +1,18 @@
+//Edited accordingly based on compile passing this
 #include <stdio.h>
-struct Point {
-    float x, y;
-};
 
+//Completed
+struct Point {
+    float x;
+    float y;
+};
+//Completed
+
+//Not necessary as fabsf is now recognised as a built in function call
 float fabsf(float x) {
     return x < 0 ? -x : x;
 }
+
 
 int main() {
     int MAX_K = 3;
@@ -18,12 +25,11 @@ int main() {
     int num_points = 9;
     float sum;
 
-    // geberates initial centroids  need to change that!!!!!!!!!!!!!
     for (int i = 0; i < k; i++) {
         centroids[i].x = 1+ 2*i;
         centroids[i].y = 2+ 2*i;
     }
-    // generates poitns             need to change that !!!!!!!!!!!!!!
+
     for (int i = 0; i < num_points; i++) {
         points[i].x = 1 + 2*i;
         points[i].y = 2 + 2*i;
@@ -39,7 +45,6 @@ int main() {
             old_centroids[i] = centroids[i];
         }
 
-        // updated clustering functions
         for (int i = 0; i < k; i++) {
             cluster_sizes[i] = 0;
         }
@@ -59,7 +64,7 @@ int main() {
             clusters[best][old_best] = points[i];
             cluster_sizes[best] = old_best + 1;
         }
-        //updated centroids function
+
         for (int i = 0; i < k; i++) {
             float sum_x = 0, sum_y = 0;
             int size = cluster_sizes[i];
@@ -83,8 +88,11 @@ int main() {
         }
         if (done) break;
     }
-        for (int i = 0; i < k; i++) {
-            sum += centroids[i].x + centroids[i].y;
-        }
-    printf("The value is: %f\n", sum);
+
+    //Print for now
+    for (int i = 0; i < k; i++) {
+        printf("Centroid %d: (%.6f, %.6f)\n", i, centroids[i].x, centroids[i].y);
+    }
+    
+
 }

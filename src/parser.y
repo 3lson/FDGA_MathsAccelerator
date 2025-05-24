@@ -34,7 +34,7 @@
 %token TYPE_NAME TYPEDEF EXTERN STATIC AUTO REGISTER SIZEOF
 %token CHAR SHORT INT LONG SIGNED UNSIGNED FLOAT DOUBLE CONST VOLATILE VOID
 %token STRUCT UNION ENUM ELLIPSIS
-%token CASE DEFAULT IF ELSE SWITCH WHILE DO FOR GOTO CONTINUE BREAK RETURN
+%token CASE DEFAULT IF ELSE SWITCH WHILE DO FOR GOTO CONTINUE BREAK RETURN, FABSF
 
 %type <node> translation_unit external_declaration function_definition primary_expression postfix_expression argument_expression_list
 %type <node> unary_expression cast_expression multiplicative_expression additive_expression shift_expression relational_expression
@@ -411,6 +411,9 @@ expression
 		Expression *expression_list = dynamic_cast<Expression*>($1);
 		expression_list->PushBack(NodePtr($3));
 		$$ = expression_list;
+	}
+	| FABSF '(' expression ')' {
+		$$ = new BuiltInFunction("fabsf", NodePtr($3));
 	}
 	;
 

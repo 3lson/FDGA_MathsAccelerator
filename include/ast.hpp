@@ -64,6 +64,8 @@
 #include "ast_declarator.hpp"
 #include "ast_node.hpp"
 
+#include "custom/ast_builtin_function.hpp"
+
 #include "context/ast_context.hpp"
 
 ast::NodePtr ParseAST(std::string file_name);

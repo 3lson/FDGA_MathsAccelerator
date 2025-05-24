@@ -62,6 +62,7 @@ IS  (u|U|l|L)*
 "void"			{return(VOID);}
 "volatile"	    {return(VOLATILE);}
 "while"			{return(WHILE);}
+"fabsf"         {return(FABSF); }
 
 {L}({L}|{D})*		{
   std::string *str = new std::string(yytext);

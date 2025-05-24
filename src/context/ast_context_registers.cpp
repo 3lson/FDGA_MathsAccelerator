@@ -9,9 +9,9 @@ ContextRegister::ContextRegister(){
         {2, Register("sp", Type::_INT, false)},
         {3, Register("gp", Type::_INT, false)},
         {4, Register("tp", Type::_INT, false)},
-        {5, Register("t0", Type::_INT, false)},
-        {6, Register("t1", Type::_INT, false)},
-        {7, Register("t2", Type::_INT, false)},
+        {5, Register("t0", Type::_INT, true)},
+        {6, Register("t1", Type::_INT, true)},
+        {7, Register("t2", Type::_INT, true)},
         {8, Register("s0", Type::_INT, false)},
         {9, Register("s1", Type::_INT, false)},
         {10, Register("a0", Type::_INT, false)},
@@ -32,10 +32,10 @@ ContextRegister::ContextRegister(){
         {25, Register("s9", Type::_INT, true)},
         {26, Register("s10", Type::_INT, true)},
         {27, Register("s11", Type::_INT, true)},
-        {28, Register("t3", Type::_INT, true)},
-        {29, Register("t4", Type::_INT, true)},
-        {30, Register("t5", Type::_INT, true)},
-        {31, Register("t6", Type::_INT, true)},
+        {28, Register("t3", Type::_INT, false)}, // reserved for multi-threading
+        {29, Register("t4", Type::_INT, false)}, // reserved for multi-threading
+        {30, Register("t5", Type::_INT, false)}, // reserved for multi-threading
+        {31, Register("t6", Type::_INT, false)}, // reserved for multi-threading
         {32, Register("ft0", Type::_FLOAT, true)},
         {33, Register("ft1", Type::_FLOAT, true)},
         {34, Register("ft2", Type::_FLOAT, true)},
