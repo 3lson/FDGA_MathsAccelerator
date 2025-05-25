@@ -28,7 +28,7 @@ std::string UnaryExpression::GetOperation(Type type) const {
         }},
         {UnaryOp::LOGICAL_NOT, {
             {Type::_INT, "seqz"}, {Type::_UNSIGNED_INT, "seqz"}, {Type::_CHAR, "seqz"},
-            {Type::_SHORT, "seqz"}, {Type::_LONG, "seqz"},
+            {Type::_SHORT, "seqz"}, {Type::_LONG, "seqz"}, {Type::_FLOAT, "feq.s"},
         }},
     };
 
@@ -81,7 +81,15 @@ void UnaryExpression::EmitRISC(std::ostream& stream, Context& context, std::stri
     } else if (op_ == UnaryOp::BITWISE_NOT) {
         stream << operation << " " << dest_reg << ", " << operand_register << std::endl;
     } else if (op_ == UnaryOp::LOGICAL_NOT) {
-        stream << operation << " " << dest_reg << ", " << operand_register << std::endl;
+        if (type == Type::_FLOAT) {
+            std::string zero_reg = context.get_register(type); 
+            stream << "li " << zero_reg << ", 0" << std::endl;
+            stream << "fcvt.s.w " << zero_reg << ", " << zero_reg << std::endl;
+            stream << "feq.s " << dest_reg << ", " << operand_register << ", " << zero_reg << std::endl;
+            context.deallocate_register(zero_reg);
+        } else {
+            stream << operation << " " << dest_reg << ", " << operand_register << std::endl;
+        }
     }
 
     //If the operand is an identifier, store the result back to memory

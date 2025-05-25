@@ -274,6 +274,7 @@ primary_expression
 	| '(' expression ')'	{ $$ = $2; }
 	| CHAR_LITERAL { $$ = new CharacterLiteral($1); }
 	| STRING_LITERAL { $$ = new StringLiteral($1); }
+	| FABSF '(' expression ')'  { $$ = new BuiltInFunction("fabsf", NodePtr($3)); }
 	;
 
 expression_statement
@@ -411,9 +412,6 @@ expression
 		Expression *expression_list = dynamic_cast<Expression*>($1);
 		expression_list->PushBack(NodePtr($3));
 		$$ = expression_list;
-	}
-	| FABSF '(' expression ')' {
-		$$ = new BuiltInFunction("fabsf", NodePtr($3));
 	}
 	;
 
