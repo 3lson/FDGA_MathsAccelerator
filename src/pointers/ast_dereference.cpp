@@ -20,7 +20,7 @@ bool Dereference::isPointer(Context &context) const{
 }
 
 
-void Dereference::EmitRISC(std::ostream& stream, Context& context, std::string dest_reg) const
+void Dereference::EmitElsonV(std::ostream& stream, Context& context, std::string dest_reg) const
 {
     Type type = GetType(context);
 

@@ -9,7 +9,7 @@ Type BuiltInFunction::GetType(Context& context) const {
     return args->GetType(context);
 }
 
-void BuiltInFunction::EmitRISC(std::ostream& stream, Context& context, std::string dest_reg) const {
+void BuiltInFunction::EmitElsonV(std::ostream& stream, Context& context, std::string dest_reg) const {
     Type type = GetType(context);
 
     if (func_name_ != "fabsf") {
@@ -20,7 +20,7 @@ void BuiltInFunction::EmitRISC(std::ostream& stream, Context& context, std::stri
 
     std::string arg_reg = context.get_register(type);
 
-    argument_->EmitRISC(stream, context, arg_reg);
+    argument_->EmitElsonV(stream, context, arg_reg);
 
     if (dest_reg == "zero") {
         dest_reg = context.get_register(type);

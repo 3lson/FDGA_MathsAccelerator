@@ -1,6 +1,6 @@
 #include "../../include/specifiers/ast_type_specifier.hpp"
 namespace ast{
-void TypeSpecifier::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const {
+void TypeSpecifier::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const {
     (void)stream;
     (void)context;
     (void)dest_reg;

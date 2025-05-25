@@ -9,7 +9,7 @@ void NodeList::PushBack(NodePtr item)
     }
 }
 
-void NodeList::EmitRISC(std::ostream& stream, Context& context, std::string dest_reg) const
+void NodeList::EmitElsonV(std::ostream& stream, Context& context, std::string dest_reg) const
 {
     for (const auto& node : nodes_)
     {
@@ -17,7 +17,7 @@ void NodeList::EmitRISC(std::ostream& stream, Context& context, std::string dest
         {
             continue;
         }
-        node->EmitRISC(stream, context, dest_reg);
+        node->EmitElsonV(stream, context, dest_reg);
     }
 }
 

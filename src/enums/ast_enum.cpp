@@ -18,12 +18,12 @@ int Enumerator::define_enumerator(Context &context, int value) const
     return value + 1;
 }
 
-void Enumerator::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const
+void Enumerator::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const
 {
     (void)context;
     (void)dest_reg;
     (void)stream;
-    throw std::runtime_error("Enumerator::EmitRISC not implemented");
+    throw std::runtime_error("Enumerator::EmitElsonV not implemented");
 }
 
 void Enumerator::Print(std::ostream &stream) const

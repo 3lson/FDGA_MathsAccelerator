@@ -16,7 +16,7 @@ std::string ArrayIndexAccess::GetId() const
     throw std::runtime_error("ArrayIndexAccess::GetId - not an identifier");
 }
 
-void ArrayIndexAccess::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const
+void ArrayIndexAccess::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const
 {
     Variable variable = context.get_variable(GetId());
 
@@ -42,7 +42,7 @@ void ArrayIndexAccess::EmitRISC(std::ostream &stream, Context &context, std::str
         }
         else
         {
-            throw std::runtime_error("ArrayAccess EmitRISC: Variable is not a pointer or array");
+            throw std::runtime_error("ArrayAccess EmitElsonV: Variable is not a pointer or array");
         }
 
         stream << context.load_instr(type) << " " << dest_reg << ", 0(" << index_register << ")" << std::endl;
@@ -67,7 +67,7 @@ void ArrayIndexAccess::get_position(std::ostream &stream, Context &context, std:
     context.push_operation_type(Type::_INT);
 
     // Emit index to specified register
-    index_->EmitRISC(stream, context, dest_reg);
+    index_->EmitElsonV(stream, context, dest_reg);
 
     stream << "slli " << dest_reg << ", " << dest_reg << ", " << types_mem_shift.at(type) << std::endl;
 

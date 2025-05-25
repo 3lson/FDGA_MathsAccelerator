@@ -24,7 +24,7 @@ public:
     SizeOf(NodePtr unary_expression, int pointer, NodePtr constant_expression) : unary_expression_(std::move(unary_expression)), constant_expression_(std::move(constant_expression)), pointer_(pointer) {}
 
     Type GetType(Context &context) const override;
-    void EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const override;
+    void EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const override;
     void Print(std::ostream &stream) const override;
     bool isPointerOp(Context &context) const override;
 };

@@ -19,7 +19,7 @@ std::string PointerDeclaration::GetId() const
     throw std::runtime_error("PointerDeclaration::GetId() - direct_declarator_ is not an Identifier or PointerDeclarator");
 }
 
-void PointerDeclaration::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const
+void PointerDeclaration::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const
 {
     // unsused
     (void)stream;

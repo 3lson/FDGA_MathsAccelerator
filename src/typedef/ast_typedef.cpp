@@ -2,7 +2,7 @@
 
 namespace ast{
 
-void Typedef::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const
+void Typedef::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const
 {
     (void)stream;
     (void)context;

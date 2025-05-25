@@ -14,7 +14,7 @@ bool StringLiteral::isPointerOp(Context &context) const
     return true;
 }
 
-void StringLiteral::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const
+void StringLiteral::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const
 {
     int index = context.define_string(value_);
     stream << "lui " << dest_reg << ", %hi(string_" << index << ")" << std::endl;

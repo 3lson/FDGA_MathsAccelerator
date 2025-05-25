@@ -15,7 +15,7 @@ public:
     ForStatement(NodePtr init, NodePtr condition, NodePtr update, NodePtr body)
     : init_(std::move(init)), condition_(std::move(condition)), update_(std::move(update)), body_(std::move(body)) {}
 
-    void EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const override;
+    void EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const override;
     void Print(std::ostream& stream) const override;
 
 };

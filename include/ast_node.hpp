@@ -13,7 +13,7 @@ class Node
 {
 public:
     virtual ~Node() = default;
-    virtual void EmitRISC(std::ostream& stream, Context& context, std::string dest_reg) const = 0;
+    virtual void EmitElsonV(std::ostream& stream, Context& context, std::string dest_reg) const = 0;
     virtual void Print(std::ostream& stream) const = 0;
 };
 
@@ -39,7 +39,7 @@ public:
     virtual ~NodeList();
 
     void PushBack(NodePtr item);
-    virtual void EmitRISC(std::ostream& stream, Context& context, std::string dest_reg) const override;
+    virtual void EmitElsonV(std::ostream& stream, Context& context, std::string dest_reg) const override;
     virtual void Print(std::ostream& stream) const override;
     std::vector<NodePtr> const& get_nodes() const;
 };

@@ -28,7 +28,7 @@ public:
 
     int get_deref() const override;
 
-    void EmitRISC(std::ostream& stream, Context& context, std::string dest_reg) const;
+    void EmitElsonV(std::ostream& stream, Context& context, std::string dest_reg) const;
     void Print(std::ostream& stream) const;
 };
 

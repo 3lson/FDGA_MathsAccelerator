@@ -12,7 +12,7 @@ public:
 
     virtual Type GetType(Context &context) const = 0;
 
-    void EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const override = 0;
+    void EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const override = 0;
     void Print(std::ostream &stream) const override = 0;
     virtual bool isPointerOp(Context &context) const = 0;
     void ShiftPointerOp(std::ostream &stream, Context &context, std::string dest_reg, NodePtr node) const;

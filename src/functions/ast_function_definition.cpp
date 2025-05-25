@@ -1,7 +1,7 @@
 #include "../../include/functions/ast_function_definition.hpp"
 namespace ast {
 
-void FunctionDefinition::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const
+void FunctionDefinition::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const
 {
     auto direct_declarator_ = dynamic_cast<const Declarator *>(declarator_.get());
     if (!direct_declarator_) {
@@ -38,7 +38,7 @@ void FunctionDefinition::EmitRISC(std::ostream &stream, Context &context, std::s
         }
 
         if (!compound_statement_) {
-            throw std::runtime_error("Error: compound_statement_ is null in FunctionDefinition::EmitRISC");
+            throw std::runtime_error("Error: compound_statement_ is null in FunctionDefinition::EmitElsonV");
         }
 
         const CompoundStatement *compound_statement = dynamic_cast<const CompoundStatement*>(compound_statement_.get());
@@ -62,7 +62,7 @@ void FunctionDefinition::EmitRISC(std::ostream &stream, Context &context, std::s
         stream << "addi s0, sp, " << stack_allocated_space <<std::endl;
         direct_declarator_->store_param(stream, context, dest_reg);
 
-        compound_statement_->EmitRISC(stream, context, dest_reg);
+        compound_statement_->EmitElsonV(stream, context, dest_reg);
 
         stream << context.get_function_end() << ":" << std::endl;
         stream << "lw s0, "<< stack_allocated_space - 8 << "(sp)" << std::endl;

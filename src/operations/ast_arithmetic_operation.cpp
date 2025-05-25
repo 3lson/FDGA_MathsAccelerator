@@ -42,19 +42,19 @@ std::string ArithExpression::GetOperation(Type type) const {
     throw std::runtime_error("Unsupported arithmetic operation or type.");
 }
 
-void ArithExpression::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const
+void ArithExpression::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const
 {
     Type type = std::max(context.get_operation_type(), GetType(context));
     type = isPointerOp(context) ? Type::_INT : type;
     context.push_operation_type(type);
 
     std::string left_register = context.get_register(type);
-    left_->EmitRISC(stream, context, left_register);
+    left_->EmitElsonV(stream, context, left_register);
     ShiftPointerOp(stream, context, left_register, left_);
     context.add_reg_to_set(left_register);
 
     std::string right_register = context.get_register(type);
-    right_->EmitRISC(stream, context, right_register);
+    right_->EmitElsonV(stream, context, right_register);
     ShiftPointerOp(stream, context, right_register, right_);
 
     // Handle struct access (as per your existing logic)
@@ -62,11 +62,11 @@ void ArithExpression::EmitRISC(std::ostream &stream, Context &context, std::stri
     const StructAccess* rightStructAccess = dynamic_cast<const StructAccess*>(right_.get());
 
     if (leftStructAccess) {
-        leftStructAccess->EmitRISC(stream, context, left_register);
+        leftStructAccess->EmitElsonV(stream, context, left_register);
     }
 
     if (rightStructAccess) {
-        rightStructAccess->EmitRISC(stream, context, right_register);
+        rightStructAccess->EmitElsonV(stream, context, right_register);
     }
 
     // Handle integer to floating-point conversion

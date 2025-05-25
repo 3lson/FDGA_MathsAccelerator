@@ -1,7 +1,7 @@
 #include "../../include/statements/ast_declaration.hpp"
 namespace ast {
 
-void Declaration::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const
+void Declaration::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const
 {
     (void)context;
     (void)dest_reg;
@@ -12,7 +12,7 @@ void Declaration::EmitRISC(std::ostream &stream, Context &context, std::string d
 
     const Specifier *specifier = dynamic_cast<const Specifier*>(type_specifier_.get());
     if (!specifier) {
-        throw std::runtime_error("Declaration::EmitRISC: Invalid type specifier");
+        throw std::runtime_error("Declaration::EmitElsonV: Invalid type specifier");
     }
     specifier->define_spec(context);
 
@@ -59,7 +59,7 @@ void Declaration::EmitRISC(std::ostream &stream, Context &context, std::string d
 
             if (array_declaration->GetArraySize() == -1)
             {
-                throw std::runtime_error("Declaration EmitRISC: Array size not specified");
+                throw std::runtime_error("Declaration EmitElsonV: Array size not specified");
             }
 
             context.increase_stack_offset(type_size * array_size);
@@ -83,7 +83,7 @@ void Declaration::EmitRISC(std::ostream &stream, Context &context, std::string d
         }
         else
         {
-            throw std::runtime_error("Declaration EmitRISC: Unknown declarator type");
+            throw std::runtime_error("Declaration EmitElsonV: Unknown declarator type");
         }
     }
 }
@@ -223,7 +223,7 @@ void Declaration::DeclareGlobal(std::ostream &stream, Context &context, std::str
 
             if (array_declaration->GetArraySize() == -1)
             {
-                throw std::runtime_error("Declaration EmitRISC: Array size not specified");
+                throw std::runtime_error("Declaration EmitElsonV: Array size not specified");
             }
 
             std::string global_name = array_declaration->GetId();

@@ -17,7 +17,7 @@ public:
     void SaveValue(std::ostream &stream, Context &context, Variable variable, std::string identifier) const;
     void global_init(std::ostream &stream, Context &context, Global &global) const;
 
-    void EmitRISC(std::ostream& stream, Context& context, std::string dest_reg) const;
+    void EmitElsonV(std::ostream& stream, Context& context, std::string dest_reg) const;
     void Print(std::ostream& stream) const;
 };
 

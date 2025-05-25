@@ -12,7 +12,7 @@ public:
     virtual void SaveValue(Global &global) const =0;
     bool isPointerOp(Context &context) const override;
 
-    void EmitRISC(std::ostream &stream, Context &context, std::string passed_reg) const override = 0;
+    void EmitElsonV(std::ostream &stream, Context &context, std::string passed_reg) const override = 0;
     void Print(std::ostream &stream) const override = 0;
 };
 
@@ -28,7 +28,7 @@ public:
     int get_val() const;
     void SaveValue(Global &global) const override;
 
-    void EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const override;
+    void EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const override;
     void Print(std::ostream &stream) const override;
 };
 
@@ -43,7 +43,7 @@ public:
     Type GetType(Context &context) const override;
     void SaveValue(Global &global) const override;
 
-    void EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const override;
+    void EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const override;
     void Print(std::ostream &stream) const override;
 };
 
@@ -58,7 +58,7 @@ public:
     Type GetType(Context &context) const override;
     void SaveValue(Global &global) const override;
 
-    void EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const override;
+    void EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const override;
     void Print(std::ostream &stream) const override;
 };
 

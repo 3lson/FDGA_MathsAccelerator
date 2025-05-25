@@ -21,7 +21,7 @@ public:
 
     Type GetType(Context& context) const override;
     std::string GetOperation(Type type) const;
-    void EmitRISC(std::ostream& stream, Context& context, std::string dest_reg) const override;
+    void EmitElsonV(std::ostream& stream, Context& context, std::string dest_reg) const override;
     void Print(std::ostream& stream) const override;
     bool isPointerOp(Context &context) const override;
     void ShiftPointerOp(std::ostream &stream, Context &context, std::string dest_reg, const NodePtr& node) const;

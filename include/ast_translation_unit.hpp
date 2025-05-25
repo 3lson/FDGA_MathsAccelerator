@@ -8,7 +8,7 @@ class TranslationUnit : public NodeList{
 public:
     using NodeList::NodeList;
 
-    void EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const override;
+    void EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const override;
 };
 
 } //namespace ast

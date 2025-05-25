@@ -2,10 +2,10 @@
 
 namespace ast{
 
-void StructAccess::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const {
+void StructAccess::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const {
     const Identifier* struct_identifier = dynamic_cast<const Identifier *>(struct_name_.get());
     if (!struct_identifier) {
-        throw std::runtime_error("StructAccess::EmitRISC - struct_name_ is not an Identifier");
+        throw std::runtime_error("StructAccess::EmitElsonV - struct_name_ is not an Identifier");
     }
 
     std::string struct_var_name = struct_identifier->GetId();
@@ -15,7 +15,7 @@ void StructAccess::EmitRISC(std::ostream &stream, Context &context, std::string 
     try {
         struct_var = context.get_variable(struct_var_name);
     } catch (const std::runtime_error& e) {
-        throw std::runtime_error("StructAccess::EmitRISC - Struct variable '" + struct_var_name + "' not found.");
+        throw std::runtime_error("StructAccess::EmitElsonV - Struct variable '" + struct_var_name + "' not found.");
     }
 
     int total_offset = get_offset(context);

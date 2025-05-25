@@ -16,7 +16,7 @@ public:
     ParameterDefinition(NodePtr type_specifier, NodePtr declarator)
     : type_specifier_(std::move(type_specifier)), declarator_(std::move(declarator)) {}
 
-    void EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const override;
+    void EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const override;
     void Print(std::ostream &stream) const override;
     Type GetType() const;
     bool isPointer() const;
@@ -35,7 +35,7 @@ public:
     using NodeList::NodeList;
     ~ParameterList() {}
 
-    void EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const override;
+    void EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const override;
     int get_offset() const;
     std::vector<Parameter> get_param(Context &context) const;
 

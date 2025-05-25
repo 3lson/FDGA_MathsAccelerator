@@ -24,7 +24,7 @@ public:
     }
 
     void Print(std::ostream& stream) const override;
-    void EmitRISC(std::ostream& stream, Context& context, std::string dest_reg) const override;
+    void EmitElsonV(std::ostream& stream, Context& context, std::string dest_reg) const override;
     std::string GetId() const;
     Type GetType() const;
 };

@@ -7,7 +7,7 @@ int ArrayInitialization::GetArraySize() const
     return dynamic_cast<const NodeList *>(initializer_list_.get())->get_nodes().size();
 }
 
-void ArrayInitialization::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const
+void ArrayInitialization::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const
 {
     (void)stream;
     (void)context;
@@ -31,7 +31,7 @@ void ArrayInitialization::SaveValue(std::ostream &stream, Context &context, Vari
         offset = variable.get_offset();
         for (const auto& initializer : dynamic_cast<const NodeList *>(initializer_list_.get())->get_nodes())
         {
-            dynamic_cast<const Operand *>(initializer.get())->EmitRISC(stream, context, dest_reg);
+            dynamic_cast<const Operand *>(initializer.get())->EmitElsonV(stream, context, dest_reg);
             stream << context.store_instr(type) << " " << dest_reg << ", " << offset << "(s0)" << std::endl;
 
             offset += types_size.at(type);
@@ -50,7 +50,7 @@ void ArrayInitialization::SaveValue(std::ostream &stream, Context &context, Vari
 
         for (const auto& initializer : dynamic_cast<const NodeList *>(initializer_list_.get())->get_nodes())
         {
-            dynamic_cast<const Operand *>(initializer.get())->EmitRISC(stream, context, dest_reg);
+            dynamic_cast<const Operand *>(initializer.get())->EmitElsonV(stream, context, dest_reg);
 
             stream << context.store_instr(type) << " " << dest_reg << ", " << offset << "(" << global_memory_register << ")" << std::endl;
 

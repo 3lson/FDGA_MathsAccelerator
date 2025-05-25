@@ -14,7 +14,7 @@ private:
 public:
     Identifier(std::string *identifier) : identifier_(std::move(*identifier)){ delete identifier; };
 
-    void EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const override;
+    void EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const override;
     void Print(std::ostream &stream) const override;
 
     std::string GetId() const override;

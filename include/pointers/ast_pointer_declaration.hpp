@@ -24,7 +24,7 @@ public:
     virtual bool isPointer() const override;
     int get_deref() const override;
 
-    void EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const override;
+    void EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const override;
     void Print(std::ostream &stream) const override;
 };
 }//namespace ast

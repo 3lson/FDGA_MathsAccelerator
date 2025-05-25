@@ -21,7 +21,7 @@ private:
 public:
     Typedef(NodePtr declaration_specifier) : declaration_specifier_(std::move(declaration_specifier)) { GetDeclarationSpecifier(); }
 
-    void EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const;
+    void EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const;
     void Print(std::ostream& stream) const;
 
     void DefineTypedef(NodeList *aliases);

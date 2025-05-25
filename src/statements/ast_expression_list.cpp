@@ -12,7 +12,7 @@ void Expression::PushBack(NodePtr item)
     nodes_.push_back(std::move(item));
 }
 
-void Expression::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const
+void Expression::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const
 {
     for (const auto& node : nodes_)
     {
@@ -20,7 +20,7 @@ void Expression::EmitRISC(std::ostream &stream, Context &context, std::string de
         {
             continue;
         }
-        node->EmitRISC(stream, context, dest_reg);
+        node->EmitElsonV(stream, context, dest_reg);
     }
 }
 
@@ -66,7 +66,7 @@ void ExpressionList::GetArguments(std::ostream &stream, Context &context, std::s
 
         std::string arg_reg_name = context.get_register_name(arg_reg_num);
         context.push_operation_type(type);
-        dynamic_cast<const Operand*>(get_nodes()[arg].get())->EmitRISC(stream, context, arg_reg_name);
+        dynamic_cast<const Operand*>(get_nodes()[arg].get())->EmitElsonV(stream, context, arg_reg_name);
         context.pop_operation_type();
     }
 }

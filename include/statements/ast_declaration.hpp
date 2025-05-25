@@ -22,7 +22,7 @@ public:
     Declaration(NodePtr type_specifier) : type_specifier_(std::move(type_specifier)), declarator_list_(nullptr) {}
     Declaration(NodePtr type_specifier, NodePtr declarator_list) : type_specifier_(std::move(type_specifier)), declarator_list_(std::move(declarator_list)) {}
 
-    void EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const override;
+    void EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const override;
     void Print(std::ostream &stream) const override;
     int get_offset(Context& context) const;
     Type GetType() const;

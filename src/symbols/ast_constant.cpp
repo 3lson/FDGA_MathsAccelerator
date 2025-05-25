@@ -2,7 +2,7 @@
 #include "../../include/context/ast_context_constant.hpp"
 namespace ast{
 
-void IntConstant::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const
+void IntConstant::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const
 {
     (void)context;
     stream << "li " << dest_reg << ", " << value_ << std::endl;
@@ -24,7 +24,7 @@ int IntConstant::get_val() const
     return value_;
 }
 
-void FloatConstant::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const
+void FloatConstant::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const
 {
     int label_number = context.registerConstant(value_);
 
@@ -45,7 +45,7 @@ Type FloatConstant::GetType(Context &context) const
     return Type::_FLOAT;
 }
 
-void DoubleConstant::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const
+void DoubleConstant::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const
 {
     int label_number = context.registerConstant(value_);
 

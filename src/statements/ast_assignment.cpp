@@ -1,18 +1,18 @@
 #include "../../include/statements/ast_assignment.hpp"
 namespace ast{
-void Assignment::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const
+void Assignment::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const
 {
     (void)dest_reg;
     std::cout << "The type of expression_ is " << typeid(*unary_expression_).name() << std::endl;
     const StructAccess * struct_access = dynamic_cast<const StructAccess*>(unary_expression_.get());
     if (struct_access) {
-        std::cout << "Entering Assignment::EmitRISC for struct access" << std::endl;
+        std::cout << "Entering Assignment::EmitElsonV for struct access" << std::endl;
         Type type = struct_access->GetType(context);
         std::cout << "The struct_access type: " << static_cast<int>(type) << std::endl;
 
         // Evaluate right-hand side first
         std::string value_reg = context.get_register(type);
-        expression_->EmitRISC(stream, context, value_reg);
+        expression_->EmitElsonV(stream, context, value_reg);
 
         int offset = struct_access->get_offset(context);
         // Store the value into the struct member
@@ -21,14 +21,14 @@ void Assignment::EmitRISC(std::ostream &stream, Context &context, std::string de
         context.deallocate_register(value_reg);
         return;
     } else {
-        std::cout << "Entering Assignment::EmitRISC for everything else" << std::endl;
+        std::cout << "Entering Assignment::EmitElsonV for everything else" << std::endl;
         Variable variable = context.get_variable(GetId());
         Type type = variable.is_pointer() ? Type::_INT : variable.get_type();
         int offset = variable.get_offset();
         context.push_operation_type(type);
 
         std::string reg = context.get_register(type);
-        expression_->EmitRISC(stream, context, reg);
+        expression_->EmitElsonV(stream, context, reg);
 
         if (isArrayInitialization())
         {
@@ -36,7 +36,7 @@ void Assignment::EmitRISC(std::ostream &stream, Context &context, std::string de
             if (array_init) {
                 array_init->SaveValue(stream, context, variable, GetId());
             } else {
-                throw std::runtime_error("Assignment EmitRISC: Expected an array initialization");
+                throw std::runtime_error("Assignment EmitElsonV: Expected an array initialization");
             }
         }
 
@@ -67,7 +67,7 @@ void Assignment::EmitRISC(std::ostream &stream, Context &context, std::string de
 
                 else
                 {
-                    throw std::runtime_error("Assignment EmitRISC: Invalid scope in Identifier");
+                    throw std::runtime_error("Assignment EmitElsonV: Invalid scope in Identifier");
                 }
             }
 
@@ -95,7 +95,7 @@ void Assignment::EmitRISC(std::ostream &stream, Context &context, std::string de
                     }
                     else
                     {
-                        throw std::runtime_error("Assignment EmitRISC: Variable is not a pointer or array in ArrayAccess LOCAL");
+                        throw std::runtime_error("Assignment EmitElsonV: Variable is not a pointer or array in ArrayAccess LOCAL");
                     }
 
                     stream << context.store_instr(type) << " " << reg << ", 0(" << index_register << ")" << std::endl;
@@ -117,7 +117,7 @@ void Assignment::EmitRISC(std::ostream &stream, Context &context, std::string de
 
                 else
                 {
-                    throw std::runtime_error("Assignment EmitRISC: Invalid scope in ArrayAccess");
+                    throw std::runtime_error("Assignment EmitElsonV: Invalid scope in ArrayAccess");
                 }
 
                 context.deallocate_register(index_register);
@@ -161,7 +161,7 @@ void Assignment::EmitRISC(std::ostream &stream, Context &context, std::string de
 
                 else
                 {
-                    throw std::runtime_error("Assignment EmitRISC: Invalid scope in AddressOf");
+                    throw std::runtime_error("Assignment EmitElsonV: Invalid scope in AddressOf");
                 }
             }
             else if (dereference != nullptr)
@@ -178,7 +178,7 @@ void Assignment::EmitRISC(std::ostream &stream, Context &context, std::string de
 
             else
             {
-                throw std::runtime_error("Assignment EmitRISC: Not an identifier or array access or pointer declaration");
+                throw std::runtime_error("Assignment EmitElsonV: Not an identifier or array access or pointer declaration");
             }
         }
 
@@ -186,7 +186,7 @@ void Assignment::EmitRISC(std::ostream &stream, Context &context, std::string de
         context.pop_operation_type();
         return;
     }
-    throw std::runtime_error("Assignment::EmitRISC - no identifier found");
+    throw std::runtime_error("Assignment::EmitElsonV - no identifier found");
 }
 
 void Assignment::Print(std::ostream &stream) const
@@ -309,7 +309,7 @@ void Assignment::local_init(Type type, int offset, std::ostream &stream, Context
     context.define_variable(variable_name, variable);
 
     // Evaluate expression and store in variable
-    EmitRISC(stream, context, "unused");
+    EmitElsonV(stream, context, "unused");
 }
 
 int Assignment::get_deref() const

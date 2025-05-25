@@ -19,7 +19,7 @@ public:
     SwitchStatement(NodePtr condition, NodePtr switch_cases)
         : condition_(std::move(condition)), switch_cases_(std::move(switch_cases)) {}
 
-    void EmitRISC(std::ostream& stream, Context& context, std::string dest_reg) const override;
+    void EmitElsonV(std::ostream& stream, Context& context, std::string dest_reg) const override;
     void Print(std::ostream& stream) const override;
 };
 
@@ -35,7 +35,7 @@ public:
     const StatementList* GetStatementList() const;
     std::vector<const Node*> GetStatements(std::ostream &stream,Context &context, std::string dest_reg) const;
     std::string Getcasereg(std::ostream& stream, Context& context, std::string dest_reg) const;
-    void EmitRISC(std::ostream& stream, Context& context, std::string dest_reg) const override;
+    void EmitElsonV(std::ostream& stream, Context& context, std::string dest_reg) const override;
     void Print(std::ostream& stream) const override;
 };
 

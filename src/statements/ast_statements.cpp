@@ -4,12 +4,12 @@
 
 namespace ast {
 
-void CompoundStatement::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const
+void CompoundStatement::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const
 {
     context.create_scope();
     for (const auto& statement : get_nodes())
     {
-        statement->EmitRISC(stream, context, dest_reg);
+        statement->EmitElsonV(stream, context, dest_reg);
     }
     context.pop_scope();
 }
@@ -69,7 +69,7 @@ void CompoundStatement::GetCases(std::ostream &stream, Context &context, std::st
     int count = 0;
     for(const auto& caseitem : casesList){
         stream << caselabels[count] << ":" << std::endl;
-        caseitem->EmitRISC(stream,context,dest_reg);
+        caseitem->EmitElsonV(stream,context,dest_reg);
         count++;
     }
 
@@ -96,12 +96,12 @@ void StatementList::GetCases(std::ostream &stream, Context &context, std::string
 }
 
 
-void StatementList::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const
+void StatementList::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const
 {
 
     for (const auto& statement : get_nodes())
     {
-        statement->EmitRISC(stream, context, dest_reg);
+        statement->EmitElsonV(stream, context, dest_reg);
     }
 
 }

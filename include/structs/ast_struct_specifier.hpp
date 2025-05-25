@@ -33,7 +33,7 @@ public:
     void define_spec(Context &context) const override;
     virtual Type GetType() const override;
     virtual void Print(std::ostream &stream) const override;
-    void EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const override;
+    void EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const override;
     std::string GetId() const;
 };
 

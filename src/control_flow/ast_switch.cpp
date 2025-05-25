@@ -3,14 +3,14 @@
 
 namespace ast {
 
-    void SwitchStatement::EmitRISC(std::ostream& stream, Context& context, std::string dest_reg) const {
+    void SwitchStatement::EmitElsonV(std::ostream& stream, Context& context, std::string dest_reg) const {
         (void)dest_reg;
         (void)context;
         (void)stream;
 
         std::string condition_reg = context.get_register(Type::_INT);
 
-        condition_->EmitRISC(stream, context, condition_reg);
+        condition_->EmitElsonV(stream, context, condition_reg);
 
         const CompoundStatement *compound_statement = dynamic_cast<const CompoundStatement*>(switch_cases_.get());
 
@@ -22,14 +22,14 @@ namespace ast {
         (void)stream;
     }
 
-    void CaseStatement::EmitRISC(std::ostream& stream, Context& context, std::string dest_reg) const {
+    void CaseStatement::EmitElsonV(std::ostream& stream, Context& context, std::string dest_reg) const {
 
         std::vector<const Node*> statements = GetStatements(stream, context, dest_reg);
 
 
         for(const auto& statement : statements){
             if (statement != nullptr){ // safety check
-                statement->EmitRISC(stream, context, dest_reg);
+                statement->EmitElsonV(stream, context, dest_reg);
             }
         }
 
@@ -68,7 +68,7 @@ namespace ast {
         std::string condition_reg;
         if(condition_){
             condition_reg = context.get_register(Type::_INT);
-            condition_->EmitRISC(stream, context, condition_reg);
+            condition_->EmitElsonV(stream, context, condition_reg);
         }
         else{
             condition_reg = "default";

@@ -1,6 +1,6 @@
 #include "../../include/symbols/ast_identifier.hpp"
 namespace ast{
-void Identifier::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const
+void Identifier::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const
 {
     if (context.is_enum(identifier_))
     {
@@ -26,7 +26,7 @@ void Identifier::EmitRISC(std::ostream &stream, Context &context, std::string de
 
         else
         {
-            throw std::runtime_error("Identifier EmitRISC: Invalid scope");
+            throw std::runtime_error("Identifier EmitElsonV: Invalid scope");
         }
     }
 }

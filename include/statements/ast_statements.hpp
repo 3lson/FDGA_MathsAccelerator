@@ -27,7 +27,7 @@ public:
     using Statement::Statement;
     int get_offset(Context &context) const;
     void GetCases(std::ostream &stream,Context &context, std::string condition, std::string dest_reg) const;
-    void EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const override;
+    void EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const override;
 };
 
 class StatementList : public Statement
@@ -36,7 +36,7 @@ public:
     using Statement::Statement;
 
     void GetCases(std::ostream &stream,Context &context, std::string dest_reg, std::vector<const CaseStatement*>& casesList) const;
-    void EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const override;
+    void EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const override;
     int get_offset(Context &context) const;
 };
 

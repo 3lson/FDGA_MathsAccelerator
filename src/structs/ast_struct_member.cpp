@@ -3,7 +3,7 @@
 
 namespace ast{
 
-void StructMember::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const{
+void StructMember::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const{
     //Struct members handled during struct definition
     (void)context;
     (void)dest_reg;

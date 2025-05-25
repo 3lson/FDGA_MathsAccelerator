@@ -2,9 +2,9 @@
 
 namespace ast{
 
-void DirectDeclarator::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const
+void DirectDeclarator::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const
 {
-    identifier_->EmitRISC(stream, context, dest_reg);
+    identifier_->EmitElsonV(stream, context, dest_reg);
     stream << ":" << std::endl;
 }
 
@@ -65,7 +65,7 @@ void DirectDeclarator::store_param(std::ostream &stream, Context &context, std::
     if (parameter_list_ != nullptr)
     {
         const ParameterList *parameter_list = dynamic_cast<const ParameterList*>(parameter_list_.get());
-        parameter_list->EmitRISC(stream, context, dest_reg);
+        parameter_list->EmitElsonV(stream, context, dest_reg);
     }
 }
 

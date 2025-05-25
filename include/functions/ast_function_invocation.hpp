@@ -16,7 +16,7 @@ public:
     FunctionInvocation(NodePtr identifier) : identifier_(std::move(identifier)), argument_list_(nullptr) {};
     FunctionInvocation(NodePtr identifier, NodePtr argument_list) : identifier_(std::move(identifier)), argument_list_(std::move(argument_list)) {};
 
-    void EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const override;
+    void EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const override;
     void Print(std::ostream &stream) const override;
     Type GetType(Context &context) const override;
     bool isPointerOp(Context &context) const override;

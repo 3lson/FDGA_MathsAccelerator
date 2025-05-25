@@ -30,7 +30,7 @@ void StructSpecifier::define_spec(Context& context) const{
     std::cout << "For this type the size: " <<context.get_struct_size(struct_type) << std::endl;
 }
 
-void StructSpecifier::EmitRISC(std::ostream &stream, Context& context, std::string dest_reg) const{
+void StructSpecifier::EmitElsonV(std::ostream &stream, Context& context, std::string dest_reg) const{
     (void)stream;
     (void)dest_reg;
     define_spec(context);

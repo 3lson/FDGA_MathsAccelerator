@@ -34,7 +34,7 @@ public:
     void global_init(std::ostream &stream, Context &context, Global &global) const;
     void local_init(Type type, int offset, std::ostream &stream, Context &context) const;
 
-    void EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const override;
+    void EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const override;
     void Print(std::ostream &stream) const override;
 
 };

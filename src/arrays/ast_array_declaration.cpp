@@ -35,7 +35,7 @@ int ArrayDeclaration::GetArraySize() const
     throw std::runtime_error("ArrayDeclaration::GetArraySize - array is null and neither is a enumerator");
 }
 
-void ArrayDeclaration::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const
+void ArrayDeclaration::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const
 {
     (void)stream;
     (void)context;

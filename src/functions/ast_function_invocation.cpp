@@ -2,7 +2,7 @@
 
 namespace ast{
 
-void FunctionInvocation::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const
+void FunctionInvocation::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const
 {
     const std::string func_name = dynamic_cast<const Identifier*>(identifier_.get())->GetId();
     context.push_registers(stream);

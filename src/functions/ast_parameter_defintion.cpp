@@ -2,7 +2,7 @@
 
 namespace ast{
 
-void ParameterDefinition::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const
+void ParameterDefinition::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const
 {
     Type type = isPointer() ? Type::_INT : GetType();
     int offset = context.get_stack_offset();
@@ -19,7 +19,7 @@ void ParameterDefinition::Print(std::ostream &stream) const{
     declarator_->Print(stream);
 }
 
-void ParameterList::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const{
+void ParameterList::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const{
     int register_num;
     int int_register = 10; //parameter register a0 start
     int float_register = 42;
@@ -51,11 +51,11 @@ void ParameterList::EmitRISC(std::ostream &stream, Context &context, std::string
                     register_num = float_register++;
                     break;
                 default:
-                    throw std::runtime_error("ParameterDefinition::EmitRISC - Invalid type");
+                    throw std::runtime_error("ParameterDefinition::EmitElsonV - Invalid type");
             }
 
             register_name = context.get_register_name(register_num);
-            parameter->EmitRISC(stream, context, register_name);
+            parameter->EmitElsonV(stream, context, register_name);
         } else {
             stack_offset -= types_size.at(type);
 
@@ -70,7 +70,7 @@ void ParameterList::EmitRISC(std::ostream &stream, Context &context, std::string
             std::string temp_reg = context.get_register(type);
             stream << context.load_instr(type) << " " << temp_reg << ", " << offset << "(sp)" << std::endl;
 
-            parameter->EmitRISC(stream, context, temp_reg);
+            parameter->EmitElsonV(stream, context, temp_reg);
 
             context.deallocate_register(temp_reg);
         }

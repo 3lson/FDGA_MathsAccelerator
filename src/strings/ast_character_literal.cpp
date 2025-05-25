@@ -14,7 +14,7 @@ bool CharacterLiteral::isPointerOp(Context &context) const
     return false;
 }
 
-void CharacterLiteral::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const
+void CharacterLiteral::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const
 {
     (void)context;
     stream << "li " << dest_reg << ", " << int(character_) << std::endl;

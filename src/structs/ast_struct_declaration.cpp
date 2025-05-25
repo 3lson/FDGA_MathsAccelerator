@@ -2,7 +2,7 @@
 
 namespace ast{
 
-void StructDeclaration::EmitRISC(std::ostream& stream, Context& context, std::string dest_reg) const {
+void StructDeclaration::EmitElsonV(std::ostream& stream, Context& context, std::string dest_reg) const {
     (void)stream;
     (void)dest_reg;
     std::cout << "Declaring struct variable: " << *variable_name_ << std::endl;

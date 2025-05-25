@@ -8,7 +8,7 @@ Type AddressOf::GetType(Context& context) const
     return Type::_INT;
 }
 
-void AddressOf::EmitRISC(std::ostream& stream, Context& context, std::string dest_reg) const
+void AddressOf::EmitElsonV(std::ostream& stream, Context& context, std::string dest_reg) const
 {
     std::string identifier = GetId();
 
@@ -37,7 +37,7 @@ void AddressOf::EmitRISC(std::ostream& stream, Context& context, std::string des
             }
             else
             {
-                throw std::runtime_error("ArrayIndexAccess EmitRISC: Variable is not a pointer or array");
+                throw std::runtime_error("ArrayIndexAccess EmitElsonV: Variable is not a pointer or array");
             }
         }
 
@@ -49,7 +49,7 @@ void AddressOf::EmitRISC(std::ostream& stream, Context& context, std::string des
 
         else
         {
-            throw std::runtime_error("AddressOf EmitRISC: variable_specs.scope is not local or global");
+            throw std::runtime_error("AddressOf EmitElsonV: variable_specs.scope is not local or global");
         }
 
         context.deallocate_register(index_register);
@@ -65,7 +65,7 @@ void AddressOf::EmitRISC(std::ostream& stream, Context& context, std::string des
         }
         else
         {
-            throw std::runtime_error("AddressOf EmitRISC: Unsupported variable scope");
+            throw std::runtime_error("AddressOf EmitElsonV: Unsupported variable scope");
         }
     }
 }

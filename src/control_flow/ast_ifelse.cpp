@@ -3,31 +3,31 @@
 
 namespace ast {
 
-void IfStatement::EmitRISC(std::ostream& stream, Context& context, std::string dest_reg) const {
+void IfStatement::EmitElsonV(std::ostream& stream, Context& context, std::string dest_reg) const {
     std::string condition_reg = context.get_register(Type::_INT);
-    condition_->EmitRISC(stream, context, condition_reg);
+    condition_->EmitElsonV(stream, context, condition_reg);
 
     std::string else_label = context.create_label("else");
     std::string end_label = context.create_label("end_if");
 
     if (is_ternary_) {
         stream << "beqz " << condition_reg << ", " << else_label << std::endl;
-        then_branch_->EmitRISC(stream, context, dest_reg);
+        then_branch_->EmitElsonV(stream, context, dest_reg);
         stream << "j " << end_label << std::endl;
 
         stream << else_label << ":" << std::endl;
-        else_branch_->EmitRISC(stream, context, dest_reg);
+        else_branch_->EmitElsonV(stream, context, dest_reg);
 
         stream << end_label << ":" << std::endl;
     } else {
         stream << "beqz " << condition_reg << ", " << else_label << std::endl;
-        then_branch_->EmitRISC(stream, context, dest_reg);
+        then_branch_->EmitElsonV(stream, context, dest_reg);
 
         stream << "j " << end_label << std::endl;
         stream << else_label << ":" << std::endl;
 
         if (else_branch_) {
-            else_branch_->EmitRISC(stream, context, dest_reg);
+            else_branch_->EmitElsonV(stream, context, dest_reg);
         }
 
         stream << end_label << ":" << std::endl;

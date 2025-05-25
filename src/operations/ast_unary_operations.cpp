@@ -46,7 +46,7 @@ std::string UnaryExpression::GetOperation(Type type) const {
     throw std::runtime_error("Unsupported unary operation or type.");
 }
 
-void UnaryExpression::EmitRISC(std::ostream& stream, Context& context, std::string dest_reg) const {
+void UnaryExpression::EmitElsonV(std::ostream& stream, Context& context, std::string dest_reg) const {
     Type type = GetType(context);
 
     context.push_operation_type(type);
@@ -57,9 +57,9 @@ void UnaryExpression::EmitRISC(std::ostream& stream, Context& context, std::stri
     // Handle struct access (as per your existing logic)
     const StructAccess* structAccess = dynamic_cast<const StructAccess*>(operand_.get());
     if (structAccess) {
-        structAccess->EmitRISC(stream, context, operand_register);
+        structAccess->EmitElsonV(stream, context, operand_register);
     }else{
-        operand_->EmitRISC(stream, context, operand_register);
+        operand_->EmitElsonV(stream, context, operand_register);
     }
 
     std::string operation = GetOperation(type);

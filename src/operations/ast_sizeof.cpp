@@ -8,7 +8,7 @@ Type SizeOf::GetType(Context &context) const
     return Type::_INT;
 }
 
-void SizeOf::EmitRISC(std::ostream &stream, Context &context, std::string dest_reg) const{
+void SizeOf::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const{
     (void)context;
     std::cout << "Type_id of unary_expression_: " << typeid(unary_expression_.get()).name() << std::endl;
     const Specifier *type_specifier = dynamic_cast<const Specifier *>(unary_expression_.get());
@@ -34,7 +34,7 @@ void SizeOf::EmitRISC(std::ostream &stream, Context &context, std::string dest_r
         }
 
     } else {
-        throw std::runtime_error("SizeOf::EmitRISC - Unary expression is not a TypeSpecifier or Operand.");
+        throw std::runtime_error("SizeOf::EmitElsonV - Unary expression is not a TypeSpecifier or Operand.");
     }
 
     if (constant_expression_)
