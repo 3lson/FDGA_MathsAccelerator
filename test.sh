@@ -5,3 +5,8 @@ if ! python3 --version > /dev/null 2>&1; then
 else
     ./scripts/test.py $@
 fi
+
+
+# Temp holding for assembler run instr
+g++ -o assembler/assembler assembler/assembler.cpp
+./assembler/assembler     
