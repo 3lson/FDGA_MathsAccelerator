@@ -30,9 +30,11 @@ All instr are 32 bit wide
 | `mul` | 0010 | rd = rs1 * rs2 |
 | `div` | 0011 | rd = rs1 / rs2 |
 | `slt` | 0100 | rd = (rs1 < rs2) ? 1 : 0 |
-| `seq` | 0101 | rd = (rs1 == rs2) ? 1 : 0 |
-| `min` | 0110 | rd = min(rs1, rs2) |
-| `abs` | 0111 | absolute value |
+| `sgt` | 0101 | rd = (rs1 > rs2) ? 1 : 0 |
+| `seq` | 0110 | rd = (rs1 == rs2) ? 1 : 0 |
+| `snez` | 0111 | rd = (rs1 != 0) ? 1 : 0 (rs2 is don't cares here) |
+| `min` | 1000 | rd = min(rs1, rs2) |
+| `abs` | 1001 | absolute value |
 
 ### I-type (Immediate Arith)
 `opcode = 001`
@@ -46,6 +48,9 @@ All instr are 32 bit wide
 | `addi` | 0000| rd = rs1 + imm |
 | `muli` | 0001 | rd = rs1 * imm |
 | `divi` | 0100 | rd = rs1 / imm |
+| `slli` | 0010 | rd = rs1 << uimm (shift left logical immediate) | 
+
+**Note:** `uimm` means 5-bit unsigned immediate (i.e `IMM[4:0]`)
 
 ### M-type (Memory Access)
 `opcode = 100`
@@ -63,17 +68,19 @@ All instr are 32 bit wide
 |opcode| IMM [14:5] | RS2|FUNCT4=0001 | RS1 | IMM [4:0] |
 
 
+**Note:** `flw` and `fsw` will be treated the same as `lw` and `sw` respectively
+
 ### C-type  (Control Flow)
 `opcode = 111`
 
-**jump**
+**jump** `j`
 
 | [31:29] | [28:13] | [12:10] | [9:0] |
 | -------| -------- | ------- | ------ |
 | opcode | Imm[27:12] | FUNCT3 = 000 | Imm[11:2] |
 
 
-**branch** 
+**branch** `beqz` 
 
 | [31:29] | [28:13] | [12:10] | [9:0] |
 | -------| -------- | ------- | ------ |
@@ -104,9 +111,20 @@ All instr are 32 bit wide
 | opcode | 16(x) | FUNCT3 = 111 | 10(x)|
 
 ### P-type (PseudoInstr)
-This is a special instruction to resolve `lui`
+`opcode = 011`
 
-`li rd` to resolve doing `lui rd, value[31:14]` and `addi rd, rd, value[13:0]`
+`li t0, 100` 
+This is a pseudo-instr that underlying would perform `addi t0, zero, 100`
+
+`lui rd upimm`
+
+
+| [31:29] | [28:9] | [9:5] | [4:0] |
+| -------| ---- | ------ | -------|
+| opcode | UpIMM[31:12] | 5(x) | RD |
+
+**Note:** `upimm` gives 20-bit upper immediate IMM[31:12]
+
 
 ### X-type 
 `opcode = 101`
@@ -115,4 +133,52 @@ This is a special instruction to resolve `lui`
 
 | [31:29] | [28:27] | [18:15] | [14:3] | [2:0]
 |--------|----|-----|----------|--|
+
+### F-type 
+These are arithmetic instructions for FPU block
+`opcode = 010`
+
+| [31:29] | [28] | [27:19] | [18:14] | [13:10] | [9:5] | [4:0]
+|--------|----|-----|------|-----|-----|----|
+|opcode| pred |  9(x) | RS2 | FUNCT4 | RS1 | RD |
+
+|Mnemonic|FUNCT4|Description|
+| -------| -----|-----------|
+| `fadd.s` | 0000| rd = rs1 + rs2 |
+| `fsub.s` | 0001 | rd = rs1 - rs2 |
+| `fmul.s` | 0010 | rd = rs1 * rs2 |
+| `fdiv.s` | 0011 | rd = rs1 / rs2 |
+| `fslt.s` | 0100 | rd = (rs1 < rs2) ? 1 : 0 |
+| `fneg.s` | 0101 | Negate 32-bit floating point value in rs1 and store the result in rd (rs2 will be don't cares here) |
+| `feq.s` | 0110 | rd = (rs1 == rs2) ? 1 : 0 |
+| `fmin.s` | 0111 | rd = min(rs1, rs2) |
+| `fabs.s` | 1000 | absolute value |
+| `fcvt.s.w` | 1001 | Convert a floating-point number in floating-point register rs1 to a signed 32-bit in integer register rd. (rs2 will be don't cares here)|
+
+## Register File Assignment
+We have chosen to stick with the RISCV Register layout with the addition of some extra special registers on our end for multithreading
+
+| Name | Register Number | Usage |
+| -----| ----------------| ------|
+| zero | x0 | constant value 0 |
+| ra | x1 | return address | 
+| sp | x2 | stack pointer |
+| gp | x3 | global pointer | 
+| tp | x4 | thread pointer |
+| t0-t2 | x5-7 | temporaries |
+| s0/fp | x8 | saved register / frame pointer | 
+| s1 | x9 | saved register | 
+| a0-a1 | x10-11 | Function arguments / return value |
+| a2-a7 | x12-x17 | Function arguments | 
+| s2-s11| x18-x27 | Saved registers | 
+| t3-t6 | x28-x31| Thread registers | 
+
+The following are mapped as the thread registers
+
+ | Register Number | Purpose | 
+ | ---------------- |--------|
+ | x28 | threadIdx | 
+ | x29 | blockIdx |
+ | x30 | blockDim | 
+ | x31 | laneId |
 

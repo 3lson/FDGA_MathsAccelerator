@@ -51,7 +51,9 @@ module controlunit #(
                     `ALU_MUL: ALUctrl = `ALU_MUL; 
                     `ALU_DIV: ALUctrl = `ALU_DIV; 
                     `ALU_SLT: ALUctrl = `ALU_SLT; 
-                    `ALU_SEQ: ALUctrl = `ALU_SEQ; 
+                    `ALU_SGT: ALUctrl = `ALU_SGT;
+                    `ALU_SEQ: ALUctrl = `ALU_SEQ;
+                    `ALU_SNEZ: ALUctrl = `ALU_SNEZ; 
                     `ALU_MIN: ALUctrl = `ALU_MIN;
                     `ALU_ABS: ALUctrl = `ALU_ABS;
                     default: ALUctrl = `ALU_ADD;

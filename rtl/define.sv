@@ -14,7 +14,9 @@
 `define ALU_MUL 4'b0010  
 `define ALU_DIV 4'b0011 
 `define ALU_SLT 4'b0100 
-`define ALU_SEQ 4'b0101 
-`define ALU_MIN 4'b0110
-`define ALU_ABS 4'b0111  
+`define ALU_SGT 4'b0101
+`define ALU_SEQ 4'b0110 
+`define ALU_SNEZ 4'b0111
+`define ALU_MIN 4'b1000
+`define ALU_ABS 4'b1001  
 

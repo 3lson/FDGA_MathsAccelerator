@@ -19,9 +19,14 @@ module alu (
             `ALU_DIV: Result = ALUop1 / ALUop2; // DIVIDE
             `ALU_ABS: Result = {1'b0,ALUop1[30:0]}; //ABSOLUTE (AS PER IEEE 754 SINGLE PRECISION FLOATING POINT NUMBERS)
             `ALU_SLT: Result = (ALUop1 < ALUop2) ? 1:0; //LESS THAN
+            `ALU_SGT: Result = (ALUop1 > ALUop2) ? 1:0; //GREATER THAN
             `ALU_SEQ: begin //EQUALS
                 Result = (ALUop1 == ALUop2) ? 1:0; 
                 EQ = (ALUop1 == ALUop2) ? 1:0;
+            end
+            `ALU_SNEZ: begin //Set if Not Equals
+                Result = (ALUop1 != 0) ? 1 : 0;
+                EQ = (ALUop1 != 0) ? 1:0;
             end
             `ALU_MIN: Result = (ALUop1 < ALUop2) ? ALUop1:ALUop2; //MINIMUM INSTRUCTION
             default: Result = 32'b0;    

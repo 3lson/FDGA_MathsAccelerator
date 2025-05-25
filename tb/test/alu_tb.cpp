@@ -9,9 +9,11 @@
 #define ALU_MUL 0b0010  
 #define ALU_DIV 0b0011 
 #define ALU_SLT 0b0100 
-#define ALU_SEQ 0b0101 
-#define ALU_MIN 0b0110
-#define ALU_ABS 0b0111  
+#define ALU_SGT 0b0101
+#define ALU_SEQ 0b0110
+#define ALU_SNEZ 0b0111
+#define ALU_MIN 0b1000
+#define ALU_ABS 0b1001  
 
 
 
@@ -107,19 +109,19 @@ TEST_F(ALUTestbench, LessThanTestTrue){
     EXPECT_EQ(top->EQ, 0);
 }
 
-TEST_F(ALUTestbench, LessThanTestFalse){
+TEST_F(ALUTestbench, GreaterThanTestTrue){
     int op1 = 8;
     int op2 = 5;
     
     // Set inputs for subtraction operation
     top->ALUop1 = op1;
     top->ALUop2 = op2;
-    top->ALUctrl = ALU_SLT;
+    top->ALUctrl = ALU_SGT;
 
     top->eval();
 
     // Check the ALU result and EQ signal for subtraction
-    EXPECT_EQ(top->Result, 0);
+    EXPECT_EQ(top->Result, 1);
     EXPECT_EQ(top->EQ, 0);
 }
 
