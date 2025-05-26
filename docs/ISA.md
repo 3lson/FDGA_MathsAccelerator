@@ -80,11 +80,12 @@ All instr are 32 bit wide
 | opcode | Imm[27:12] | FUNCT3 = 000 | Imm[11:2] |
 
 
-**branch** `beqz` 
+**branch** `beqz rd, label`
+**Note:** The label will be calculated in assembler to give the relative PC offset addressing
 
-| [31:29] | [28:13] | [12:10] | [9:0] |
-| -------| -------- | ------- | ------ |
-| opcode | Imm[27:12] | FUNCT3 = 001 | Imm[11:2] |
+| [31:29] | [28:13] | [12:10] | [9:5] | [4:0] |
+| -------| -------- | ------- | ------ | ------- |
+| opcode | Imm[22:7] | FUNCT3 = 001 | RD | Imm[6:2] |
 
 **call** `call rd, imm(rs1)`
 
