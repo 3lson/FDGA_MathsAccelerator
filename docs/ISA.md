@@ -153,7 +153,7 @@ These are arithmetic instructions for FPU block
 | `feq.s` | 0110 | rd = (rs1 == rs2) ? 1 : 0 |
 | `fmin.s` | 0111 | rd = min(rs1, rs2) |
 | `fabs.s` | 1000 | absolute value |
-| `fcvt.s.w` | 1001 | Convert a floating-point number in floating-point register rs1 to a signed 32-bit in integer register rd. (rs2 will be don't cares here)|
+| `fcvt.w.s` | 1001 | Convert a floating-point number in floating-point register rs1 to a signed 32-bit in integer register rd. (rs2 will be don't cares here)|
 
 ## Register File Assignment
 We have chosen to stick with the RISCV Register layout with the addition of some extra special registers on our end for multithreading
