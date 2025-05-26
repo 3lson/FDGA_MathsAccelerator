@@ -83,8 +83,15 @@ void UnaryExpression::EmitElsonV(std::ostream& stream, Context& context, std::st
     } else if (op_ == UnaryOp::LOGICAL_NOT) {
         if (type == Type::_FLOAT) {
             std::string zero_reg = context.get_register(type); 
-            stream << "li " << zero_reg << ", 0" << std::endl;
-            stream << "fcvt.s.w " << zero_reg << ", " << zero_reg << std::endl;
+            if (zero_reg.rfind("f", 0) == 0) {
+                // It's a floating-point register (e.g., ft0, fa1, etc.)
+                std::string temp_int_reg = context.get_register(Type::_INT);
+                stream << "li " << temp_int_reg << ", 0" << std::endl;
+                stream << "fcvt.s.w " << zero_reg << ", " << temp_int_reg << std::endl;
+            } else {
+                // It's an integer register
+                stream << "li " << zero_reg << ", 0" << std::endl;
+            }
             stream << "feq.s " << dest_reg << ", " << operand_register << ", " << zero_reg << std::endl;
             context.deallocate_register(zero_reg);
         } else {

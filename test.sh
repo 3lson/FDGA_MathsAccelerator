@@ -8,5 +8,5 @@ fi
 
 
 # Temp holding for assembler run instr
-g++ -o assembler/assembler assembler/assembler.cpp
+g++ -std=c++17 -o assembler/assembler assembler/assembler.cpp
 ./assembler/assembler     

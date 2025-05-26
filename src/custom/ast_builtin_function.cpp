@@ -26,7 +26,7 @@ void BuiltInFunction::EmitElsonV(std::ostream& stream, Context& context, std::st
         dest_reg = context.get_register(type);
     }
 
-    stream << "abs " << dest_reg << ", " << arg_reg << std::endl;
+    stream << "fabs.s " << dest_reg << ", " << arg_reg << std::endl;
 
     context.deallocate_register(arg_reg);
     context.pop_operation_type();

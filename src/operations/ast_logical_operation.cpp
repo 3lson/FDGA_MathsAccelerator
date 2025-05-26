@@ -57,7 +57,15 @@ void LogicalExpression::EmitElsonV(std::ostream &stream, Context &context, std::
         stream << "snez " << dest_reg << ", " << right_register << std::endl;
         stream << "j end_label" << std::endl;
         stream << "false_label:" << std::endl;
-        stream << "li " << dest_reg << ", 0" << std::endl;
+        if (dest_reg.rfind("f", 0) == 0) {
+            // It's a floating-point register (e.g., ft0, fa1, etc.)
+            std::string temp_int_reg = context.get_register(Type::_INT);
+            stream << "li " << temp_int_reg << ", 0" << std::endl;
+            stream << "fcvt.s.w " << dest_reg << ", " << temp_int_reg << std::endl;
+        } else {
+            // It's an integer register
+            stream << "li " << dest_reg << ", 0" << std::endl;
+        }
     } else if (op_ == LogicalOp::LOGICAL_OR) {
         // Logical OR (||): Short-circuit, only evaluate right if left is zero
         stream << "snez " << dest_reg << ", " << left_register << std::endl;

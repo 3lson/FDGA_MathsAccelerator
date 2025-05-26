@@ -53,9 +53,22 @@ void ArithExpression::EmitElsonV(std::ostream &stream, Context &context, std::st
     ShiftPointerOp(stream, context, left_register, left_);
     context.add_reg_to_set(left_register);
 
-    std::string right_register = context.get_register(type);
-    right_->EmitElsonV(stream, context, right_register);
-    ShiftPointerOp(stream, context, right_register, right_);
+    std::string right_register;
+    const Operand* right_operand1 = dynamic_cast<const Operand*>(right_.get());
+    Type right_type = right_operand1->GetType(context);
+    if (type == Type::_FLOAT && right_type == Type::_INT) {
+        // Allocate integer register for the right int operand
+        std::string int_right_reg = context.get_register(Type::_INT);
+        right_->EmitElsonV(stream, context, int_right_reg);
+        context.add_reg_to_set(int_right_reg);
+
+        right_register = context.get_register(Type::_FLOAT);
+        stream << "fcvt.s.w " << right_register << ", " << int_right_reg << std::endl;
+    } else {
+        right_register = context.get_register(type);
+        right_->EmitElsonV(stream, context, right_register);
+        ShiftPointerOp(stream, context, right_register, right_);
+    }
 
     // Handle struct access (as per your existing logic)
     const StructAccess* leftStructAccess = dynamic_cast<const StructAccess*>(left_.get());
@@ -69,27 +82,6 @@ void ArithExpression::EmitElsonV(std::ostream &stream, Context &context, std::st
         rightStructAccess->EmitElsonV(stream, context, right_register);
     }
 
-    // Handle integer to floating-point conversion
-    const Operand* left_operand = dynamic_cast<const Operand*>(left_.get());
-    const Operand* right_operand = dynamic_cast<const Operand*>(right_.get());
-
-    if (left_operand && right_operand) {
-        Type left_type = left_operand->GetType(context);
-        Type right_type = right_operand->GetType(context);
-
-        // If left operand is an integer and right operand is a double, we convert the left operand (int) to a double
-        if (left_type == Type::_INT && right_type == Type::_DOUBLE) {
-            std::string temp_reg = context.get_register(Type::_FLOAT);
-            stream << "fcvt.d.w " << temp_reg << ", " << left_register << std::endl;
-            left_register = temp_reg;
-        }
-        // If right operand is an integer and left operand is a double, we convert the right operand (int) to a double
-        else if (right_type == Type::_INT && left_type == Type::_DOUBLE) {
-            std::string temp_reg = context.get_register(Type::_FLOAT);
-            stream << "fcvt.d.w " << temp_reg << ", " << right_register << std::endl;
-            right_register = temp_reg;
-        }
-    }
 
     // Emit the final operation, adding the two operands
     stream << GetOperation(type) << " " << dest_reg << ", " << left_register << ", " << right_register << std::endl;
