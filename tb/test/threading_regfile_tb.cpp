@@ -36,8 +36,8 @@ TEST_F(RegfileTestbench, ThreadLocalRegisterWriteReadTest) {
             top->thread_read = tid;
 
             runSimulation(1);
-            printf("TID=%d REG=%d -> Writing %d\n", tid, reg, value + tid + reg);
-            printf("RD1=%d RD2=%d\n", top->RD1, top->RD2);
+            // printf("TID=%d REG=%d -> Writing %d\n", tid, reg, value + tid + reg);
+            // printf("RD1=%d RD2=%d\n", top->RD1, top->RD2);
             EXPECT_EQ(top->RD1, value + tid + reg);
             EXPECT_EQ(top->RD2, value + tid + reg);
         }
