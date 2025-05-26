@@ -149,14 +149,14 @@ These are arithmetic instructions for FPU block
 | `fsub.s` | 0001 | rd = rs1 - rs2 |
 | `fmul.s` | 0010 | rd = rs1 * rs2 |
 | `fdiv.s` | 0011 | rd = rs1 / rs2 |
-| `fslt.s` | 0100 | rd = (rs1 < rs2) ? 1 : 0 |
+| `flt.s` | 0100 | rd = (rs1 < rs2) ? 1 : 0 |
 | `fneg.s` | 0101 | Negate 32-bit floating point value in rs1 and store the result in rd (rs2 will be don't cares here) |
 | `feq.s` | 0110 | rd = (rs1 == rs2) ? 1 : 0 |
 | `fmin.s` | 0111 | rd = min(rs1, rs2) |
 | `fabs.s` | 1000 | absolute value |
 | `fcvt.w.s` | 1001 | Convert a floating-point number in floating-point register rs1 to a signed 32-bit in integer register rd. (rs2 will be don't cares here)|
 | `fcvt.s.w` | 1010 | Convert a signed 32-bit integer in integer register rs1 to a signed 32-bit in integer floating-point number in floating-point register rd . (rs2 will be don't cares here)|
-w
+
 ## Register File Assignment
 We have chosen to stick with the RISCV Register layout with the addition of some extra special registers on our end for multithreading
 
