@@ -73,59 +73,48 @@ int resolveSymbol(const string& expr, const map<string, int>& symbolTable) {
     if (expr.rfind("%hi(", 0) == 0 && expr.back() == ')') {
         string sym = expr.substr(4, expr.size() - 5);
         
-        // First check if this symbol has an associated data value
-        auto dataIt = labelDataValues.find(sym);
-        if (dataIt != labelDataValues.end()) {
-            uint32_t dataValue = dataIt->second;
-            uint32_t result = (dataValue + 0x800) >> 12;
-            cout << "  %hi(" << sym << "): data value=0x" << hex << dataValue 
-                 << ", upper 20 bits=0x" << result << dec << endl;
-            return result;
-        }
-        
-        // Fall back to address-based resolution
         auto it = symbolTable.find(sym);
         if (it == symbolTable.end()) {
             cerr << "Undefined symbol in %hi(): " << sym << endl;
             return 0;
         }
+
         int32_t addr = it->second;
-        int32_t result = (addr + 0x800) >> 12;
+        int32_t result = (addr + 0x800) >> 12;  // with rounding for proper relocation
         cout << "  %hi(" << sym << "): addr=0x" << hex << addr 
-             << ", with rounding=0x" << (addr + 0x800) 
-             << ", upper 20 bits=0x" << result << dec << endl;
+             << " => upper 20 bits=0x" << result << dec << endl;
         return result;
     }
+
     if (expr.rfind("%lo(", 0) == 0 && expr.back() == ')') {
         string sym = expr.substr(4, expr.size() - 5);
-        
-        // First check if this symbol has an associated data value
-        auto dataIt = labelDataValues.find(sym);
-        if (dataIt != labelDataValues.end()) {
-            uint32_t dataValue = dataIt->second;
-            uint32_t result = dataValue & 0xFFF;
-            cout << "  %lo(" << sym << "): data value=0x" << hex << dataValue 
-                 << ", lower 12 bits=0x" << result << dec << endl;
-            return result;
-        }
-        
-        // Fall back to address-based resolution
+
         auto it = symbolTable.find(sym);
         if (it == symbolTable.end()) {
             cerr << "Undefined symbol in %lo(): " << sym << endl;
             return 0;
         }
+
         int32_t addr = it->second;
-        return addr & 0xFFF;
+        int32_t result = addr & 0xFFF;
+        cout << "  %lo(" << sym << "): addr=0x" << hex << addr 
+             << " => lower 12 bits=0x" << result << dec << endl;
+        return result;
     }
+
+    // Direct integer
     if (expr.find_first_not_of("0123456789-") == string::npos) {
         return stoi(expr);
     }
+
+    // Symbolic label
     auto it = symbolTable.find(expr);
     if (it != symbolTable.end()) return it->second;
+
     cerr << "Undefined symbol: " << expr << endl;
     return 0;
 }
+
 
 vector<string> tokenize(const string& line) {
     string cleaned;
