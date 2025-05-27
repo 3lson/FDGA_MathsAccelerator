@@ -20,7 +20,7 @@
 #define ALU_SLT 0b0100
 #define ALU_SEQ 0b0110
 #define ALU_MIN 0b1000
-#define ALU_ABS 0b0111
+#define ALU_ABS 0b1001
 
 class ControlunitTestbench : public BaseTestbench {
 protected:

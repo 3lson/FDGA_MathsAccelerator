@@ -1,3 +1,4 @@
+`include "define.sv"
 // =================================================
 // A 32-bit Floating Point ALU
 // with ADD, SUB, MUL, DIV, EQ, NEQ, ABS and SLT
@@ -80,7 +81,7 @@ always_comb begin
     shift = 0;
 
     case (alu_op)
-        4'd1, 4'd2: begin
+        `FALU_ADD, `FALU_SUB: begin
             if (op1_biased_exponent > op2_biased_exponent) begin
                 exp_diff = op1_biased_exponent - op2_biased_exponent;
                 // add 1'b0 to align mantissas after right shift
@@ -164,7 +165,7 @@ always_comb begin
             end
         end
 
-        4'd3: begin
+        `FALU_MUL: begin
             product = op1_significand * op2_significand;
             if (product[47]) begin
                 result_exp = op1_biased_exponent + op2_biased_exponent - 127 + 1;
@@ -194,7 +195,7 @@ always_comb begin
             end
         end
 
-        4'd4: begin
+        `FALU_DIV: begin
             numerator = {op1_significand, 24'd0};
             denominator = {24'd0, op2_significand};
             quotient = numerator / denominator;
@@ -236,56 +237,18 @@ always_comb begin
 
             result = {result_sign_bit, norm_exponent[7:0], norm_mantissa};
 
-
-            // if (quotient[47]) begin
-            //     quotient = quotient >> 1;
-            //     //result_exp = result_exp + 1;
-            // end else begin
-            //     shift_count = 0;
-            //     while (!quotient[46] && result_exp > 0 && shift_count < 24) begin
-            //         quotient = quotient >> 1;
-            //         result_exp = result_exp - 1;
-            //         shift_count = shift_count + 1;
-            //     end
-            // end
-            // sticky_bit = |quotient[20:0];
-            // guard_bit = quotient[22];
-            // round_bit = quotient[21];
-
-            // round_up = guard_bit & (round_bit | sticky_bit);
-
-            // rounded_sum = quotient[46:23];
-            // if (round_up) begin
-            //     rounded_sum = rounded_sum + 1;
-            //     if (rounded_sum == 24'h100000) begin
-            //         rounded_sum = rounded_sum >> 1;
-            //         result_exp = result_exp + 1;
-            //     end
-            // end
-            // if (result_exp >= 255) begin
-            //     // Overflow → infinity
-            //     result = {result_sign_bit, 8'hFF, 23'd0};
-            // end else if (result_exp <= 0) begin
-            //     // Underflow → zero (no subnormal handling here)
-            //     result = 32'd0;
-            // end else begin
-            //     result = {result_sign_bit, result_exp[7:0], rounded_sum[22:0]};
-            // end
-            // $display("quotient = %h", quotient);
-            // $display("exp = %d", result_exp);
-            // $display("normalized quotient = %h", quotient);
-            // $display("rounded_sum = %h", rounded_sum);
-            // $display("final result = %h", result);
-
         end
 
-        4'd5: result = {1'b0, op1[30:0]};
+        `FALU_NEG: result = {~op1[31], op1[30:0]}; //negate the sign bit
+        
+        `FALU_ABS: result = {0'b0, op[30:0]};
 
-        4'd6: cmp = (op1 == op2);
+        `FALU_EQ: begin
+            cmp = (op1 == op2) ? 1'b1:1'b0;
+            result = (op1 == op2) ? 32'd1:32'd0;
+        end
 
-        4'd7: cmp = (op1 != op2);
-
-        4'd8: begin
+        `FALU_SLT: begin
             if (op1_sign_bit != op2_sign_bit) begin
                 cmp = op1_sign_bit;
             end else if (op1_biased_exponent != op2_biased_exponent) begin
@@ -319,6 +282,53 @@ always_comb begin
         end
 
         4'd10: begin
+            if (op1 == 32'd0) begin
+                result = 32'd0;
+            end else begin
+                abs_op1 = op1[31] ? -op1 : op1;
+                significant_one = 31;
+                
+                while (significant_one > 0 && !abs_op1[significant_one]) begin
+                    significant_one = significant_one - 1;
+                end
+                
+                op1_biased_exponent = 127 + significant_one;
+                
+                if (significant_one >= 23) begin
+                    op1_significand = abs_op1 >> (significant_one - 23);
+                end else begin
+                    op1_significand = abs_op1 << (23 - significant_one);
+                end
+                
+                result = {op1[31], op1_biased_exponent, op1_significand[22:0]};
+            end
+        end
+
+        `FALU_FCVT_WS: begin // Float to int conversion (FCVT_WS)
+            if (op1_biased_exponent == 8'hFF) begin
+                result = op1_sign_bit ? 32'h80000000 : 32'h7FFFFFFF;
+            end else if (op1_biased_exponent == 0) begin
+                result = 32'd0;
+            end else begin
+                op1_unbiased_exponent = op1_biased_exponent - 127;
+                
+                if (op1_unbiased_exponent < 0 || op1_unbiased_exponent > 127) begin
+                    result = 32'd0;
+                end else if (op1_unbiased_exponent > 30) begin
+                    result = op1_sign_bit ? 32'h80000000 : 32'h7FFFFFFF;
+                end else begin
+                    if (op1_unbiased_exponent >= 23) begin
+                        op1_int = op1_significand << (op1_unbiased_exponent - 23);
+                    end else begin
+                        op1_int = op1_significand >> (23 - op1_unbiased_exponent);
+                    end
+                    
+                    result = op1_sign_bit ? -op1_int : op1_int;
+                end
+            end
+        end
+
+        `FALU_FCVT_SW: begin
             if (op1 == 32'd0) begin
                 result = 32'd0;
             end else begin

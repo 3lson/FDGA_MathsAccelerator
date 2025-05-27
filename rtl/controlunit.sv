@@ -14,7 +14,8 @@ module controlunit #(
     output logic                ResultSrc, // control signal for output mux
     output logic                WD3Src,     // control unit signal for write port for register allowing Jump instruction implementation
     output logic                WDME,
-    output logic                exit
+    output logic                exit,
+    output logic                floating //floating point flag
 );
 
     // Extract instruction fields
@@ -42,6 +43,7 @@ module controlunit #(
         WD3Src = 1'b0;
         exit = 1'b0;
         WDME = 1'b0;
+        floating = 1'b0;
 
         case (op)
             `Rtype: begin 
@@ -65,8 +67,9 @@ module controlunit #(
             `Itype: begin 
                 case (funct4)
                     `ALU_ADD: ALUctrl = `ALU_ADD; 
-                    `ALU_MUL: ALUctrl = `ALU_MUL; 
-                    `ALU_DIV: ALUctrl = `ALU_DIV; 
+                    4'b0001: ALUctrl = `ALU_MUL; 
+                    4'b0100: ALUctrl = `ALU_DIV;
+                    4'b0010: ALUctrl = `ALU_SLLI;
                     default: ALUctrl = `ALU_ADD;
                 endcase
                 RegWrite = 1'b1;
@@ -151,6 +154,31 @@ module controlunit #(
                 end
                 endcase
             end
+            `Ptype: begin
+                ImmSrc = 3'b101;
+                ALUsrc = 1'b1;
+                RegWrite = 1'b1;
+            end
+
+            `Ftype: begin
+                floating = 1'b1;
+                ALUsrc = 1'b0;
+                RegWrite = 1'b1;
+                case(funct4)
+                `FALU_ADD: ALUctrl = `FALU_ADD;
+                `FALU_SUB: ALUctrl = `FALU_SUB;
+                `FALU_MUL: ALUctrl = `FALU_MUL;
+                `FALU_DIV: ALUctrl = `FALU_DIV;
+                `FALU_SLT: ALUctrl = `FALU_SLT; 
+                `FALU_EQ: ALUctrl = `FALU_EQ;
+                `FALU_NEG: ALUctrl = `FALU_NEG;
+                `FALU_ABS: ALUctrl = `FALU_ABS; 
+                `FALU_FCVT_WS: ALUctrl = `FALU_FCVT_WS;
+                `FALU_FCVT_SW: ALUctrl = `FALU_FCVT_SW; 
+                default ALUctrl = `FALU_ADD;
+                endcase
+            end
+
             default: begin
                 ALUctrl = `ALU_ADD;
                 ALUsrc = 1'b0;

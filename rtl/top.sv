@@ -28,11 +28,18 @@ module top #(
     logic ALUsrcE;
     
     logic EQ;
+
+    //floating point compare flag
+    logic cmp;
     
     logic [WIDTH-1:0] PCF;
     logic [WIDTH-1:0] PCD;
     logic [WIDTH-1:0] PCE;
     
+    //respective outputs of both ALU's
+    logic [WIDTH-1:0] ALUint;
+    logic [WIDTH-1:0] ALUfloat;
+
     logic [WIDTH-1:0] ALUResultE;
     logic [WIDTH-1:0] ALUResultM;
     logic [WIDTH-1:0] ALUResultW;
@@ -112,6 +119,9 @@ module top #(
 
     logic exit;
 
+    logic floatingD;
+    logic floatingE;
+
     //initialize pipeline
     initial begin
         WDMED = 1'b0;
@@ -174,7 +184,8 @@ module top #(
         .WDME(WDMED),
         .ResultSrc(ResultSrcD),
         .WD3Src(WD3SrcD),
-        .exit(exit)
+        .exit(exit),
+        .floating(floatingD)
 
     );
 
@@ -238,6 +249,7 @@ module top #(
         .WD3SrcD(WD3SrcD),
         .branchD(branchD),
         .JumpD(JumpD),
+        .floatingD(floatingD),
 
         .RegWriteE(RegWriteE),
         .ResultSrcE(ResultSrcE),
@@ -246,7 +258,8 @@ module top #(
         .ALUsrcE(ALUsrcE),
         .WD3SrcE(WD3SrcE),
         .branchE(branchE),
-        .JumpE(JumpE)
+        .JumpE(JumpE),
+        .floatingE(floatingE)
     );
 
     // Pipeline Stage 3 - Execute (EXE)
@@ -297,14 +310,25 @@ module top #(
     assign SrcBE = ALUsrcE ? ImmExtE : WriteDataE;
 
     //Completed
-    alu ArithmeticLogicUnit (
+    alu IntArithLogicUnit (
         .ALUop1(SrcAE),
         .ALUop2(SrcBE),
         .ALUctrl(ALUctrlE),
 
         .EQ(EQ),
-        .Result(ALUResultE)
+        .Result(ALUint)
     );
+
+    floating_alu FloatingArithLogicUnit (
+        .op1(SrcAE),
+        .op2(SrcBE),
+        .alu_op(ALUctrlE),
+
+        .cmp(cmp),
+        .result(ALUfloat)
+    );
+
+    assign ALUResultE = floatingE ? ALUfloat:ALUint ;
 
     //Completed
     pipeline_EXEtoMEM pipeline_EXEtoMEM (
@@ -407,8 +431,8 @@ module top #(
     always_ff @(posedge clk) begin
         if (!rst) begin
             $display("PCF=%h, instrF=%h", PCF, instrF);
-            $display("PCD=%h, instrD=%h", PCD, instrD);
-            $display("PCE=%h, ALUResultE=%h", PCE, ALUResultE);
+            $display("PCD=%h, instrD=%h, ImmSrcD=%h", PCD, instrD, ImmSrcD);
+            $display("PCE=%h, ALUResultE=%h, ALUfloat=%h,floatingE=%h", PCE, ALUResultE,ALUfloat,floatingE);
             $display("ALUctrlE=%b, SrcAE=%h, SrcBE=%h", ALUctrlE, SrcAE, SrcBE);
             $display("ALUResultM=%h, ReadDataM=%h", ALUResultM, ReadDataM);
             $display("ResultW=%h, WD3W=%h", ResultW, WD3W);

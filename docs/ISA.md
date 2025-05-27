@@ -82,10 +82,12 @@ All instr are 32 bit wide
 
 **branch** `beqz rd, label`
 **Note:** The label will be calculated in assembler to give the relative PC offset addressing
+**branch** `beqz rd, label`
+**Note:** The label will be calculated in assembler to give the relative PC offset addressing
 
-| [31:29] | [28:13] | [12:10] | [9:5] | [4:0] |
-| -------| -------- | ------- | ------ | ------- |
-| opcode | Imm[22:7] | FUNCT3 = 001 | RD | Imm[6:2] |
+| [31:29] | [28:19] | [18:14] | [13] | [12:10] | [9:5] | [4:0] |
+| -------| -------- | ------ |---- |------- | ------ | ------- |
+| opcode | Imm[17:8] |RS2(x0)| Imm[7] | FUNCT3 = 001 | RS1 | Imm[6:2] |
 
 **call** `call rd, imm(rs1)`
 
@@ -120,9 +122,9 @@ This is a pseudo-instr that underlying would perform `addi t0, zero, 100`
 `lui rd upimm`
 
 
-| [31:29] | [28:9] | [9:5] | [4:0] |
+| [31:29] | [28:9] | [8:5] | [4:0] |
 | -------| ---- | ------ | -------|
-| opcode | UpIMM[31:12] | 5(x) | RD |
+| opcode | UpIMM[31:12] | 4(x) | RD |
 
 **Note:** `upimm` gives 20-bit upper immediate IMM[31:12]
 
@@ -183,4 +185,3 @@ The following are mapped as the thread registers
  | x29 | blockIdx |
  | x30 | blockDim | 
  | x31 | laneId |
-
