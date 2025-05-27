@@ -80,11 +80,12 @@ All instr are 32 bit wide
 | opcode | Imm[27:12] | FUNCT3 = 000 | Imm[11:2] |
 
 
-**branch** `beqz` 
+**branch** `beqz rd, label`
+**Note:** The label will be calculated in assembler to give the relative PC offset addressing
 
-| [31:29] | [28:13] | [12:10] | [9:0] |
-| -------| -------- | ------- | ------ |
-| opcode | Imm[27:12] | FUNCT3 = 001 | Imm[11:2] |
+| [31:29] | [28:19] | [18:14] | [13] | [12:10] | [9:5] | [4:0] |
+| -------| -------- | ------ |---- |------- | ------ | ------- |
+| opcode | Imm[17:8] |RS2(x0)| Imm[7] | FUNCT3 = 001 | RS1 | Imm[6:2] |
 
 **call** `call rd, imm(rs1)`
 
@@ -119,9 +120,9 @@ This is a pseudo-instr that underlying would perform `addi t0, zero, 100`
 `lui rd upimm`
 
 
-| [31:29] | [28:9] | [9:5] | [4:0] |
+| [31:29] | [28:9] | [8:5] | [4:0] |
 | -------| ---- | ------ | -------|
-| opcode | UpIMM[31:12] | 5(x) | RD |
+| opcode | UpIMM[31:12] | 4(x) | RD |
 
 **Note:** `upimm` gives 20-bit upper immediate IMM[31:12]
 
@@ -148,12 +149,13 @@ These are arithmetic instructions for FPU block
 | `fsub.s` | 0001 | rd = rs1 - rs2 |
 | `fmul.s` | 0010 | rd = rs1 * rs2 |
 | `fdiv.s` | 0011 | rd = rs1 / rs2 |
-| `fslt.s` | 0100 | rd = (rs1 < rs2) ? 1 : 0 |
+| `flt.s` | 0100 | rd = (rs1 < rs2) ? 1 : 0 |
 | `fneg.s` | 0101 | Negate 32-bit floating point value in rs1 and store the result in rd (rs2 will be don't cares here) |
 | `feq.s` | 0110 | rd = (rs1 == rs2) ? 1 : 0 |
 | `fmin.s` | 0111 | rd = min(rs1, rs2) |
 | `fabs.s` | 1000 | absolute value |
-| `fcvt.s.w` | 1001 | Convert a floating-point number in floating-point register rs1 to a signed 32-bit in integer register rd. (rs2 will be don't cares here)|
+| `fcvt.w.s` | 1001 | Convert a floating-point number in floating-point register rs1 to a signed 32-bit in integer register rd. (rs2 will be don't cares here)|
+| `fcvt.s.w` | 1010 | Convert a signed 32-bit integer in integer register rs1 to a signed 32-bit in integer floating-point number in floating-point register rd . (rs2 will be don't cares here)|
 
 ## Register File Assignment
 We have chosen to stick with the RISCV Register layout with the addition of some extra special registers on our end for multithreading
@@ -181,4 +183,3 @@ The following are mapped as the thread registers
  | x29 | blockIdx |
  | x30 | blockDim | 
  | x31 | laneId |
-

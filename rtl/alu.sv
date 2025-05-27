@@ -29,6 +29,7 @@ module alu (
                 EQ = (ALUop1 != 0) ? 1:0;
             end
             `ALU_MIN: Result = (ALUop1 < ALUop2) ? ALUop1:ALUop2; //MINIMUM INSTRUCTION
+            `ALU_SLLI: Result = ALUop1 << ALUop2;
             default: Result = 32'b0;    
         endcase
     end

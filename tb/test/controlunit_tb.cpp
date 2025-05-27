@@ -18,9 +18,9 @@
 #define ALU_MUL 0b0010
 #define ALU_DIV 0b0011
 #define ALU_SLT 0b0100
-#define ALU_SEQ 0b0101
-#define ALU_MIN 0b0110
-#define ALU_ABS 0b0111
+#define ALU_SEQ 0b0110
+#define ALU_MIN 0b1000
+#define ALU_ABS 0b1001
 
 class ControlunitTestbench : public BaseTestbench {
 protected:
