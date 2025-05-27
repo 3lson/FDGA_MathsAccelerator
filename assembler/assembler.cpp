@@ -13,7 +13,6 @@ using namespace std;
 // The assembler works by breaking down the instr sw ra, 268(sp)
 // args[0] = sw, args[1] = ra, args[2] = 268(sp)
 
-
 unordered_map<string, int> registerMap;
 unordered_map<string, pair<int, int>> rTypeFunctMap = {
     {"add", {0b000, 0b0000}}, {"sub", {0b000, 0b0001}}, {"mul", {0b000, 0b0010}},
@@ -40,6 +39,8 @@ unordered_map<string, int> cTypeFunctMap = {
 };
 
 map<string, int> labelMap;
+map<string, uint32_t> dataMap; // For storing .word values
+map<string, uint32_t> labelDataValues; // For storing data values associated with labels
 
 void initRegisterMap() {
     for (int i = 0; i < 32; ++i)
@@ -71,33 +72,60 @@ void initRegisterMap() {
 int resolveSymbol(const string& expr, const map<string, int>& symbolTable) {
     if (expr.rfind("%hi(", 0) == 0 && expr.back() == ')') {
         string sym = expr.substr(4, expr.size() - 5);
+        
+        // First check if this symbol has an associated data value
+        auto dataIt = labelDataValues.find(sym);
+        if (dataIt != labelDataValues.end()) {
+            uint32_t dataValue = dataIt->second;
+            uint32_t result = (dataValue + 0x800) >> 12;
+            cout << "  %hi(" << sym << "): data value=0x" << hex << dataValue 
+                 << ", upper 20 bits=0x" << result << dec << endl;
+            return result;
+        }
+        
+        // Fall back to address-based resolution
         auto it = symbolTable.find(sym);
         if (it == symbolTable.end()) {
             cerr << "Undefined symbol in %hi(): " << sym << endl;
             return 0;
         }
-        return (it->second >> 12) & 0xFFFFF;  // Get upper 20 bits
-    } else if (expr.rfind("%lo(", 0) == 0 && expr.back() == ')') {
+        int32_t addr = it->second;
+        int32_t result = (addr + 0x800) >> 12;
+        cout << "  %hi(" << sym << "): addr=0x" << hex << addr 
+             << ", with rounding=0x" << (addr + 0x800) 
+             << ", upper 20 bits=0x" << result << dec << endl;
+        return result;
+    }
+    if (expr.rfind("%lo(", 0) == 0 && expr.back() == ')') {
         string sym = expr.substr(4, expr.size() - 5);
+        
+        // First check if this symbol has an associated data value
+        auto dataIt = labelDataValues.find(sym);
+        if (dataIt != labelDataValues.end()) {
+            uint32_t dataValue = dataIt->second;
+            uint32_t result = dataValue & 0xFFF;
+            cout << "  %lo(" << sym << "): data value=0x" << hex << dataValue 
+                 << ", lower 12 bits=0x" << result << dec << endl;
+            return result;
+        }
+        
+        // Fall back to address-based resolution
         auto it = symbolTable.find(sym);
         if (it == symbolTable.end()) {
             cerr << "Undefined symbol in %lo(): " << sym << endl;
             return 0;
         }
-        return it->second & 0xFFF;  // Get lower 12 bits
-    } else if (expr.find_first_not_of("0123456789-") == string::npos) {
-        return stoi(expr);
-    } else {
-        // Try to look up as a plain symbol
-        auto it = symbolTable.find(expr);
-        if (it != symbolTable.end()) {
-            return it->second;
-        }
-        cerr << "Undefined symbol: " << expr << endl;
-        return 0;
+        int32_t addr = it->second;
+        return addr & 0xFFF;
     }
+    if (expr.find_first_not_of("0123456789-") == string::npos) {
+        return stoi(expr);
+    }
+    auto it = symbolTable.find(expr);
+    if (it != symbolTable.end()) return it->second;
+    cerr << "Undefined symbol: " << expr << endl;
+    return 0;
 }
-
 
 vector<string> tokenize(const string& line) {
     string cleaned;
@@ -171,7 +199,6 @@ uint32_t encodeLoad(string op, const vector<string>& args) {
     return (opcode << 29) | ((imm & 0x7FFF) << 14) | (funct4 << 10) | (rs1 << 5) | rd;
 }
 
-
 uint32_t encodeStore(const vector<string>& args) {
     int opcode = 0b100, funct4 = 0b0001;
     int rs2 = registerMap[args[0]];
@@ -197,10 +224,7 @@ uint32_t encodeControl(string op, const vector<string>& args, int pc) {
     if (op == "j") {
         string label = args[1];
         int target = labelMap[label];
-        //std::cout << "Jump label" << label << std::endl;
-        //std::cout << "Target" << target << std::endl;
         int32_t offset = (target - (pc + 4)) / 4;
-        //std::cout << "Offset" << offset << std::endl;
         int32_t imm = offset & 0x3FFFFFF;  
         uint32_t imm_hi = (imm >> 10) & 0xFFFF; 
         uint32_t imm_lo = imm & 0x3FF;          
@@ -214,10 +238,7 @@ uint32_t encodeControl(string op, const vector<string>& args, int pc) {
         int rs1 = registerMap[rs1_str];
         int rs2 = 0;  // hardcoded to x0
         int target = labelMap[label];
-        std::cout << "Label: " << label << std::endl;
-        std::cout << "Target: " << target << std::endl;    
         int32_t offset = (target - (pc + 4)) / 4;
-        std::cout << "Offset: " << offset << std::endl;
     
         // Sign-extend and mask offset to 18 bits
         int32_t imm = offset & 0x3FFFF;  // 18-bit signed immediate
@@ -234,118 +255,154 @@ uint32_t encodeControl(string op, const vector<string>& args, int pc) {
              | (rs1 << 5)
              | imm_6_2;
     }
-    
 
     // Fallback (sync, exit, etc)
     return (opcode << 29) | (funct3 << 10);
 }
 
-
 uint32_t encodeLUI(const vector<string>& args) {
     int opcode = 0b011;
-    int rd = registerMap[args[1]];
-    int upimm = resolveSymbol(args[2], labelMap);
-    return (opcode << 29) | ((upimm & 0xFFFFF) << 9) | rd;
+    int rd = registerMap[args[0]];
+
+    string immExpr = args[1];
+    int fulladdr = resolveSymbol(immExpr, labelMap);  // Should return (addr + 0x800) >> 12
+
+    // Extract upper 20 bits (already handled in resolveSymbol if %hi)
+    uint32_t upimm = static_cast<uint32_t>(fulladdr) & 0xFFFFF;
+
+    cout << "LUI encoding: rd=" << args[0] << " (" << rd << "), " 
+         << immExpr << " resolved to 0x" << hex << fulladdr 
+         << " (upper 20 bits: 0x" << upimm << ")" << dec << endl;
+
+    return (opcode << 29) | (upimm << 9) | (0b0000 << 5) | rd;
 }
 
 uint32_t encodePseudoLI(const vector<string>& args) {
-    return encodeIType("addi", {args[1], "zero", args[2]});
+    return encodeIType("addi", {args[0], "zero", args[1]});
 }
 
 int main() {
     initRegisterMap();
     ifstream input("bin/output/algotests/for/for.s");
-    ofstream output("rtl/program.hex");
+    ofstream output("assembler/program.hex");
     vector<pair<int, string>> instructions;
     vector<pair<int, uint32_t>> data;
     string line;
     int pc = 0;
 
     // First pass - collect labels and instructions
+    string current_section = ".text";  // default section
+    string pending_label = ""; // To track labels that precede .word directives
+    
     while (getline(input, line)) {
+        // Skip empty lines and comments
         if (line.empty() || line[0] == '#') continue;
-
-        if (line.find(".text") != string::npos ||
-            line.find(".globl") != string::npos ||
-            line.find(".type") != string::npos ||
-            line.find(".section") != string::npos ||
-            line.find(".size") != string::npos ||
-            line.find(".data") != string::npos) {
+        
+        // Handle section directives
+        if (line.find(".section") != string::npos || 
+            line.find(".text") != string::npos ||
+            line.find(".data") != string::npos ||
+            line.find(".rodata") != string::npos) {
+            if (line.find(".rodata") != string::npos) current_section = ".rodata";
+            else if (line.find(".data") != string::npos) current_section = ".data";
+            else current_section = ".text";
             continue;
         }
-
+    
+        // Handle alignment
+        if (line.find(".align") != string::npos) {
+            string alignStr = line.substr(line.find(".align") + 6);
+            alignStr.erase(0, alignStr.find_first_not_of(" \t"));
+            int align = 1 << stoi(alignStr); // .align 2 means align to 4-byte boundary
+            pc = (pc + align - 1) & ~(align - 1);
+            continue;
+        }
+    
         // Handle labels
         auto colon = line.find(':');
         if (colon != string::npos) {
             string label = line.substr(0, colon);
-            //std::cout << "New label added: " << label << " with pc of " << pc << std::endl;
+            // Remove leading/trailing whitespace from label
+            label.erase(0, label.find_first_not_of(" \t"));
+            label.erase(label.find_last_not_of(" \t") + 1);
             labelMap[label] = pc;
+            pending_label = label; // Remember this label for potential .word association
+            cout << "Label '" << label << "' at address 0x" << hex << pc << dec << endl;
             line = line.substr(colon + 1);
+            // Remove leading whitespace from remaining line
+            line.erase(0, line.find_first_not_of(" \t"));
         }
-        
-        // Handle data directives
-        if (line.find(".word") != string::npos) {
-            stringstream ss(line.substr(line.find(".word") + 5));
-            uint32_t value;
-            ss >> value;
-            data.emplace_back(pc, value);
-            pc += 4;
-            continue;
+    
+        // Process based on current section
+        if (current_section == ".text") {
+            if (!line.empty()) {
+                instructions.emplace_back(pc, line);
+                pc += 4;
+            }
         }
-
-        if (line.find(".zero") != string::npos) {
-            stringstream ss(line.substr(line.find(".zero") + 5));
-            int size;
-            ss >> size;
-            data.emplace_back(pc, 0);
-            pc += size;
-            continue;
-        }
-        
-        if (line.find(".align") != string::npos) {
-            // Handle alignment if needed
-            continue;
-        }
-        
-        if (!line.empty()) {
-            instructions.emplace_back(pc, line);
-            pc += 4;
+        else {  // .data or .rodata
+            if (line.find(".word") != string::npos) {
+                // Extract the value after .word
+                string valueStr = line.substr(line.find(".word") + 5);
+                valueStr.erase(0, valueStr.find_first_not_of(" \t"));
+                uint32_t value = static_cast<uint32_t>(stoul(valueStr));
+                data.emplace_back(pc, value);
+                
+                // Associate this value with the pending label
+                if (!pending_label.empty()) {
+                    labelDataValues[pending_label] = value;
+                    cout << "Label '" << pending_label << "' associated with data value 0x" << hex << value << dec << endl;
+                    pending_label = ""; // Clear the pending label
+                }
+                
+                cout << "Data at 0x" << hex << pc << ": 0x" << value << dec << endl;
+                pc += 4;
+            }
+            else if (line.find(".zero") != string::npos) {
+                int size = stoi(line.substr(line.find(".zero") + 5));
+                data.emplace_back(pc, 0);
+                pc += size;
+            }
         }
     }
 
+    cout << "\nLabel map:" << endl;
+    for (const auto& [label, addr] : labelMap) {
+        cout << "  " << label << " -> 0x" << hex << addr << dec << endl;
+    }
+
     // Second pass - output instructions
-    for (auto& [pc, line] : instructions) {
+    cout << "\nAssembling instructions:" << endl;
+    for (auto& [pc_addr, line] : instructions) {
         vector<string> tokens = tokenize(line);
         if (tokens.empty()) continue;
         string op = tokens[0];
         uint32_t instr = 0;
+        
+        cout << "PC 0x" << hex << pc_addr << ": " << line << " -> ";
         
         if (rTypeFunctMap.count(op)) instr = encodeRType(op, {tokens[1], tokens[2], tokens[3]});
         else if (iTypeFunctMap.count(op)) instr = encodeIType(op, {tokens[1], tokens[2], tokens[3]});
         else if (fTypeFunctMap.count(op)) instr = encodeFType(op, tokens);
         else if (op == "lw" || op == "flw") instr = encodeLoad(op, {tokens[1], tokens[2]});
         else if (op == "sw" || op == "fsw") instr = encodeStore({tokens[1], tokens[2]});
-        else if (cTypeFunctMap.count(op)) instr = encodeControl(op, tokens, pc);
-        else if (op == "lui") instr = encodeLUI(tokens);
-        else if (op == "li") instr = encodePseudoLI(tokens);
+        else if (cTypeFunctMap.count(op)) instr = encodeControl(op, tokens, pc_addr);
+        else if (op == "lui") instr = encodeLUI({tokens[1], tokens[2]});
+        else if (op == "li") instr = encodePseudoLI({tokens[1], tokens[2]});
         else {
             cerr << "Unknown instruction: " << op << endl;
             continue;
         }
 
-        //Modelled into this form as this is how the instr_mem.sv reads the instrs from the hex file
-        output << hex << setw(2) << setfill('0') << ((instr >> 0) & 0xFF) << endl;
-        output << hex << setw(2) << setfill('0') << ((instr >> 8) & 0xFF) << endl;
-        output << hex << setw(2) << setfill('0') << ((instr >> 16) & 0xFF) << endl;
-        output << hex << setw(2) << setfill('0') << (instr >> 24) << endl;
+        cout << "0x" << hex << instr << dec << endl;
+        output << hex << setw(8) << setfill('0') << instr << endl;
     }
 
     // Output data section
+    cout << "\nData section:" << endl;
     for (auto& [addr, value] : data) {
-        output << hex << setw(2) << setfill('0') << ((value >> 0) & 0xFF) << endl;
-        output << hex << setw(2) << setfill('0') << ((value >> 8) & 0xFF) << endl;
-        output << hex << setw(2) << setfill('0') << ((value >> 16) & 0xFF) << endl;
-        output << hex << setw(2) << setfill('0') << (value >> 24) << endl;
+        cout << "0x" << hex << addr << ": 0x" << value << dec << endl;
+        output << hex << setw(8) << setfill('0') << value << endl;
     }
 
     input.close();
