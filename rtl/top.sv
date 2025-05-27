@@ -428,6 +428,7 @@ module top #(
         endcase
     end
 
+/*
     always_ff @(posedge clk) begin
         if (!rst) begin
             $display("PCF=%h, instrF=%h", PCF, instrF);
@@ -440,6 +441,6 @@ module top #(
             $display("------------------------------------------------");
         end
     end
-
+*/
 
 endmodule

@@ -3,6 +3,7 @@ obj_dir/
 tb/logs/
 tb/obj_dir/
 tb/results.xml
+tb/waveform.vcd
 bin/
 build/
 .vscode
