@@ -48,6 +48,7 @@ always_comb begin
     op2_sign_bit = op2[31];
     op1_biased_exponent = op1[30:23];
     op2_biased_exponent = op2[30:23];
+    // do we need a denormal check???
     op1_significand = {1'b1, op1[22:0]};
     op2_significand = {1'b1, op2[22:0]};
 
@@ -256,6 +257,52 @@ always_comb begin
                 cmp = (op1_biased_exponent < op2_biased_exponent) ^ op1_sign_bit;
             end else begin
                 cmp = (op1_significand < op2_significand) ^ op1_sign_bit;
+            end
+        end
+        4'd9: begin // Float to int conversion (FCVT_WS)
+            if (op1_biased_exponent == 8'hFF) begin
+                result = op1_sign_bit ? 32'h80000000 : 32'h7FFFFFFF;
+            end else if (op1_biased_exponent == 0) begin
+                result = 32'd0;
+            end else begin
+                op1_unbiased_exponent = op1_biased_exponent - 127;
+                
+                if (op1_unbiased_exponent < 0 || op1_unbiased_exponent > 127) begin
+                    result = 32'd0;
+                end else if (op1_unbiased_exponent > 30) begin
+                    result = op1_sign_bit ? 32'h80000000 : 32'h7FFFFFFF;
+                end else begin
+                    if (op1_unbiased_exponent >= 23) begin
+                        op1_int = op1_significand << (op1_unbiased_exponent - 23);
+                    end else begin
+                        op1_int = op1_significand >> (23 - op1_unbiased_exponent);
+                    end
+                    
+                    result = op1_sign_bit ? -op1_int : op1_int;
+                end
+            end
+        end
+
+        4'd10: begin
+            if (op1 == 32'd0) begin
+                result = 32'd0;
+            end else begin
+                abs_op1 = op1[31] ? -op1 : op1;
+                significant_one = 31;
+                
+                while (significant_one > 0 && !abs_op1[significant_one]) begin
+                    significant_one = significant_one - 1;
+                end
+                
+                op1_biased_exponent = 127 + significant_one;
+                
+                if (significant_one >= 23) begin
+                    op1_significand = abs_op1 >> (significant_one - 23);
+                end else begin
+                    op1_significand = abs_op1 << (23 - significant_one);
+                end
+                
+                result = {op1[31], op1_biased_exponent, op1_significand[22:0]};
             end
         end
 

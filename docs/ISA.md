@@ -82,6 +82,8 @@ All instr are 32 bit wide
 
 **branch** `beqz rd, label`
 **Note:** The label will be calculated in assembler to give the relative PC offset addressing
+**branch** `beqz rd, label`
+**Note:** The label will be calculated in assembler to give the relative PC offset addressing
 
 | [31:29] | [28:19] | [18:14] | [13] | [12:10] | [9:5] | [4:0] |
 | -------| -------- | ------ |---- |------- | ------ | ------- |
