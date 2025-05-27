@@ -46,9 +46,9 @@ All instr are 32 bit wide
 |Mnemonic|FUNCT4|Description|
 | -------| -----|-----------|
 | `addi` | 0000| rd = rs1 + imm |
-| `muli` | 0001 | rd = rs1 * imm |
-| `divi` | 0100 | rd = rs1 / imm |
-| `slli` | 0010 | rd = rs1 << uimm (shift left logical immediate) | 
+| `muli` | 0010 | rd = rs1 * imm |
+| `divi` | 0011 | rd = rs1 / imm |
+| `slli` | 1010 | rd = rs1 << uimm (shift left logical immediate) | 
 
 **Note:** `uimm` means 5-bit unsigned immediate (i.e `IMM[4:0]`)
 

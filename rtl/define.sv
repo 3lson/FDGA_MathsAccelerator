@@ -31,7 +31,6 @@
 `define FALU_SLT 4'b0100 
 `define FALU_NEG 4'b0101
 `define FALU_EQ 4'b0110
-`define FALU_MIN 4'b0111
 `define FALU_ABS 4'b1000
 `define FALU_FCVT_WS 4'b1001
 `define FALU_FCVT_SW 4'b1010

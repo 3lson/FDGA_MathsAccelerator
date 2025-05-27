@@ -67,9 +67,9 @@ module controlunit #(
             `Itype: begin 
                 case (funct4)
                     `ALU_ADD: ALUctrl = `ALU_ADD; 
-                    4'b0001: ALUctrl = `ALU_MUL; 
-                    4'b0100: ALUctrl = `ALU_DIV;
-                    4'b0010: ALUctrl = `ALU_SLLI;
+                    `ALU_MUL: ALUctrl = `ALU_MUL; 
+                    `ALU_DIV: ALUctrl = `ALU_DIV;
+                    `ALU_SLLI: ALUctrl = `ALU_SLLI;
                     default: ALUctrl = `ALU_ADD;
                 endcase
                 RegWrite = 1'b1;

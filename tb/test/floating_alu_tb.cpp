@@ -4,14 +4,17 @@
 #include <bit>
 
 // Floating ALU Ops
-#define FALU_ADD 0b0001
-#define FALU_SUB 0b0010
-#define FALU_MUL 0b0011
-#define FALU_DIV 0b0100
-#define FALU_ABS 0b0101
-#define FALU_EQ  0b0110
-#define FALU_NEQ 0b0111
-#define FALU_SLT 0b1000
+#define FALU_ADD        0b0000
+#define FALU_SUB        0b0001
+#define FALU_MUL        0b0010
+#define FALU_DIV        0b0011
+#define FALU_ABS        0b1000
+#define FALU_EQ         0b0110
+#define FALU_SLT        0b0100
+#define FALU_FCVT_WS    0b1001
+#define FALU_FCVT_SW    0b1010
+//new tests need to be implemented
+#define FALU_NEG 0b0101
 
 class FloatingALUTestbench : public BaseTestbench {
 protected:
@@ -130,31 +133,6 @@ TEST_F(FloatingALUTestbench, EqTestFalse) {
     EXPECT_EQ(top->cmp, 0);
 }
 
-TEST_F(FloatingALUTestbench, NeqTestTrue) {
-    float op1 = 1.0f;
-    float op2 = 2.0f;
-
-    top->alu_op = FALU_NEQ;
-    top->op1 = float_to_bits(op1);
-    top->op2 = float_to_bits(op2);
-
-    top->eval();
-
-    EXPECT_EQ(top->cmp, 1);
-}
-
-TEST_F(FloatingALUTestbench, NeqTestFalse) {
-    float op1 = -3.0f;
-    float op2 = -3.0f;
-
-    top->alu_op = FALU_NEQ;
-    top->op1 = float_to_bits(op1);
-    top->op2 = float_to_bits(op2);
-
-    top->eval();
-
-    EXPECT_EQ(top->cmp, 0);
-}
 
 TEST_F(FloatingALUTestbench, SltTestTrue) {
     float op1 = 1.0f;
@@ -180,6 +158,65 @@ TEST_F(FloatingALUTestbench, SltTestFalse) {
     top->eval();
 
     EXPECT_EQ(top->cmp, 0);
+}
+
+TEST_F(FloatingALUTestbench, ConvertFloatToInt) {
+    struct TestCase {
+        float input;
+        int32_t expected;
+    };
+
+    std::vector<TestCase> test_cases = {
+        {4.0f, 4},
+        {-7.0f, -7},
+        {0.0f, 0},
+        {1.999f, 1},    // truncation
+        {-1.999f, -1},  // truncation
+        {8388608.0f, 8388608}, // 2^23, exact
+        {8388607.0f, 8388607}, // max int representable exactly
+        {1e-30f, 0},    // subnormal, rounds to 0
+        {INFINITY, 0x7FFFFFFF},  // saturates
+        {-INFINITY, INT32_MIN}, // saturates to min neg
+        {NAN, 0x7FFFFFFF}        // treat NaN as saturated (or however your HDL handles it)
+    };
+
+    for (const auto& tc : test_cases) {
+        top->alu_op = FALU_FCVT_WS; // fixed macro name
+        top->op1 = float_to_bits(tc.input);
+
+        top->eval();
+
+        EXPECT_EQ(static_cast<int32_t>(top->result), tc.expected)
+            << "Failed for input: " << tc.input;
+    }
+}
+
+TEST_F(FloatingALUTestbench, ConvertIntToFloat) {
+    struct TestCase {
+        int32_t input;
+        float expected;
+    };
+
+    std::vector<TestCase> test_cases = {
+        {0, 0.0f},
+        {1, 1.0f},
+        {-1, -1.0f},
+        {123456, 123456.0f},
+        {-123456, -123456.0f},
+        {INT32_MAX, static_cast<float>(INT32_MAX)},
+        {INT32_MIN, static_cast<float>(INT32_MIN)},
+    };
+
+    for (const auto& tc : test_cases) {
+        top->alu_op = FALU_FCVT_SW; // Integer to float conversion opcode
+        top->op1 = static_cast<uint32_t>(tc.input);
+
+        top->eval();
+
+        float result = bits_to_float(top->result);
+        EXPECT_FLOAT_EQ(result, tc.expected)
+            << "Failed for input: " << tc.input;
+    }
 }
 
 

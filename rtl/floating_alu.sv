@@ -43,9 +43,9 @@ always_comb begin
     cmp = 0;
 
     op1_sign_bit = op1[31];
-    // If instruction is sub, invert the first bit to make it a negative number to use
+    
     // ADD instead
-    op2_sign_bit = (alu_op == 4'd2) ? ~op2[31] : op2[31];
+    op2_sign_bit = op2[31];
     op1_biased_exponent = op1[30:23];
     op2_biased_exponent = op2[30:23];
     op1_significand = {1'b1, op1[22:0]};
@@ -81,6 +81,8 @@ always_comb begin
 
     case (alu_op)
         `FALU_ADD, `FALU_SUB: begin
+            if(alu_op == `FALU_SUB) op2_sign_bit = ~op2_sign_bit;
+
             if (op1_biased_exponent > op2_biased_exponent) begin
                 exp_diff = op1_biased_exponent - op2_biased_exponent;
                 // add 1'b0 to align mantissas after right shift
@@ -240,7 +242,7 @@ always_comb begin
 
         `FALU_NEG: result = {~op1[31], op1[30:0]}; //negate the sign bit
         
-        `FALU_ABS: result = {0'b0, op[30:0]};
+        `FALU_ABS: result = {0'b0, op1[30:0]};
 
         `FALU_EQ: begin
             cmp = (op1 == op2) ? 1'b1:1'b0;
