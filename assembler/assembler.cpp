@@ -23,8 +23,8 @@ unordered_map<string, pair<int, int>> rTypeFunctMap = {
 };
 
 unordered_map<string, pair<int, int>> iTypeFunctMap = {
-    {"addi", {0b001, 0b0000}}, {"muli", {0b001, 0b0001}}, {"slli", {0b001, 0b0010}},
-    {"divi", {0b001, 0b0100}}
+    {"addi", {0b001, 0b0000}}, {"muli", {0b001, 0b0010}}, {"slli", {0b001, 0b1010}},
+    {"divi", {0b001, 0b0011}}
 };
 
 unordered_map<string, pair<int, int>> fTypeFunctMap = {
@@ -209,21 +209,32 @@ uint32_t encodeControl(string op, const vector<string>& args, int pc) {
     }
 
     if (op == "beqz") {
-        string rd_str = args[1];
+        string rs1_str = args[1];
         string label = args[2];
-        int rd = registerMap[rd_str];
+        int rs1 = registerMap[rs1_str];
+        int rs2 = 0;  // hardcoded to x0
         int target = labelMap[label];
-        //std::cout << "Label" << label << std::endl;
-        //std::cout << "Target" << target << std::endl;
+        std::cout << "Label: " << label << std::endl;
+        std::cout << "Target: " << target << std::endl;    
         int32_t offset = (target - (pc + 4)) / 4;
-        //std::cout << "Offset" << offset << std::endl;
-        uint32_t uoffset = static_cast<uint32_t>(offset) & 0x3FFFFF;  // 22-bit signed offset
-
-        uint32_t imm_hi = (uoffset >> 5) & 0xFFFF;  // bits [28:13] = imm[22:7]
-        uint32_t imm_lo = uoffset & 0x1F;           // bits [4:0]   = imm[6:2]
-
-        return (opcode << 29) | (imm_hi << 13) | (funct3 << 10) | (rd << 5) | imm_lo;
+        std::cout << "Offset: " << offset << std::endl;
+    
+        // Sign-extend and mask offset to 18 bits
+        int32_t imm = offset & 0x3FFFF;  // 18-bit signed immediate
+    
+        uint32_t imm_17_8 = (imm >> 8) & 0x3FF;   // bits [17:8] -> [28:19]
+        uint32_t imm_7    = (imm >> 7) & 0x1;     // bit [7]     -> [13]
+        uint32_t imm_6_2  = imm & 0x1F;           // bits [6:2]  -> [4:0]
+    
+        return (opcode << 29)
+             | (imm_17_8 << 19)
+             | (rs2 << 14)
+             | (imm_7 << 13)
+             | (funct3 << 10)
+             | (rs1 << 5)
+             | imm_6_2;
     }
+    
 
     // Fallback (sync, exit, etc)
     return (opcode << 29) | (funct3 << 10);

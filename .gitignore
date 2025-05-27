@@ -1,6 +1,8 @@
 .DS_Store
 obj_dir/
-tb/
+tb/logs/
+tb/obj_dir/
+tb/results.xml
 bin/
 build/
 .vscode
