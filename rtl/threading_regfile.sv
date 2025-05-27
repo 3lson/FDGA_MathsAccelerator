@@ -28,7 +28,6 @@ module registerfile (
 
     output  logic [31:0]    RD1,            // Read data 1
     output  logic [31:0]    RD2,            // Read data 2
-    output  logic [31:0]    a0
 
     // Save for predicates
     // input logic          predicate_en,
@@ -78,8 +77,6 @@ module registerfile (
             RD2 = special_variables[AD2-28];
         end
     end
-
-    assign a0 = threading_registers[thread_read][10];
 
     // Synchronous write (non-continuous)
     always_ff @(posedge clk) begin
