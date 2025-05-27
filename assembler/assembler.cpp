@@ -322,12 +322,18 @@ int main() {
             continue;
         }
 
-        output << hex << setw(8) << setfill('0') << instr << endl;
+        output << hex << setw(2) << setfill('0') << ((instr >> 24) & 0xFF) << endl;
+        output << hex << setw(2) << setfill('0') << ((instr >> 16) & 0xFF) << endl;
+        output << hex << setw(2) << setfill('0') << ((instr >> 8) & 0xFF) << endl;
+        output << hex << setw(2) << setfill('0') << (instr & 0xFF) << endl;
     }
 
     // Output data section
     for (auto& [addr, value] : data) {
-        output << hex << setw(8) << setfill('0') << value << endl;
+        output << hex << setw(2) << setfill('0') << ((value >> 24) & 0xFF) << endl;
+        output << hex << setw(2) << setfill('0') << ((value >> 16) & 0xFF) << endl;
+        output << hex << setw(2) << setfill('0') << ((value >> 8) & 0xFF) << endl;
+        output << hex << setw(2) << setfill('0') << (value & 0xFF) << endl;
     }
 
     input.close();
