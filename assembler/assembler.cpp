@@ -284,7 +284,7 @@ uint32_t encodePseudoLI(const vector<string>& args) {
 int main() {
     initRegisterMap();
     ifstream input("bin/output/algotests/for/for.s");
-    ofstream output("assembler/program.hex");
+    ofstream output("rtl/program.hex");
     vector<pair<int, string>> instructions;
     vector<pair<int, uint32_t>> data;
     string line;
@@ -394,6 +394,11 @@ int main() {
             continue;
         }
 
+        //output << hex << setw(2) << setfill('0') << (instr & 0xFF) << endl;
+        //output << hex << setw(2) << setfill('0') << ((instr >> 8) & 0xFF) << endl;
+        //output << hex << setw(2) << setfill('0') << ((instr >> 16) & 0xFF) << endl;
+        //output << hex << setw(2) << setfill('0') << ((instr >> 24) & 0xFF) << endl;
+
         cout << "0x" << hex << instr << dec << endl;
         output << hex << setw(8) << setfill('0') << instr << endl;
     }
@@ -401,7 +406,14 @@ int main() {
     // Output data section
     cout << "\nData section:" << endl;
     for (auto& [addr, value] : data) {
+        
         cout << "0x" << hex << addr << ": 0x" << value << dec << endl;
+        
+        //output << hex << setw(2) << setfill('0') << (value & 0xFF) << endl;
+        //output << hex << setw(2) << setfill('0') << ((value >> 8) & 0xFF) << endl;
+        //output << hex << setw(2) << setfill('0') << ((value >> 16) & 0xFF) << endl;
+        //output << hex << setw(2) << setfill('0') << ((value >> 24) & 0xFF) << endl;
+
         output << hex << setw(8) << setfill('0') << value << endl;
     }
 
