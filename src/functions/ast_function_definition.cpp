@@ -48,6 +48,7 @@ void FunctionDefinition::EmitElsonV(std::ostream &stream, Context &context, std:
         int stack_allocated_space = compound_statement->get_offset(context) + initial_offset + 128;
         stack_allocated_space = stack_allocated_space + (4 - stack_allocated_space % 4);
 
+
         //Added for more than 8 params
 
         if (parameters.size() > 8){
@@ -56,6 +57,10 @@ void FunctionDefinition::EmitElsonV(std::ostream &stream, Context &context, std:
         }
         context.set_stack_offset(stack_allocated_space);
 
+        int offset = 1200;
+
+        stream << "li s0, " << stack_allocated_space + offset << std::endl;
+        stream << "li sp, " << stack_allocated_space + offset << std::endl;
         stream << "addi sp, sp, -" << stack_allocated_space << std::endl;
         stream << "sw ra, " << stack_allocated_space - 4 << "(sp)" <<std::endl;
         stream << "sw s0, " << stack_allocated_space - 8 << "(sp)" <<std::endl;

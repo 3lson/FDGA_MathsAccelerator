@@ -42,8 +42,6 @@ map<string, int> labelMap;
 map<string, uint32_t> dataMap; // For storing .word values
 map<string, uint32_t> labelDataValues; // For storing data values associated with labels
 
-const uint32_t DATA_MEM_BASE = 0x10000000; // Base address for data.hex
-
 void initRegisterMap() {
     for (int i = 0; i < 32; ++i)
         registerMap["x" + to_string(i)] = i;
@@ -285,7 +283,7 @@ int main() {
     vector<pair<int, uint32_t>> data;
     string line;
     uint32_t instr_pc = 0;
-    uint32_t data_pc = DATA_MEM_BASE;
+    uint32_t data_pc = 0;
 
     // First pass - collect labels and instructions
     string current_section = ".text";  // default section
@@ -384,20 +382,21 @@ int main() {
             continue;
         }
 
-        // instrOut << hex << setw(2) << setfill('0') << (instr & 0xFF) << endl;
-        // instrOut << hex << setw(2) << setfill('0') << ((instr >> 8) & 0xFF) << endl;
-        // instrOut << hex << setw(2) << setfill('0') << ((instr >> 16) & 0xFF) << endl;
-        // instrOut << hex << setw(2) << setfill('0') << ((instr >> 24) & 0xFF) << endl;
+        instrOut << hex << setw(2) << setfill('0') << (instr & 0xFF) << endl;
+        instrOut << hex << setw(2) << setfill('0') << ((instr >> 8) & 0xFF) << endl;
+        instrOut << hex << setw(2) << setfill('0') << ((instr >> 16) & 0xFF) << endl;
+        instrOut << hex << setw(2) << setfill('0') << ((instr >> 24) & 0xFF) << endl;
 
-        cout << "0x" << hex << instr << dec << endl;
-        instrOut << hex << setw(8) << setfill('0') << instr << endl;
+        //cout << "0x" << hex << instr << dec << endl;
+        //instrOut << hex << setw(8) << setfill('0') << instr << endl;
 
     }
 
     // Output data section
     cout << "\nData section:" << endl;
     for (auto& [addr, value] : data) {
-        uint32_t offset = addr - DATA_MEM_BASE;
+        uint32_t offset = addr;
+        std::cout << "Offset " <<offset << std::endl;
         
         //cout << "0x" << hex << addr << ": 0x" << value << dec << endl;
         

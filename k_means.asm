@@ -7,13 +7,15 @@
 .type main2, @function
 main2:
 
-addi sp, sp, -272 # Allocate stack space
-sw ra, 268(sp) # Save return address
-sw s0, 264(sp) # Save frame pointer
-addi s0, sp, 272 # Set new frame pointer
+li s0, 1472 # Offset + stack allocated space based off memory map
+li sp, 1472
+addi sp, sp, -272 # Allocate stack space 1200
+sw ra, 268(sp) # Save return address 1468
+sw s0, 264(sp) # Save frame pointer 1464
+addi s0, sp, 272 # Set new frame pointer 1472
 
 li t0, 100 # int max_iter = 100;
-sw t0, -132(s0)
+sw t0, -132(s0) 
 
 li t0, 9 # int num_points = 9;
 sw t0, -128(s0)
