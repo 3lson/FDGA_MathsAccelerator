@@ -6,6 +6,7 @@ tb/results.xml
 tb/waveform.vcd
 bin/
 build/
+assembler/assembler
 .vscode
 *.o
 *.tab.hpp
