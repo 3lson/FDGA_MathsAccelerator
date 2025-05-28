@@ -35,7 +35,7 @@ module top #(
     logic [WIDTH-1:0] PCF;
     logic [WIDTH-1:0] PCD;
     logic [WIDTH-1:0] PCE;
-    
+
     //respective outputs of both ALU's
     logic [WIDTH-1:0] ALUint;
     logic [WIDTH-1:0] ALUfloat;
@@ -63,6 +63,8 @@ module top #(
     logic [4:0] RdE;
     logic [4:0] RdM;
     logic [4:0] RdW;
+
+    logic [4:0] WriteAddr;
 
     logic [WIDTH-1:0] RD1D;
     logic [WIDTH-1:0] RD1E;
@@ -205,7 +207,7 @@ module top #(
         .rst(rst),
         .AD1(Rs1D),
         .AD2(Rs2D),
-        .AD3(RdW),
+        .AD3(WriteAddr),
         .WE3(RegWriteW),
         .WD3(WD3W),
 
@@ -213,6 +215,9 @@ module top #(
         .RD2(RD2D),
         .a0(a0)
     );
+
+    //JUMP/CALL instruction write register mux
+    assign WriteAddr = WD3SrcW ? 5'd1:RdW;
 
     //Completed
     pipeline_DECtoEXE pipeline_DECtoEXE (

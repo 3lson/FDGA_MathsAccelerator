@@ -20,10 +20,13 @@ module pipeline_MEMtoWB #(
     input logic RegWriteM,
     input logic ResultSrcM,
     input logic WD3SrcM,
+
+
     //Writeback stage
     output logic RegWriteW,
     output logic ResultSrcW, 
-    output logic WD3SrcW,  
+    output logic WD3SrcW,
+
 
     //hazard detection
     input logic flush

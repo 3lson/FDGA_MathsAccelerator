@@ -11,13 +11,11 @@ module data_mem #(
     output logic [DATA_WIDTH-1:0]   RD  // read data
 );
 
-    localparam DATA_BASE = 32'h10000000;
-
     logic [31:0] addr;
     logic [MEM_WIDTH-1:0] array [2**ADDR_REAL_WIDTH-1:0];
     logic [DATA_WIDTH-1:0] temp;
 
-    assign addr = $unsigned(A) - $unsigned(DATA_BASE);
+    assign addr = $unsigned(A);
 
     initial begin
         for (int i = 0; i < (1 << ADDR_REAL_WIDTH); i++) begin
