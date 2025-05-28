@@ -216,7 +216,7 @@ uint32_t encodeControl(string op, const vector<string>& args, int pc) {
         string label = args[1];
         int target = labelMap[label];
         int32_t offset = (target - pc);
-        int32_t imm = offset & 0x3FFFFFF;  
+        int32_t imm = (offset >> 2) & 0x3FFFFFF;  
         uint32_t imm_hi = (imm >> 10) & 0xFFFF; 
         uint32_t imm_lo = imm & 0x3FF; 
         
@@ -384,13 +384,13 @@ int main() {
             continue;
         }
 
-        instrOut << hex << setw(2) << setfill('0') << (instr & 0xFF) << endl;
-        instrOut << hex << setw(2) << setfill('0') << ((instr >> 8) & 0xFF) << endl;
-        instrOut << hex << setw(2) << setfill('0') << ((instr >> 16) & 0xFF) << endl;
-        instrOut << hex << setw(2) << setfill('0') << ((instr >> 24) & 0xFF) << endl;
+        // instrOut << hex << setw(2) << setfill('0') << (instr & 0xFF) << endl;
+        // instrOut << hex << setw(2) << setfill('0') << ((instr >> 8) & 0xFF) << endl;
+        // instrOut << hex << setw(2) << setfill('0') << ((instr >> 16) & 0xFF) << endl;
+        // instrOut << hex << setw(2) << setfill('0') << ((instr >> 24) & 0xFF) << endl;
 
-        // cout << "0x" << hex << instr << dec << endl;
-        // instrOut << hex << setw(8) << setfill('0') << instr << endl;
+        cout << "0x" << hex << instr << dec << endl;
+        instrOut << hex << setw(8) << setfill('0') << instr << endl;
 
     }
 
