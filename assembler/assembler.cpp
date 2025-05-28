@@ -215,10 +215,15 @@ uint32_t encodeControl(string op, const vector<string>& args, int pc) {
     if (op == "j") {
         string label = args[1];
         int target = labelMap[label];
-        int32_t offset = (target - (pc + 4)) / 4;
+        int32_t offset = (target - pc);
         int32_t imm = offset & 0x3FFFFFF;  
         uint32_t imm_hi = (imm >> 10) & 0xFFFF; 
-        uint32_t imm_lo = imm & 0x3FF;          
+        uint32_t imm_lo = imm & 0x3FF; 
+        
+        std::cout << "Offset " << offset << std::endl;
+        std::cout << "Imm " << imm << std::endl;
+        std::cout << "Imm_hi " << imm_hi << std::endl;
+        std::cout << "Imm_lo " << imm_lo << std::endl;
     
         return (opcode << 29) | (imm_hi << 13) | (funct3 << 10) | imm_lo;
     }
@@ -236,11 +241,6 @@ uint32_t encodeControl(string op, const vector<string>& args, int pc) {
         uint32_t imm_17_8 = (imm >> 8) & 0x3FF;   // bits [17:8] -> [28:19]
         uint32_t imm_7    = (imm >> 7) & 0x1;     // bit [7]     -> [13]
         uint32_t imm_6_2  = imm & 0x1F;           // bits [6:2]  -> [4:0]
-
-        std::cout << "Offset calc " << imm << std::endl;
-        std::cout << "Offset calc " << imm_17_8 << std::endl;
-        std::cout << "Offset calc " << imm_7 << std::endl;
-        std::cout << "Offset calc " << imm_6_2 << std::endl;
     
         return (opcode << 29)
              | (imm_17_8 << 19)
@@ -389,8 +389,8 @@ int main() {
         instrOut << hex << setw(2) << setfill('0') << ((instr >> 16) & 0xFF) << endl;
         instrOut << hex << setw(2) << setfill('0') << ((instr >> 24) & 0xFF) << endl;
 
-        //cout << "0x" << hex << instr << dec << endl;
-        //instrOut << hex << setw(8) << setfill('0') << instr << endl;
+        // cout << "0x" << hex << instr << dec << endl;
+        // instrOut << hex << setw(8) << setfill('0') << instr << endl;
 
     }
 
