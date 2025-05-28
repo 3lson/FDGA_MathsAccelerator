@@ -10,6 +10,7 @@ module pipeline_EXEtoMEM #(
     input logic [WIDTH-1:0] WriteDataE,
     input logic [WIDTH-1:0] PCPlus4E, //for writeback (JALR mux)
     input logic [4:0]       RdE,      //for hazard detection (to determine data hazards) / writeback aswell
+
     
     // Memory stage
     output logic [WIDTH-1:0] ALUResultM,
@@ -24,11 +25,13 @@ module pipeline_EXEtoMEM #(
     input logic ResultSrcE,         //for writeback (result mux either datamem or ALU output)     
     input logic   WDMEE,    //for datamem selelction
     input logic WD3SrcE,            //for writeback
+
     // Memory stage
     output logic RegWriteM,
     output logic ResultSrcM,
     output logic  WDMEM,
-    output logic WD3SrcM
+    output logic WD3SrcM,
+
 );
 
 always_ff @ (posedge clk) begin
