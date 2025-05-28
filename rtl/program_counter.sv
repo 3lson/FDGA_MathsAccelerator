@@ -18,7 +18,7 @@ module program_counter #(
             end else begin
                 case(PCsrc)
                 2'b00: PC <= PC + 32'd4;  // Normal increment
-                2'b01: PC <= PC + ImmOp;  // Branch/Jump
+                2'b01: PC <= PCE + ImmOp;  // Branch/Jump
                 2'b10: PC <= Result;      //RET instruction
                 default: PC <= PC + 32'd4;  // Normal increment
                 endcase

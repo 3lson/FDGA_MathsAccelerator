@@ -18,3 +18,4 @@ assembler/assembler
 coverage/
 *.d
 *.pyc
+rtl/program.hex
