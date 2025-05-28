@@ -93,6 +93,7 @@ module controlunit #(
                             ALUctrl = `ALU_ADD; // ADD for address calculation
                             ALUsrc = 1'b0; // Uses rd2
                             ImmSrc = 3'b010; // Store immediate
+                            ALUsrc = 1'b1;
                     end
                     default: begin
                             WDME = 1'b0;

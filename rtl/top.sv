@@ -58,6 +58,7 @@ module top #(
     logic [4:0] Rs1E;
     logic [4:0] Rs2D;
     logic [4:0] Rs2E;
+    logic [4:0] Rs2M;
 
     logic [4:0] RdD;
     logic [4:0] RdE;
@@ -78,6 +79,9 @@ module top #(
 
     logic [WIDTH-1:0] WriteDataE;
     logic [WIDTH-1:0] WriteDataM;
+    
+    //intermediary value
+    logic [WIDTH-1:0] WriteDataIN;
 
     logic [WIDTH-1:0] ReadDataM;
     logic [WIDTH-1:0] ReadDataW;
@@ -339,11 +343,13 @@ module top #(
         .WriteDataE(WriteDataE),
         .RdE(RdE),
         .PCPlus4E(PCPlus4E),
+        .Rs2E(Rs2E),
 
         .ALUResultM(ALUResultM),
         .WriteDataM(WriteDataM),
         .RdM(RdM),
         .PCPlus4M(PCPlus4M),
+        .Rs2M(Rs2M),
 
         .RegWriteE(RegWriteE),
         .ResultSrcE(ResultSrcE),
@@ -363,9 +369,13 @@ module top #(
         .clk(clk),
         .WDME(WDMEM),
         .A(ALUResultM), //forwarded signal for non datamem instructions to execute stage Read outputs.
-        .WD(WriteDataM),
+        .WD(WriteDataIN),
         .RD(ReadDataM) 
     );
+
+    assign WriteDataIN = (Rs2M == RdW) ? WD3W:WriteDataM;
+
+    
 
     //Completed
     pipeline_MEMtoWB pipeline_MEMtoWB (

@@ -10,13 +10,14 @@ module pipeline_EXEtoMEM #(
     input logic [WIDTH-1:0] WriteDataE,
     input logic [WIDTH-1:0] PCPlus4E, //for writeback (JALR mux)
     input logic [4:0]       RdE,      //for hazard detection (to determine data hazards) / writeback aswell
-
+    input logic [4:0]       Rs2E,
     
     // Memory stage
     output logic [WIDTH-1:0] ALUResultM,
     output logic [WIDTH-1:0] WriteDataM,
     output logic [WIDTH-1:0] PCPlus4M,
-    output logic [4:0]       RdM,     
+    output logic [4:0]       RdM, 
+    output logic [4:0]       Rs2M,    
 
     //Control Unit
     
@@ -30,7 +31,7 @@ module pipeline_EXEtoMEM #(
     output logic RegWriteM,
     output logic ResultSrcM,
     output logic  WDMEM,
-    output logic WD3SrcM,
+    output logic WD3SrcM
 
 );
 
@@ -47,6 +48,7 @@ always_ff @ (posedge clk) begin
         WriteDataM <= WriteDataE;
         PCPlus4M <= PCPlus4E;
         RdM <= RdE;
+        Rs2M <= Rs2E;
     end
     else begin //loads NOP signals
         //Control Unit
@@ -60,6 +62,7 @@ always_ff @ (posedge clk) begin
         WriteDataM <= 32'd0;
         PCPlus4M <= 32'd0; //could be a problem 
         RdM <= 5'b0;
+        Rs2M <= 5'b0;
     end
 end
 
