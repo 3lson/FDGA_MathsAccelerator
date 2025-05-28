@@ -219,65 +219,6 @@ TEST_F(FloatingALUTestbench, ConvertIntToFloat) {
     }
 }
 
-TEST_F(FloatingALUTestbench, ConvertFloatToInt) {
-    struct TestCase {
-        float input;
-        int32_t expected;
-    };
-
-    std::vector<TestCase> test_cases = {
-        {4.0f, 4},
-        {-7.0f, -7},
-        {0.0f, 0},
-        {1.999f, 1},    // truncation
-        {-1.999f, -1},  // truncation
-        {8388608.0f, 8388608}, // 2^23, exact
-        {8388607.0f, 8388607}, // max int representable exactly
-        {1e-30f, 0},    // subnormal, rounds to 0
-        {INFINITY, 0x7FFFFFFF},  // saturates
-        {-INFINITY, INT32_MIN}, // saturates to min neg
-        {NAN, 0x7FFFFFFF}        // treat NaN as saturated (or however your HDL handles it)
-    };
-
-    for (const auto& tc : test_cases) {
-        top->alu_op = FALU_FCVT_WS; // fixed macro name
-        top->op1 = float_to_bits(tc.input);
-
-        top->eval();
-
-        EXPECT_EQ(static_cast<int32_t>(top->result), tc.expected)
-            << "Failed for input: " << tc.input;
-    }
-}
-
-TEST_F(FloatingALUTestbench, ConvertIntToFloat) {
-    struct TestCase {
-        int32_t input;
-        float expected;
-    };
-
-    std::vector<TestCase> test_cases = {
-        {0, 0.0f},
-        {1, 1.0f},
-        {-1, -1.0f},
-        {123456, 123456.0f},
-        {-123456, -123456.0f},
-        {INT32_MAX, static_cast<float>(INT32_MAX)},
-        {INT32_MIN, static_cast<float>(INT32_MIN)},
-    };
-
-    for (const auto& tc : test_cases) {
-        top->alu_op = FALU_FCVT_SW; // Integer to float conversion opcode
-        top->op1 = static_cast<uint32_t>(tc.input);
-
-        top->eval();
-
-        float result = bits_to_float(top->result);
-        EXPECT_FLOAT_EQ(result, tc.expected)
-            << "Failed for input: " << tc.input;
-    }
-}
-
 
 int main(int argc, char **argv) {
     Verilated::commandArgs(argc, argv);

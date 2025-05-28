@@ -64,9 +64,6 @@ module top #(
     logic [4:0] RdM;
     logic [4:0] RdW;
 
-
-    logic [WIDTH-1:0] RD1; // intermediate register signal
-
     logic [WIDTH-1:0] RD1D;
     logic [WIDTH-1:0] RD1E;
     logic [WIDTH-1:0] RD2D;
@@ -213,7 +210,7 @@ module top #(
         .WE3(RegWriteW),
         .WD3(WD3W),
 
-        .RD1(RD1),
+        .RD1(RD1D),
         .RD2(RD2D),
         .a0(a0)
     );
@@ -428,7 +425,7 @@ module top #(
         endcase
     end
 
-/*
+
     always_ff @(posedge clk) begin
         if (!rst) begin
             $display("PCF=%h, instrF=%h", PCF, instrF);
@@ -441,6 +438,6 @@ module top #(
             $display("------------------------------------------------");
         end
     end
-*/
+
 
 endmodule

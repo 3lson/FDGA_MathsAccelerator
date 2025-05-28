@@ -17,30 +17,30 @@ public:
     void SetUp() override
     {
         top = std::make_unique<Vdut>();
-#ifndef __APPLE__
+//#ifndef __APPLE__
         tfp = std::make_unique<VerilatedVcdC>();
         Verilated::traceEverOn(true);
         top->trace(tfp.get(), 99);
         tfp->open("waveform.vcd");
-#endif
+//#endif
         initializeInputs();
     }
 
     void TearDown() override
     {
         top->final();
-#ifndef __APPLE__
+//#ifndef __APPLE__
         if (tfp && tfp->isOpen()) {
             tfp->close();
         }
-#endif
+//#endif
     }
 
     virtual void initializeInputs() = 0;
 
 protected:
     std::unique_ptr<Vdut> top;
-#ifndef __APPLE__
+//#ifndef __APPLE__
     std::unique_ptr<VerilatedVcdC> tfp;
-#endif
+//#endif
 };

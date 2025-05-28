@@ -241,7 +241,7 @@ always_comb begin
 
         end
 
-        `FALU_NEG: result = {~op1[31], op1[30:0]}; //negate the sign bit
+        `FALU_NEG: result = op1 ^ 32'h80000000; //negate the sign bit
         
         `FALU_ABS: result = {0'b0, op1[30:0]};
 

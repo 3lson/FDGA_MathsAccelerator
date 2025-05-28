@@ -42,6 +42,8 @@ map<string, int> labelMap;
 map<string, uint32_t> dataMap; // For storing .word values
 map<string, uint32_t> labelDataValues; // For storing data values associated with labels
 
+const uint32_t DATA_MEM_BASE = 0x10000000; // Base address for data.hex
+
 void initRegisterMap() {
     for (int i = 0; i < 32; ++i)
         registerMap["x" + to_string(i)] = i;
@@ -227,14 +229,18 @@ uint32_t encodeControl(string op, const vector<string>& args, int pc) {
         int rs1 = registerMap[rs1_str];
         int rs2 = 0;  // hardcoded to x0
         int target = labelMap[label];
-        int32_t offset = (target - (pc + 4)) / 4;
-    
-        // Sign-extend and mask offset to 18 bits
-        int32_t imm = offset & 0x3FFFF;  // 18-bit signed immediate
+        int32_t offset = (target - pc);
+        
+        uint32_t imm = (offset>>2) & 0x3FFFF;
     
         uint32_t imm_17_8 = (imm >> 8) & 0x3FF;   // bits [17:8] -> [28:19]
         uint32_t imm_7    = (imm >> 7) & 0x1;     // bit [7]     -> [13]
         uint32_t imm_6_2  = imm & 0x1F;           // bits [6:2]  -> [4:0]
+
+        std::cout << "Offset calc " << imm << std::endl;
+        std::cout << "Offset calc " << imm_17_8 << std::endl;
+        std::cout << "Offset calc " << imm_7 << std::endl;
+        std::cout << "Offset calc " << imm_6_2 << std::endl;
     
         return (opcode << 29)
              | (imm_17_8 << 19)
@@ -273,21 +279,21 @@ uint32_t encodePseudoLI(const vector<string>& args) {
 int main() {
     initRegisterMap();
     ifstream input("bin/output/algotests/for/for.s");
-    ofstream output("rtl/program.hex");
+    ofstream instrOut("rtl/program.hex");
+    ofstream dataOut("rtl/data.hex");
     vector<pair<int, string>> instructions;
     vector<pair<int, uint32_t>> data;
     string line;
-    int pc = 0;
+    uint32_t instr_pc = 0;
+    uint32_t data_pc = DATA_MEM_BASE;
 
     // First pass - collect labels and instructions
     string current_section = ".text";  // default section
     string pending_label = ""; // To track labels that precede .word directives
     
     while (getline(input, line)) {
-        // Skip empty lines and comments
         if (line.empty() || line[0] == '#') continue;
-        
-        // Handle section directives
+
         if (line.find(".section") != string::npos || 
             line.find(".text") != string::npos ||
             line.find(".data") != string::npos ||
@@ -297,60 +303,55 @@ int main() {
             else current_section = ".text";
             continue;
         }
-    
-        // Handle alignment
+
         if (line.find(".align") != string::npos) {
             string alignStr = line.substr(line.find(".align") + 6);
             alignStr.erase(0, alignStr.find_first_not_of(" \t"));
-            int align = 1 << stoi(alignStr); // .align 2 means align to 4-byte boundary
-            pc = (pc + align - 1) & ~(align - 1);
+            int align = 1 << stoi(alignStr);
+            if (current_section == ".text")
+                instr_pc = (instr_pc + align - 1) & ~(align - 1);
+            else
+                data_pc = (data_pc + align - 1) & ~(align - 1);
             continue;
         }
-    
-        // Handle labels
+
         auto colon = line.find(':');
         if (colon != string::npos) {
             string label = line.substr(0, colon);
-            // Remove leading/trailing whitespace from label
             label.erase(0, label.find_first_not_of(" \t"));
             label.erase(label.find_last_not_of(" \t") + 1);
-            labelMap[label] = pc;
-            pending_label = label; // Remember this label for potential .word association
-            cout << "Label '" << label << "' at address 0x" << hex << pc << dec << endl;
+            if (current_section == ".text")
+                labelMap[label] = instr_pc;
+            else
+                labelMap[label] = data_pc;
+            pending_label = label;
             line = line.substr(colon + 1);
-            // Remove leading whitespace from remaining line
             line.erase(0, line.find_first_not_of(" \t"));
         }
-    
-        // Process based on current section
+
         if (current_section == ".text") {
             if (!line.empty()) {
-                instructions.emplace_back(pc, line);
-                pc += 4;
+                instructions.emplace_back(instr_pc, line);
+                instr_pc += 4;
             }
-        }
-        else {  // .data or .rodata
+        } else {
             if (line.find(".word") != string::npos) {
-                // Extract the value after .word
                 string valueStr = line.substr(line.find(".word") + 5);
                 valueStr.erase(0, valueStr.find_first_not_of(" \t"));
                 uint32_t value = static_cast<uint32_t>(stoul(valueStr));
-                data.emplace_back(pc, value);
-                
-                // Associate this value with the pending label
+                data.emplace_back(data_pc, value);
                 if (!pending_label.empty()) {
+                    labelMap[pending_label] = data_pc;
                     labelDataValues[pending_label] = value;
-                    cout << "Label '" << pending_label << "' associated with data value 0x" << hex << value << dec << endl;
-                    pending_label = ""; // Clear the pending label
+                    pending_label = "";
                 }
-                
-                cout << "Data at 0x" << hex << pc << ": 0x" << value << dec << endl;
-                pc += 4;
-            }
-            else if (line.find(".zero") != string::npos) {
+                data_pc += 4;
+            } else if (line.find(".zero") != string::npos) {
                 int size = stoi(line.substr(line.find(".zero") + 5));
-                data.emplace_back(pc, 0);
-                pc += size;
+                for (int i = 0; i < size; i += 4) {
+                    data.emplace_back(data_pc, 0);
+                    data_pc += 4;
+                }
             }
         }
     }
@@ -383,30 +384,33 @@ int main() {
             continue;
         }
 
-        //output << hex << setw(2) << setfill('0') << (instr & 0xFF) << endl;
-        //output << hex << setw(2) << setfill('0') << ((instr >> 8) & 0xFF) << endl;
-        //output << hex << setw(2) << setfill('0') << ((instr >> 16) & 0xFF) << endl;
-        //output << hex << setw(2) << setfill('0') << ((instr >> 24) & 0xFF) << endl;
+        instrOut << hex << setw(2) << setfill('0') << (instr & 0xFF) << endl;
+        instrOut << hex << setw(2) << setfill('0') << ((instr >> 8) & 0xFF) << endl;
+        instrOut << hex << setw(2) << setfill('0') << ((instr >> 16) & 0xFF) << endl;
+        instrOut << hex << setw(2) << setfill('0') << ((instr >> 24) & 0xFF) << endl;
 
-        cout << "0x" << hex << instr << dec << endl;
-        output << hex << setw(8) << setfill('0') << instr << endl;
+        //cout << "0x" << hex << instr << dec << endl;
+        //instrOut << hex << setw(8) << setfill('0') << instr << endl;
+
     }
 
     // Output data section
     cout << "\nData section:" << endl;
     for (auto& [addr, value] : data) {
+        uint32_t offset = addr - DATA_MEM_BASE;
         
-        cout << "0x" << hex << addr << ": 0x" << value << dec << endl;
+        //cout << "0x" << hex << addr << ": 0x" << value << dec << endl;
         
-        //output << hex << setw(2) << setfill('0') << (value & 0xFF) << endl;
-        //output << hex << setw(2) << setfill('0') << ((value >> 8) & 0xFF) << endl;
-        //output << hex << setw(2) << setfill('0') << ((value >> 16) & 0xFF) << endl;
-        //output << hex << setw(2) << setfill('0') << ((value >> 24) & 0xFF) << endl;
+        dataOut << hex << setw(2) << setfill('0') << (value & 0xFF) << endl;
+        dataOut << hex << setw(2) << setfill('0') << ((value >> 8) & 0xFF) << endl;
+        dataOut << hex << setw(2) << setfill('0') << ((value >> 16) & 0xFF) << endl;
+        dataOut << hex << setw(2) << setfill('0') << ((value >> 24) & 0xFF) << endl;
 
-        output << hex << setw(8) << setfill('0') << value << endl;
+        //dataOut << hex << setw(8) << setfill('0') << value << endl;
     }
 
     input.close();
-    output.close();
+    instrOut.close();
+    dataOut.close();
     return 0;
 }
