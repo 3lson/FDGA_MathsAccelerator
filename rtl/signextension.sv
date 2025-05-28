@@ -12,9 +12,10 @@ module signextension #(
             3'b000: ImmOp = {{18{instr[27]}}, instr[27:14]};                                        //I type 
             3'b001: ImmOp = {{17{instr[28]}}, instr[28:14]};                                        //M type LOAD
             3'b010: ImmOp = {{17{instr[28]}}, instr[28:19], instr[4:0]};                            //M type STORE
-            3'b011: ImmOp = {{4{instr[28]}}, instr[28:13], instr[9:0], 2'b0};                       //C type JUMP, BRANCH
-            3'b100: ImmOp = {{14{instr[28]}}, instr[28:13], 2'b0};
-            3'b101: ImmOp = {instr[28:9],12'd0};                              //C type CALL
+            3'b011: ImmOp = {{14{instr[28]}}, instr[28:19],instr[13], instr[4:0], 2'b0};            //C type BRANCH
+            3'b100: ImmOp = {{14{instr[28]}}, instr[28:13], 2'b0};                                  //C type CALL
+            3'b101: ImmOp = {instr[28:9],12'd0};                                                    //P type LUI
+            3'b110: ImmOp = {{4{instr[28]}},instr[28:13],instr[9:0],2'b00};                         //C type JUMP                      
             default: ImmOp = {{18{instr[27]}}, instr[27:14]};
         endcase
         

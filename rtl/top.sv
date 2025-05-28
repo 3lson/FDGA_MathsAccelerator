@@ -93,7 +93,6 @@ module top #(
     logic ResultSrcE;
     logic ResultSrcM;
     logic ResultSrcW;
-    logic [WIDTH-1:0] ResultW;
 
     // Branch
     logic  branchD;
@@ -409,19 +408,13 @@ module top #(
 
     //Register Write back logic (Muxes)
 
-    //ResultW Mux
-    always_comb begin
-        case(ResultSrcW)
-            1'b0: ResultW = ALUResultW;
-            1'b1: ResultW = ReadDataW;
-        endcase
-    end
-
     //WD3 mux
     always_comb begin
-        case(WD3SrcW)
-            1'b0: WD3W = ResultW;
-            1'b1: WD3W = PCPlus4W;
+        casez({WD3SrcW,ResultSrcW})
+            2'b1?: WD3W = PCPlus4W;
+            2'b01: WD3W = ReadDataW;
+            2'b00: WD3W = ALUResultW;
+            default: WD3W = ALUResultW;
         endcase
     end
 
@@ -433,7 +426,7 @@ module top #(
             $display("PCE=%h, ALUResultE=%h, ALUfloat=%h,floatingE=%h", PCE, ALUResultE,ALUfloat,floatingE);
             $display("ALUctrlE=%b, SrcAE=%h, SrcBE=%h", ALUctrlE, SrcAE, SrcBE);
             $display("ALUResultM=%h, ReadDataM=%h", ALUResultM, ReadDataM);
-            $display("ResultW=%h, WD3W=%h", ResultW, WD3W);
+            $display( "WD3W=%h", WD3W);
             $display("Register a0 output: a0=%h", a0);
             $display("------------------------------------------------");
         end

@@ -107,7 +107,7 @@ module controlunit #(
                 case (funct3)
                 // JUMP
                 3'b000: begin
-                    ImmSrc = 3'b011;
+                    ImmSrc = 3'b110;
                     ALUsrc = 1'b1;
                     RegWrite =1'b1;
                     Jump = 2'b10;
