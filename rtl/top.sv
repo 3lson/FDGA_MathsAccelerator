@@ -434,18 +434,18 @@ module top #(
     end
 
 
-    always_ff @(posedge clk) begin
-        if (!rst) begin
-            $display("PCF=%h, instrF=%h", PCF, instrF);
-            $display("PCD=%h, instrD=%h, ImmSrcD=%h", PCD, instrD, ImmSrcD);
-            $display("PCE=%h, ALUResultE=%h, ALUfloat=%h,floatingE=%h", PCE, ALUResultE,ALUfloat,floatingE);
-            $display("ALUctrlE=%b, SrcAE=%h, SrcBE=%h", ALUctrlE, SrcAE, SrcBE);
-            $display("ALUResultM=%h, ReadDataM=%h", ALUResultM, ReadDataM);
-            $display( "WD3W=%h", WD3W);
-            $display("Register a0 output: a0=%h", a0);
-            $display("------------------------------------------------");
-        end
-    end
+    // always_ff @(posedge clk) begin
+    //     if (!rst) begin
+    //         $display("PCF=%h, instrF=%h", PCF, instrF);
+    //         $display("PCD=%h, instrD=%h, ImmSrcD=%h", PCD, instrD, ImmSrcD);
+    //         $display("PCE=%h, ALUResultE=%h, ALUfloat=%h,floatingE=%h", PCE, ALUResultE,ALUfloat,floatingE);
+    //         $display("ALUctrlE=%b, SrcAE=%h, SrcBE=%h", ALUctrlE, SrcAE, SrcBE);
+    //         $display("ALUResultM=%h, ReadDataM=%h", ALUResultM, ReadDataM);
+    //         $display( "WD3W=%h", WD3W);
+    //         $display("Register a0 output: a0=%h", a0);
+    //         $display("------------------------------------------------");
+    //     end
+    // end
 
 
 endmodule

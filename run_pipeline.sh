@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 ./docker.sh
 
 # Step 1: Run the compiler test script
-python3 scripts/test.py
+python3 scripts/test.py -m
 
 #exit docker
 exit 
