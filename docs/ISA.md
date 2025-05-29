@@ -174,6 +174,8 @@ These are arithmetic instructions for FPU block
 ## Register File Assignment
 We have chosen to stick with the RISCV Register layout with the addition of some extra special registers on our end for multithreading
 
+**Int Register File**
+
 | Name | Register Number | Usage |
 | -----| ----------------| ------|
 | zero | x0 | constant value 0 |
@@ -197,3 +199,19 @@ The following are mapped as the thread registers
  | x29 | blockIdx |
  | x30 | blockDim | 
  | x31 | laneId |
+
+**Float Register File**
+
+The design choice of our float registers are as follows. Note reg convention for floats are not applied to that of RISCV as it is not necessary for our algorithm
+
+| Name | Register Number | Usage |
+| -----| ----------------| ------|
+| zero | x0 | constant value 0 |
+| ft1-ft2 | x1-x2 | temporaries | 
+| ft3-ft6 | x3x-x6 | Thread registers |
+| ft7 | x7 | temporaries | 
+| fs0-fs1 | x8-x9 | reserved for now (but potential extra regs if needed) |
+| fa0-fa1 | x10-x11| reserved for now (but potential extra regs if needed) |
+| fa2-fa7 | x12-x17 | temporaries | 
+| fs2-fs11 | x18-x27 | temporaries | 
+| ft8-ft11 | x28-x31 | temporaries|
