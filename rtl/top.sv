@@ -254,7 +254,7 @@ module top #(
     assign {RD1D,RD2D} = (floatingReadD) ? {floatingRD1,floatingRD2}:{integerRD1,integerRD2};
 
     //Write operand mux
-    assign {IntWE,FloatWE} = (floatingWriteW) ? {1'b0,RegWriteW}:{RegWRiteW,1'b0};
+    assign {IntWE,FloatWE} = (floatingWriteW) ? {1'b0,RegWriteW}:{RegWriteW,1'b0};
 
     registerfile FloatingRegFile (
         .clk(clk),
