@@ -36,7 +36,8 @@ module pipeline_DECtoEXE #(
     input logic isLoadD,
     input logic  branchD,
     input logic [1:0] JumpD,
-    input logic             floatingD,
+    input logic        floatingALUD,
+    input logic        floatingWriteD,
 
     //Execute Stage
     output logic RegWriteE,
@@ -48,7 +49,8 @@ module pipeline_DECtoEXE #(
     output logic WD3SrcE,
     output logic  branchE,
     output logic [1:0] JumpE,
-    output logic             floatingE
+    output logic       floatingALUE,
+    output logic       floatingWriteE
 );
 
 always_ff @ (posedge clk) begin
@@ -65,6 +67,8 @@ always_ff @ (posedge clk) begin
             WD3SrcE <= WD3SrcD;
             branchE <= branchD;
             JumpE <= JumpD;
+            floatingALUE <= floatingALUD;
+            floatingWriteE <= floatingWriteD;
 
             //Data path
             RD1E <= RD1D;
@@ -75,7 +79,7 @@ always_ff @ (posedge clk) begin
             RdE <= RdD;
             ExtImmE <= ExtImmD;
             PCPlus4E <= PCPlus4D;
-            floatingE <= floatingD;
+            
         end
         else begin
             //control path
@@ -88,6 +92,8 @@ always_ff @ (posedge clk) begin
             WD3SrcE <= 1'b0;
             branchE <= 1'b0;
             JumpE <= 2'b00;
+            floatingALUE <= 1'b0;
+            floatingWriteE <= 1'b0;
 
             //Data path
             RD1E <= 32'd0;
@@ -98,7 +104,6 @@ always_ff @ (posedge clk) begin
             RdE <= 5'b0;
             ExtImmE <= 32'd0;
             PCPlus4E <= 32'd0;
-            floatingE <= 1'b0;
         end
     end
 

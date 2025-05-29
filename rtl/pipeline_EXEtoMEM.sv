@@ -27,13 +27,15 @@ module pipeline_EXEtoMEM #(
     input logic   WDMEE,    //for datamem selelction
     input logic isLoadE,
     input logic WD3SrcE,            //for writeback
+    input logic floatingWriteE,
 
     // Memory stage
     output logic RegWriteM,
     output logic ResultSrcM,
     output logic  WDMEM,
     output logic isLoadM,
-    output logic WD3SrcM
+    output logic WD3SrcM,
+    output logic floatingWriteM
 
 );
 
@@ -45,6 +47,7 @@ always_ff @ (posedge clk) begin
         WDMEM <= WDMEE;
         isLoadM <= isLoadE;
         WD3SrcM <= WD3SrcE;
+        floatingWriteM <= floatingWriteE;
 
         //Data path
         ALUResultM <= ALUResultE;
@@ -60,6 +63,7 @@ always_ff @ (posedge clk) begin
         WDMEM <= 1'b0;
         isLoadM <= 1'b0;
         WD3SrcM <= 1'b0;
+        floatingWriteM <= 1'b0;
 
         //Data path
         ALUResultM <= 32'd0;
