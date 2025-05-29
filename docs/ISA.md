@@ -206,7 +206,7 @@ The design choice of our float registers are as follows. Note reg convention for
 
 | Name | Register Number | Usage |
 | -----| ----------------| ------|
-| zero | x0 | constant value 0 |
+| zero/ft0 | x0 | constant value 0 |
 | ft1-ft2 | x1-x2 | temporaries | 
 | ft3-ft6 | x3x-x6 | Thread registers |
 | ft7 | x7 | temporaries | 
