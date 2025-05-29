@@ -218,10 +218,10 @@ uint32_t encodeControl(string op, const vector<string>& args, int pc) {
         uint32_t imm_hi = (imm >> 10) & 0xFFFF; 
         uint32_t imm_lo = imm & 0x3FF; 
         
-        std::cout << "Offset " << offset << std::endl;
-        std::cout << "Imm " << imm << std::endl;
-        std::cout << "Imm_hi " << imm_hi << std::endl;
-        std::cout << "Imm_lo " << imm_lo << std::endl;
+        //std::cout << "Offset " << offset << std::endl;
+        // std::cout << "Imm " << imm << std::endl;
+        // std::cout << "Imm_hi " << imm_hi << std::endl;
+        // std::cout << "Imm_lo " << imm_lo << std::endl;
     
         return (opcode << 29) | (imm_hi << 13) | (funct3 << 10) | imm_lo;
     }
@@ -295,6 +295,9 @@ int main() {
         if (line.find(".section") != string::npos || 
             line.find(".text") != string::npos ||
             line.find(".data") != string::npos ||
+            line.find(".globl") != string::npos ||
+            line.find(".size") != string::npos ||
+            line.find(".type") != string::npos ||
             line.find(".rodata") != string::npos) {
             if (line.find(".rodata") != string::npos) current_section = ".rodata";
             else if (line.find(".data") != string::npos) current_section = ".data";
@@ -328,7 +331,7 @@ int main() {
         }
 
         if (current_section == ".text") {
-            if (!line.empty()) {
+            if (!line.empty() && line.find(".zero") == string::npos) {
                 instructions.emplace_back(instr_pc, line);
                 instr_pc += 4;
             }
@@ -387,8 +390,8 @@ int main() {
         instrOut << hex << setw(2) << setfill('0') << ((instr >> 16) & 0xFF) << endl;
         instrOut << hex << setw(2) << setfill('0') << ((instr >> 24) & 0xFF) << endl;
 
-        //cout << "0x" << hex << instr << dec << endl;
-        //instrOut << hex << setw(8) << setfill('0') << instr << endl;
+        // cout << "0x" << hex << instr << dec << endl;
+        // instrOut << hex << setw(8) << setfill('0') << instr << endl;
 
     }
 
@@ -398,14 +401,14 @@ int main() {
         uint32_t offset = addr;
         std::cout << "Offset " <<offset << std::endl;
         
-        //cout << "0x" << hex << addr << ": 0x" << value << dec << endl;
+        // cout << "0x" << hex << addr << ": 0x" << value << dec << endl;
+        // dataOut << hex << setw(8) << setfill('0') << value << endl;
+
         
         dataOut << hex << setw(2) << setfill('0') << (value & 0xFF) << endl;
         dataOut << hex << setw(2) << setfill('0') << ((value >> 8) & 0xFF) << endl;
         dataOut << hex << setw(2) << setfill('0') << ((value >> 16) & 0xFF) << endl;
         dataOut << hex << setw(2) << setfill('0') << ((value >> 24) & 0xFF) << endl;
-
-        //dataOut << hex << setw(8) << setfill('0') << value << endl;
     }
 
     input.close();

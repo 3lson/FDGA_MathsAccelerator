@@ -33,6 +33,7 @@ module pipeline_DECtoEXE #(
     input logic  ALUsrcD,
     input logic WD3SrcD,
     input logic  WDMED,
+    input logic isLoadD,
     input logic  branchD,
     input logic [1:0] JumpD,
     input logic             floatingD,
@@ -42,6 +43,7 @@ module pipeline_DECtoEXE #(
     output logic ResultSrcE,
     output logic [3:0] ALUctrlE,
     output logic  WDMEE,
+    output logic isLoadE,
     output logic ALUsrcE,
     output logic WD3SrcE,
     output logic  branchE,
@@ -58,6 +60,7 @@ always_ff @ (posedge clk) begin
             ResultSrcE <= ResultSrcD;
             ALUctrlE <= ALUctrlD;
             WDMEE <= WDMED;
+            isLoadE <= isLoadD;
             ALUsrcE <= ALUsrcD;
             WD3SrcE <= WD3SrcD;
             branchE <= branchD;
@@ -80,6 +83,7 @@ always_ff @ (posedge clk) begin
             ResultSrcE <= 1'b0;
             ALUctrlE <= 4'b0000;
             WDMEE <= 1'b0;
+            isLoadE <= 1'b0;
             ALUsrcE <= 1'b1;
             WD3SrcE <= 1'b0;
             branchE <= 1'b0;

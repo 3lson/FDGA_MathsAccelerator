@@ -13,7 +13,8 @@ module controlunit #(
     output logic                RegWrite, // Register write enable
     output logic                ResultSrc, // control signal for output mux
     output logic                WD3Src,     // control unit signal for write port for register allowing Jump instruction implementation
-    output logic                WDME,
+    output logic                WDME, // Write Data Memory for store
+    output logic                isLoadE,
     output logic                exit,
     output logic                floating //floating point flag
 );
@@ -43,6 +44,7 @@ module controlunit #(
         WD3Src = 1'b0;
         exit = 1'b0;
         WDME = 1'b0;
+        isLoadE = 1'b0;
         floating = 1'b0;
 
         case (op)
@@ -86,10 +88,13 @@ module controlunit #(
                             ALUsrc = 1'b1;
                             ImmSrc = 3'b001;
                             ResultSrc = 1'b1;
+                            WDME = 1'b0;
+                            isLoadE = 1'b1;
                     end
                     // STORE
                     4'b0001: begin
                             WDME = 1'b1;
+                            isLoadE = 1'b0;
                             ALUctrl = `ALU_ADD; // ADD for address calculation
                             ALUsrc = 1'b0; // Uses rd2
                             ImmSrc = 3'b010; // Store immediate
@@ -97,6 +102,7 @@ module controlunit #(
                     end
                     default: begin
                             WDME = 1'b0;
+                            isLoadE = 1'b0;
                             ALUctrl = `ALU_ADD;
                             ALUsrc = 1'b0;
                             ImmSrc = 3'b000;
@@ -190,6 +196,7 @@ module controlunit #(
                 ResultSrc = 1'b0;
                 WD3Src = 1'b0;
                 WDME = 1'b0;
+                isLoadE = 1'b0;
                 exit = 1'b0;
             end
         endcase
