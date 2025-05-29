@@ -13,7 +13,8 @@ using namespace std;
 // The assembler works by breaking down the instr sw ra, 268(sp)
 // args[0] = sw, args[1] = ra, args[2] = 268(sp)
 
-unordered_map<string, int> registerMap;
+unordered_map<string, int> intregisterMap;
+unordered_map<string, int> floatregisterMap;
 unordered_map<string, pair<int, int>> rTypeFunctMap = {
     {"add", {0b000, 0b0000}}, {"sub", {0b000, 0b0001}}, {"mul", {0b000, 0b0010}},
     {"div", {0b000, 0b0011}}, {"slt", {0b000, 0b0100}}, {"sgt", {0b000, 0b0101}},
@@ -42,31 +43,37 @@ map<string, int> labelMap;
 map<string, uint32_t> dataMap; // For storing .word values
 map<string, uint32_t> labelDataValues; // For storing data values associated with labels
 
-void initRegisterMap() {
-    for (int i = 0; i < 32; ++i)
-        registerMap["x" + to_string(i)] = i;
+void initregisterMap() {
+    for (int i = 0; i < 32; ++i) {
+        intregisterMap["x" + to_string(i)] = i;
+        floatregisterMap["x" + to_string(i)] = i;
+    }
+    // Int intregisterMap
+    intregisterMap["zero"] = 0; intregisterMap["ra"] = 1; intregisterMap["sp"] = 2;
+    intregisterMap["gp"] = 3; intregisterMap["tp"] = 4; intregisterMap["t0"] = 5;
+    intregisterMap["t1"] = 6; intregisterMap["t2"] = 7; intregisterMap["s0"] = 8;
+    intregisterMap["fp"] = 8; intregisterMap["s1"] = 9; intregisterMap["a0"] = 10;
+    intregisterMap["a1"] = 11; intregisterMap["a2"] = 12; intregisterMap["a3"] = 13;
+    intregisterMap["a4"] = 14; intregisterMap["a5"] = 15; intregisterMap["a6"] = 16;
+    intregisterMap["a7"] = 17; intregisterMap["s2"] = 18; intregisterMap["s3"] = 19;
+    intregisterMap["s4"] = 20; intregisterMap["s5"] = 21; intregisterMap["s6"] = 22;
+    intregisterMap["s7"] = 23; intregisterMap["s8"] = 24; intregisterMap["s9"] = 25;
+    intregisterMap["s10"] = 26; intregisterMap["s11"] = 27; intregisterMap["t3"] = 28;
+    intregisterMap["t4"] = 29; intregisterMap["t5"] = 30; intregisterMap["t6"] = 31;
 
-    registerMap["zero"] = 0; registerMap["ra"] = 1; registerMap["sp"] = 2;
-    registerMap["gp"] = 3; registerMap["tp"] = 4; registerMap["t0"] = 5;
-    registerMap["t1"] = 6; registerMap["t2"] = 7; registerMap["s0"] = 8;
-    registerMap["fp"] = 8; registerMap["s1"] = 9; registerMap["a0"] = 10;
-    registerMap["a1"] = 11; registerMap["a2"] = 12; registerMap["a3"] = 13;
-    registerMap["a4"] = 14; registerMap["a5"] = 15; registerMap["a6"] = 16;
-    registerMap["a7"] = 17; registerMap["s2"] = 18; registerMap["s3"] = 19;
-    registerMap["s4"] = 20; registerMap["s5"] = 21; registerMap["s6"] = 22;
-    registerMap["s7"] = 23; registerMap["s8"] = 24; registerMap["s9"] = 25;
-    registerMap["s10"] = 26; registerMap["s11"] = 27; registerMap["t3"] = 28;
-    registerMap["t4"] = 29; registerMap["t5"] = 30; registerMap["t6"] = 31;
-
-    //This is fine since we have no function arguments
-    // Floating-point register aliases (mapped to same as t0-t6)
-    registerMap["ft0"] = 5;  
-    registerMap["ft1"] = 6;  
-    registerMap["ft2"] = 7;  
-    registerMap["ft7"] = 17; 
-    registerMap["fa2"] = 12;
-    registerMap["fa3"]  = 13;
-    registerMap["fa4"] = 14;
+    // Float intregisterMap
+    floatregisterMap["ft0"] = 0; floatregisterMap["ft1"] = 1; floatregisterMap["ft2"] = 2;
+    floatregisterMap["ft3"] = 3; floatregisterMap["ft4"] = 4; floatregisterMap["ft5"] = 5;
+    floatregisterMap["ft6"] = 6; floatregisterMap["ft7"] = 7; floatregisterMap["fs0"] = 8;
+    floatregisterMap["fs1"] = 9; floatregisterMap["fa0"] = 10;
+    floatregisterMap["fa1"] = 11; floatregisterMap["fa2"] = 12; floatregisterMap["fa3"] = 13;
+    floatregisterMap["fa4"] = 14; floatregisterMap["fa5"] = 15; floatregisterMap["fa6"] = 16;
+    floatregisterMap["fa7"] = 17; floatregisterMap["fs2"] = 18; floatregisterMap["fs3"] = 19;
+    floatregisterMap["fs4"] = 20; floatregisterMap["fs5"] = 21; floatregisterMap["fs6"] = 22;
+    floatregisterMap["fs7"] = 23; floatregisterMap["fs8"] = 24; floatregisterMap["fs9"] = 25;
+    floatregisterMap["fs10"] = 26; floatregisterMap["fs11"] = 27; floatregisterMap["ft8"] = 28;
+    floatregisterMap["ft9"] = 29; floatregisterMap["ft10"] = 30; floatregisterMap["ft11"] = 31;
+    
 }
 
 int resolveSymbol(const string& expr, const map<string, int>& symbolTable) {
@@ -136,14 +143,14 @@ int getImm(const string& s) {
 
 uint32_t encodeRType(string op, const vector<string>& args) {
     int opcode = 0b000, pred = 0;
-    int rd = registerMap[args[0]], rs1 = registerMap[args[1]], rs2 = registerMap[args[2]];
+    int rd = intregisterMap[args[0]], rs1 = intregisterMap[args[1]], rs2 = intregisterMap[args[2]];
     int funct4 = rTypeFunctMap[op].second;
     return (opcode << 29) | (pred << 28) | (0 << 19) | (rs2 << 14) | (funct4 << 10) | (rs1 << 5) | rd;
 }
 
 uint32_t encodeIType(string op, const vector<string>& args) {
     int opcode = 0b001, pred = 0;
-    int rd = registerMap[args[0]], rs1 = registerMap[args[1]];
+    int rd = intregisterMap[args[0]], rs1 = intregisterMap[args[1]];
     int imm = getImm(args[2]) & 0x3FFF;
     int funct4 = iTypeFunctMap[op].second;
     return (opcode << 29) | (pred << 28) | (imm << 14) | (funct4 << 10) | (rs1 << 5) | rd;
@@ -151,26 +158,37 @@ uint32_t encodeIType(string op, const vector<string>& args) {
 
 uint32_t encodeFType(string op, const vector<string>& args) {
     int opcode = 0b010, pred = 0;
-    int rd = registerMap[args[1]];
-    int rs1 = registerMap[args[2]];
-    int rs2 = 0;
-
-    // For binary ops like fadd.s, fsub.s, fmul.s, fdiv.s, etc.
-    if (args.size() > 2 && (
-        op == "fadd.s" || op == "fsub.s" || op == "fmul.s" ||
-        op == "fdiv.s" || op == "flt.s" || op == "feq.s" || op == "fmin.s")) {
-        rs2 = registerMap[args[3]];
-    }
-
+    int rd, rs1, rs2 = 0;
     int funct4 = fTypeFunctMap[op].second;
+
+    if (op == "fcvt.w.s") {
+        // int rd = xN, float rs1 = fN
+        rd = intregisterMap[args[1]];
+        rs1 = floatregisterMap[args[2]];
+    } else if (op == "fcvt.s.w") {
+        // float rd = fN, int rs1 = xN
+        rd = floatregisterMap[args[1]];
+        rs1 = intregisterMap[args[2]];
+    } else if (op == "fneg.s" || op == "fabs.s") {
+        // unary float op: rd = fN, rs1 = fN
+        rd = floatregisterMap[args[1]];
+        rs1 = floatregisterMap[args[2]];
+        rs2 = 0; // don't care
+    } else {
+        // binary float op: rd = fN, rs1 = fN, rs2 = fN
+        rd = floatregisterMap[args[1]];
+        rs1 = floatregisterMap[args[2]];
+        rs2 = floatregisterMap[args[3]];
+    }
 
     return (opcode << 29) | (pred << 28) | (0 << 19) |
            (rs2 << 14) | (funct4 << 10) | (rs1 << 5) | rd;
 }
 
 uint32_t encodeLoad(string op, const vector<string>& args) {
-    int opcode = 0b100, funct4 = 0b0000;
-    int rd = registerMap[args[0]];
+    int opcode = 0b100;
+    int funct4 = (op == "flw") ? 0b1000 : 0b0000;
+    int rd = (op == "flw") ? floatregisterMap[args[0]] : intregisterMap[args[0]];
 
     string fullExpr = args[1];
     size_t paren = fullExpr.rfind('(');  // use last '('
@@ -183,19 +201,21 @@ uint32_t encodeLoad(string op, const vector<string>& args) {
     string rs1Str = fullExpr.substr(paren + 1, fullExpr.size() - paren - 2);  // t0
 
     int imm = resolveSymbol(immStr, labelMap);
-    int rs1 = registerMap[rs1Str];
+    int rs1 = intregisterMap[rs1Str];
 
     return (opcode << 29) | ((imm & 0x7FFF) << 14) | (funct4 << 10) | (rs1 << 5) | rd;
 }
 
-uint32_t encodeStore(const vector<string>& args) {
-    int opcode = 0b100, funct4 = 0b0001;
-    int rs2 = registerMap[args[0]];
+uint32_t encodeStore(string op, const vector<string>& args) {
+    int opcode = 0b100;
+    int funct4 = (op == "fsw") ? 0b1001 : 0b0001;
+    int rs2 = (op == "fsw") ? floatregisterMap[args[0]] : intregisterMap[args[0]];
+
     int paren = args[1].find('(');
     string immStr = args[1].substr(0, paren);
     string rs1Str = args[1].substr(paren + 1, args[1].size() - paren - 2);
     int imm = resolveSymbol(immStr, labelMap);
-    int rs1 = registerMap[rs1Str];
+    int rs1 = intregisterMap[rs1Str];
     uint32_t uimm = static_cast<uint32_t>(imm) & 0x7FFF;
     uint32_t imm_hi = (uimm >> 5) & 0x3FF;
     uint32_t imm_lo = uimm & 0x1F;
@@ -217,11 +237,6 @@ uint32_t encodeControl(string op, const vector<string>& args, int pc) {
         int32_t imm = (offset >> 2) & 0x3FFFFFF;  
         uint32_t imm_hi = (imm >> 10) & 0xFFFF; 
         uint32_t imm_lo = imm & 0x3FF; 
-        
-        //std::cout << "Offset " << offset << std::endl;
-        // std::cout << "Imm " << imm << std::endl;
-        // std::cout << "Imm_hi " << imm_hi << std::endl;
-        // std::cout << "Imm_lo " << imm_lo << std::endl;
     
         return (opcode << 29) | (imm_hi << 13) | (funct3 << 10) | imm_lo;
     }
@@ -229,7 +244,7 @@ uint32_t encodeControl(string op, const vector<string>& args, int pc) {
     if (op == "beqz") {
         string rs1_str = args[1];
         string label = args[2];
-        int rs1 = registerMap[rs1_str];
+        int rs1 = intregisterMap[rs1_str];
         int rs2 = 0;  // hardcoded to x0
         int target = labelMap[label];
         int32_t offset = (target - pc);
@@ -255,7 +270,7 @@ uint32_t encodeControl(string op, const vector<string>& args, int pc) {
 
 uint32_t encodeLUI(const vector<string>& args) {
     int opcode = 0b011;
-    int rd = registerMap[args[0]];
+    int rd = intregisterMap[args[0]];
 
     string immExpr = args[1];
     int fulladdr = resolveSymbol(immExpr, labelMap);  // Should return (addr + 0x800) >> 12
@@ -275,8 +290,10 @@ uint32_t encodePseudoLI(const vector<string>& args) {
 }
 
 int main() {
-    initRegisterMap();
+    initregisterMap();
     ifstream input("bin/output/algotests/for/for.s");
+    //For testing purposes
+    //ifstream input("assembler/program.asm");
     ofstream instrOut("rtl/program.hex");
     ofstream dataOut("rtl/data.hex");
     vector<pair<int, string>> instructions;
@@ -376,7 +393,7 @@ int main() {
         else if (iTypeFunctMap.count(op)) instr = encodeIType(op, {tokens[1], tokens[2], tokens[3]});
         else if (fTypeFunctMap.count(op)) instr = encodeFType(op, tokens);
         else if (op == "lw" || op == "flw") instr = encodeLoad(op, {tokens[1], tokens[2]});
-        else if (op == "sw" || op == "fsw") instr = encodeStore({tokens[1], tokens[2]});
+        else if (op == "sw" || op == "fsw") instr = encodeStore(op, {tokens[1], tokens[2]});
         else if (cTypeFunctMap.count(op)) instr = encodeControl(op, tokens, pc_addr);
         else if (op == "lui") instr = encodeLUI({tokens[1], tokens[2]});
         else if (op == "li") instr = encodePseudoLI({tokens[1], tokens[2]});
@@ -403,7 +420,6 @@ int main() {
         
         // cout << "0x" << hex << addr << ": 0x" << value << dec << endl;
         // dataOut << hex << setw(8) << setfill('0') << value << endl;
-
         
         dataOut << hex << setw(2) << setfill('0') << (value & 0xFF) << endl;
         dataOut << hex << setw(2) << setfill('0') << ((value >> 8) & 0xFF) << endl;

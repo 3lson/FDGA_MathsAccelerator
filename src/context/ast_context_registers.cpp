@@ -32,17 +32,21 @@ ContextRegister::ContextRegister(){
         {25, Register("s9", Type::_INT, true)},
         {26, Register("s10", Type::_INT, true)},
         {27, Register("s11", Type::_INT, true)},
+
         {28, Register("t3", Type::_INT, false)}, // reserved for multi-threading
         {29, Register("t4", Type::_INT, false)}, // reserved for multi-threading
         {30, Register("t5", Type::_INT, false)}, // reserved for multi-threading
         {31, Register("t6", Type::_INT, false)}, // reserved for multi-threading
-        {32, Register("ft0", Type::_FLOAT, true)},
+
+        {32, Register("ft0", Type::_FLOAT, false)}, // zero reg
         {33, Register("ft1", Type::_FLOAT, true)},
         {34, Register("ft2", Type::_FLOAT, true)},
-        {35, Register("ft3", Type::_FLOAT, false)},
-        {36, Register("ft4", Type::_FLOAT, false)},
-        {37, Register("ft5", Type::_FLOAT, false)},
-        {38, Register("ft6", Type::_FLOAT, false)},
+
+        {35, Register("ft3", Type::_FLOAT, false)}, // reserved for multi-threading
+        {36, Register("ft4", Type::_FLOAT, false)}, // reserved for multi-threading
+        {37, Register("ft5", Type::_FLOAT, false)}, // reserved for multi-threading
+        {38, Register("ft6", Type::_FLOAT, false)}, // reserved for multi-threading
+
         {39, Register("ft7", Type::_FLOAT, true)},
         {40, Register("fs0", Type::_FLOAT, false)},
         {41, Register("fs1", Type::_FLOAT, false)},
