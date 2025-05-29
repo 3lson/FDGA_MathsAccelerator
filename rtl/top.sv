@@ -67,6 +67,13 @@ module top #(
 
     logic [4:0] WriteAddr;
 
+
+    //outputs of reg files
+    logic [WIDTH-1:0] floatingRD1;
+    logic [WIDTH-1:0] floatingRD2;
+    logic [WIDTH-1:0] integerRD1;
+    logic [WIDTH-1:0] integerRD2;
+
     logic [WIDTH-1:0] RD1D;
     logic [WIDTH-1:0] RD1E;
     logic [WIDTH-1:0] RD2D;
@@ -94,6 +101,10 @@ module top #(
     logic RegWriteE;
     logic RegWriteM;
     logic RegWriteW;
+
+    //Write back to correct register type
+    logic IntWE;
+    logic FloatWE;
 
     // Sign Extend
     logic [2:0] ImmSrcD;
@@ -125,8 +136,15 @@ module top #(
 
     logic exit;
 
-    logic floatingD;
-    logic floatingE;
+    logic floatingALUD;
+    logic floatingALUE;
+
+    //floating Reg control signals 
+    logic floatingReadD;
+
+    logic floatingWriteD;
+    logic floatingWriteE;
+    logic floatingWriteW;
 
     //initialize pipeline
     initial begin
@@ -195,7 +213,9 @@ module top #(
         .ResultSrc(ResultSrcD),
         .WD3Src(WD3SrcD),
         .exit(exit),
-        .floating(floatingD)
+        .floatingALU(floatingALUD),
+        .floatingRead(floatingReadD),
+        .floatingWrite(floatingWriteD)
 
     );
 
@@ -214,18 +234,39 @@ module top #(
     assign RdD = instrD[4:0];
     
     //Completed
-    registerfile RegFile (
+    registerfile IntegerRegFile (
         .clk(clk),
         .rst(rst),
         .AD1(Rs1D),
         .AD2(Rs2D),
         .AD3(WriteAddr),
-        .WE3(RegWriteW),
-        .WD3(WD3W),
+        .WE3(IntWE),
+        .WD3(WD3W), //will be subject to change
 
-        .RD1(RD1D),
-        .RD2(RD2D),
+        .RD1(integerRD1),
+        .RD2(integerRD2),
         .a0(a0)
+    );
+
+    // Register type selection muxes:
+
+    //Read operand mux
+    assign {RD1D,RD2D} = (floatingReadD) ? {floatingRD1,floatingRD2}:{integerRD1,integerRD2};
+
+    //Write operand mux
+    assign {IntWE,FloatWE} = (floatingWriteW) ? {1'b0,RegWriteW}:{RegWRiteW,1'b0};
+
+    registerfile FloatingRegFile (
+        .clk(clk),
+        .rst(rst),
+        .AD1(Rs1D),
+        .AD2(Rs2D),
+        .AD3(WriteAddr),
+        .WE3(FloatWE),
+        .WD3(WD3W), //will be subject to change
+
+        .RD1(floatingRD1),
+        .RD2(floatingRD2)
     );
 
     //JUMP/CALL instruction write register mux
@@ -244,6 +285,7 @@ module top #(
         .RdD(RdD),
         .ExtImmD(ImmExtD),
         .PCPlus4D(PCPlus4D),
+        .floatingWriteD(floatingWriteD),
 
         .RD1E(RD1E),
         .RD2E(RD2E),
@@ -253,6 +295,7 @@ module top #(
         .RdE(RdE),
         .ExtImmE(ImmExtE),
         .PCPlus4E(PCPlus4E),
+        .floatingWriteE(floatingWriteE),
 
         .RegWriteD(RegWriteD),
         .ResultSrcD(ResultSrcD),
@@ -263,7 +306,7 @@ module top #(
         .WD3SrcD(WD3SrcD),
         .branchD(branchD),
         .JumpD(JumpD),
-        .floatingD(floatingD),
+        .floatingALUD(floatingALUD),
 
         .RegWriteE(RegWriteE),
         .ResultSrcE(ResultSrcE),
@@ -274,7 +317,7 @@ module top #(
         .WD3SrcE(WD3SrcE),
         .branchE(branchE),
         .JumpE(JumpE),
-        .floatingE(floatingE)
+        .floatingALUE(floatingALUE)
     );
 
     // Pipeline Stage 3 - Execute (EXE)
@@ -343,7 +386,7 @@ module top #(
         .result(ALUfloat)
     );
 
-    assign ALUResultE = floatingE ? ALUfloat:ALUint ;
+    assign ALUResultE = floatingALUE ? ALUfloat:ALUint ;
 
     //Completed
     pipeline_EXEtoMEM pipeline_EXEtoMEM (
@@ -366,12 +409,14 @@ module top #(
         .WDMEE(WDMEE),
         .isLoadE(isLoadE),
         .WD3SrcE(WD3SrcE),
+        .floatingWriteE(floatingWriteE),
 
         .RegWriteM(RegWriteM),
         .ResultSrcM(ResultSrcM),
         .WDMEM(WDMEM),
         .isLoadM(isLoadM),
-        .WD3SrcM(WD3SrcM)
+        .WD3SrcM(WD3SrcM),
+        .floatingWriteM(floatingWriteM) 
     );
 
     // Pipeline Stage 4 - Memory (MEM)
@@ -405,10 +450,12 @@ module top #(
         .RegWriteM(RegWriteM),
         .ResultSrcM(ResultSrcM),
         .WD3SrcM(WD3SrcM),
+        .floatingWriteM(floatingWriteM),
 
         .RegWriteW(RegWriteW),
         .ResultSrcW(ResultSrcW),
         .WD3SrcW(WD3SrcW),
+        .floatingWriteW(floatingWriteW),
 
         .flush(flush)
     );

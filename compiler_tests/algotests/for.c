@@ -33,8 +33,6 @@ int main2(){
         done = 1;
         for(j=0; j<3; j++){
             old_centroids_x[j] = centroids_x[j];
-            // breaks at old_centroids_y[j] = centroids_y[j];
-            old_centroids_y[j] = centroids_y[j];
         }
     }
     return 5;

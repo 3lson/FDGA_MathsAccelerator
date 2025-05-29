@@ -16,7 +16,9 @@ module controlunit #(
     output logic                WDME, // Write Data Memory for store
     output logic                isLoadE,
     output logic                exit,
-    output logic                floating //floating point flag
+    output logic                floatingALU, //floating point flag
+    output logic                floatingRead,
+    output logic                floatingWrite
 );
 
     // Extract instruction fields
@@ -45,7 +47,9 @@ module controlunit #(
         exit = 1'b0;
         WDME = 1'b0;
         isLoadE = 1'b0;
-        floating = 1'b0;
+        floatingALU = 1'b0;
+        floatingRead = 1'b0;
+        floatingWrite = 1'b0;
 
         case (op)
             `Rtype: begin 
@@ -91,6 +95,20 @@ module controlunit #(
                             WDME = 1'b0;
                             isLoadE = 1'b1;
                     end
+
+                    //FLOATING LOAD
+                    4'b1000: begin
+                        ALUctrl = `ALU_ADD; // ADD for address calculation
+                        RegWrite = 1'b1;
+                        ALUsrc = 1'b1;
+                        ImmSrc = 3'b001;
+                        ResultSrc = 1'b1;
+                        WDME = 1'b0;
+                        isLoadE = 1'b1;
+                        floatingRead = 1'b0;
+                        floatingWrite = 1'b1;
+                    end
+
                     // STORE
                     4'b0001: begin
                             WDME = 1'b1;
@@ -99,6 +117,18 @@ module controlunit #(
                             ALUsrc = 1'b0; // Uses rd2
                             ImmSrc = 3'b010; // Store immediate
                             ALUsrc = 1'b1;
+                    end
+
+                    //FLOATING WRITE
+                    4'b1001: begin
+                            WDME = 1'b1;
+                            isLoadE = 1'b0;
+                            ALUctrl = `ALU_ADD; // ADD for address calculation
+                            ALUsrc = 1'b0; // Uses rd2
+                            ImmSrc = 3'b010; // Store immediate
+                            ALUsrc = 1'b1;
+                            floatingRead = 1'b0;
+                            floatingWrite = 1'b1;
                     end
                     default: begin
                             WDME = 1'b0;
@@ -168,9 +198,12 @@ module controlunit #(
             end
 
             `Ftype: begin
-                floating = 1'b1;
+                floatingALU = 1'b1;
                 ALUsrc = 1'b0;
                 RegWrite = 1'b1;
+                floatingRead = 1'b1;
+                floatingWrite = 1'b1;
+
                 case(funct4)
                 `FALU_ADD: ALUctrl = `FALU_ADD;
                 `FALU_SUB: ALUctrl = `FALU_SUB;
@@ -180,8 +213,16 @@ module controlunit #(
                 `FALU_EQ: ALUctrl = `FALU_EQ;
                 `FALU_NEG: ALUctrl = `FALU_NEG;
                 `FALU_ABS: ALUctrl = `FALU_ABS; 
-                `FALU_FCVT_WS: ALUctrl = `FALU_FCVT_WS;
-                `FALU_FCVT_SW: ALUctrl = `FALU_FCVT_SW; 
+                `FALU_FCVT_WS: begin
+                    ALUctrl = `FALU_FCVT_WS;
+                    floatingRead = 1'b1;
+                    floatingWrite = 1'b0;
+                end
+                `FALU_FCVT_SW: begin
+                    ALUctrl = `FALU_FCVT_SW;
+                    floatingRead = 1'b0;
+                    floatingWrite =  1'b1;
+                end
                 default ALUctrl = `FALU_ADD;
                 endcase
             end
@@ -198,6 +239,9 @@ module controlunit #(
                 WDME = 1'b0;
                 isLoadE = 1'b0;
                 exit = 1'b0;
+                floatingALU = 1'b0;
+                floatingRead = 1'b0;
+                floatingWrite = 1'b0;
             end
         endcase
     end

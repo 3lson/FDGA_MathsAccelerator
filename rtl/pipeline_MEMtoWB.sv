@@ -20,12 +20,14 @@ module pipeline_MEMtoWB #(
     input logic RegWriteM,
     input logic ResultSrcM,
     input logic WD3SrcM,
+    input logic floatingWriteM,
 
 
     //Writeback stage
     output logic RegWriteW,
     output logic ResultSrcW, 
     output logic WD3SrcW,
+    output logic floatingWriteW,
 
 
     //hazard detection
@@ -37,6 +39,7 @@ always_ff @ (posedge clk) begin
     ResultSrcW <= ResultSrcM;
     RegWriteW <= RegWriteM;
     WD3SrcW <= WD3SrcM;
+    floatingWriteW <= floatingWriteM;
 
     //Data path
     ALUResultW <= ALUResultM;
