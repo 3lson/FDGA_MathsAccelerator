@@ -14,7 +14,7 @@ int main2(){
     float clusters_x[3][9];
     float clusters_y[3][9];
     int cluster_sizes[3];
-    int max_iter =100;
+    int max_iter =1;
     int num_points =9;
     int cycle;
     int j;
@@ -33,6 +33,7 @@ int main2(){
         done = 1;
         for(j=0; j<3; j++){
             old_centroids_x[j] = centroids_x[j];
+            // breaks at old_centroids_y[j] = centroids_y[j];
             old_centroids_y[j] = centroids_y[j];
         }
     }
