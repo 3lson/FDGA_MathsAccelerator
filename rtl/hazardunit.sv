@@ -4,6 +4,7 @@ module hazardunit (
     input logic [4:0] RdM,
     input logic [4:0] RdW,
     input logic        WDMEM,
+    input logic     isLoadM,
     input logic  branchE,
     input logic [1:0] JumpE,
     input logic EQ,
@@ -60,7 +61,7 @@ module hazardunit (
 
     always_comb begin
         //Stall
-        if ((WDMEM == 1'b1) && ((RdM == Rs1E) || (RdM == Rs2E))) begin
+        if ((isLoadM == 1'b1) && ((RdM == Rs1E) || (RdM == Rs2E))) begin
             stall = 1'b1;
         end
         else begin 

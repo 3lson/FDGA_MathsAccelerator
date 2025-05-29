@@ -77,6 +77,10 @@ module top #(
     logic  WDMEE;
     logic  WDMEM;
 
+    logic isLoadD;
+    logic isLoadE;
+    logic isLoadM;
+
     logic [WIDTH-1:0] WriteDataE;
     logic [WIDTH-1:0] WriteDataM;
     
@@ -129,6 +133,9 @@ module top #(
         WDMED = 1'b0;
         WDMEE = 1'b0;
         WDMEM = 1'b0;
+        isLoadD = 1'b0;
+        isLoadE = 1'b0;
+        isLoadM = 1'b0;
     end
 
     // Pipeline Stage 1 - Fetch (FEC)
@@ -184,6 +191,7 @@ module top #(
         .branch(branchD),
         .Jump(JumpD),
         .WDME(WDMED),
+        .isLoadE(isLoadD),
         .ResultSrc(ResultSrcD),
         .WD3Src(WD3SrcD),
         .exit(exit),
@@ -249,6 +257,7 @@ module top #(
         .RegWriteD(RegWriteD),
         .ResultSrcD(ResultSrcD),
         .WDMED(WDMED),
+        .isLoadD(isLoadD),
         .ALUctrlD(ALUctrlD),
         .ALUsrcD(ALUsrcD),
         .WD3SrcD(WD3SrcD),
@@ -259,6 +268,7 @@ module top #(
         .RegWriteE(RegWriteE),
         .ResultSrcE(ResultSrcE),
         .WDMEE(WDMEE),
+        .isLoadE(isLoadE),
         .ALUctrlE(ALUctrlE),
         .ALUsrcE(ALUsrcE),
         .WD3SrcE(WD3SrcE),
@@ -354,11 +364,13 @@ module top #(
         .RegWriteE(RegWriteE),
         .ResultSrcE(ResultSrcE),
         .WDMEE(WDMEE),
+        .isLoadE(isLoadE),
         .WD3SrcE(WD3SrcE),
 
         .RegWriteM(RegWriteM),
         .ResultSrcM(ResultSrcM),
         .WDMEM(WDMEM),
+        .isLoadM(isLoadM),
         .WD3SrcM(WD3SrcM)
     );
 
@@ -410,6 +422,7 @@ module top #(
         .RdM(RdM),
         .RdW(RdW),
         .WDMEM(WDMEM),
+        .isLoadM(isLoadM),
         .branchE(branchE),
         .JumpE(JumpE),
         .EQ(EQ),
@@ -434,18 +447,18 @@ module top #(
     end
 
 
-    always_ff @(posedge clk) begin
-        if (!rst) begin
-            $display("PCF=%h, instrF=%h", PCF, instrF);
-            $display("PCD=%h, instrD=%h, ImmSrcD=%h", PCD, instrD, ImmSrcD);
-            $display("PCE=%h, ALUResultE=%h, ALUfloat=%h,floatingE=%h", PCE, ALUResultE,ALUfloat,floatingE);
-            $display("ALUctrlE=%b, SrcAE=%h, SrcBE=%h", ALUctrlE, SrcAE, SrcBE);
-            $display("ALUResultM=%h, ReadDataM=%h", ALUResultM, ReadDataM);
-            $display( "WD3W=%h", WD3W);
-            $display("Register a0 output: a0=%h", a0);
-            $display("------------------------------------------------");
-        end
-    end
+    // always_ff @(posedge clk) begin
+    //     if (!rst) begin
+    //         $display("PCF=%h, instrF=%h", PCF, instrF);
+    //         $display("PCD=%h, instrD=%h, ImmSrcD=%h", PCD, instrD, ImmSrcD);
+    //         $display("PCE=%h, ALUResultE=%h, ALUfloat=%h,floatingE=%h", PCE, ALUResultE,ALUfloat,floatingE);
+    //         $display("ALUctrlE=%b, SrcAE=%h, SrcBE=%h", ALUctrlE, SrcAE, SrcBE);
+    //         $display("ALUResultM=%h, ReadDataM=%h", ALUResultM, ReadDataM);
+    //         $display( "WD3W=%h", WD3W);
+    //         $display("Register a0 output: a0=%h", a0);
+    //         $display("------------------------------------------------");
+    //     end
+    // end
 
 
 endmodule
