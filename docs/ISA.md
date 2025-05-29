@@ -1,4 +1,4 @@
-# Elson-V ISA: IPPro-Inspired 
+# Elson-V ISA:
 
 
 ## Overview  
@@ -55,17 +55,29 @@ All instr are 32 bit wide
 ### M-type (Memory Access)
 `opcode = 100`
 
-**LOAD** `lw rd, (rs1)`
+**LOAD** `lw rd, imm(rs1)`
 
 | [31:29] | [28:14] | [13:10] | [9:5] | [4:0]
 |--------|----|-------|--|-----|
 |opcode| IMM [14:0] (15 bits) | FUNCT4 = 0000 | RS1 | RD |
 
-**STORE** `sw rs2, (rs1)`
+**STORE** `sw rs2, imm(rs1)`
 
 | [31:29] | [28:19] | [18:14] | [13:10] | [9:5] | [4:0]|
 |--------|----|-----|------|---|-----|
 |opcode| IMM [14:5] | RS2|FUNCT4=0001 | RS1 | IMM [4:0] |
+
+**FLOAT LOAD** `flw ft0, imm(t0)`
+
+| [31:29] | [28:14] | [13:10] | [9:5] | [4:0]
+|--------|----|-------|--|-----|
+|opcode| IMM [14:0] (15 bits) | FUNCT4 = 1000 | RS1 | RD |
+
+**FLOAT STORE** `fsw ft0, imm(t0)`
+
+| [31:29] | [28:19] | [18:14] | [13:10] | [9:5] | [4:0]|
+|--------|----|-----|------|---|-----|
+|opcode| IMM [14:5] | RS2|FUNCT4=1001 | RS1 | IMM [4:0] |
 
 
 **Note:** `flw` and `fsw` will be treated the same as `lw` and `sw` respectively
