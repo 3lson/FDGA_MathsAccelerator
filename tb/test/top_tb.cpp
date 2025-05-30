@@ -15,7 +15,7 @@ protected:
 };
 
 TEST_F(TopTestbench, ExecuteSimpleProgram) {
-    runSimulation(50000);  // Run enough cycles for instructions to complete
+    runSimulation(500);  // Run enough cycles for instructions to complete
 
     EXPECT_EQ(top->a0, 5);
 }

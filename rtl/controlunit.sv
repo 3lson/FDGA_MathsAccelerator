@@ -119,7 +119,7 @@ module controlunit #(
                             ALUsrc = 1'b1;
                     end
 
-                    //FLOATING WRITE
+                    //FLOATING STORE
                     4'b1001: begin
                             WDME = 1'b1;
                             isLoadE = 1'b0;
