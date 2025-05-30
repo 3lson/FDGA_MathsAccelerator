@@ -33,7 +33,7 @@ int main2(){
         done = 1;
         for(j=0; j<3; j++){
             old_centroids_x[j] = centroids_x[j];
-            old_centroids_y[i] = centroids_y[i];
+            old_centroids_y[j] = centroids_y[j];
         }
     }
     return 5;
