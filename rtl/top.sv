@@ -140,7 +140,7 @@ module top #(
     logic floatingALUE;
 
     //floating Reg control signals 
-    logic floatingReadD;
+    logic [1:0]  floatingReadD;
 
     logic floatingWriteD;
     logic floatingWriteE;
@@ -251,7 +251,14 @@ module top #(
     // Register type selection muxes:
 
     //Read operand mux
-    assign {RD1D,RD2D} = (floatingReadD) ? {floatingRD1,floatingRD2}:{integerRD1,integerRD2};
+    always_comb begin
+        case(floatingReadD)
+        2'b00: {RD1D,RD2D} = {integerRD1,integerRD2};
+        2'b01: {RD1D,RD2D} = {floatingRD1,floatingRD2};
+        2'b10: {RD1D,RD2D} = {integerRD1,floatingRD2}; //FLOATING STORE 
+        default: {RD1D,RD2D} = {integerRD1,integerRD2};
+        endcase
+    end
 
     //Write operand mux
     assign {IntWE,FloatWE} = (floatingWriteW) ? {1'b0,RegWriteW}:{RegWriteW,1'b0};
@@ -345,11 +352,35 @@ module top #(
     //RD1 mux
     always_comb begin
         case(forwardAE)
-        2'b00: SrcAE = RD1E;
+        2'b00: SrcAE = preserveE ? reserveE:RD1E;
         2'b01: SrcAE = ALUResultM;
         2'b10: SrcAE = WD3W;
         default: SrcAE = RD1E;
         endcase
+    end
+
+    logic [31:0] reserveE;
+    logic preserveE;
+    logic doubletrouble;
+
+    always_comb begin
+        preserveE = 1'b0;
+        if((forwardAE != 2'b00)  && stall)begin
+            reserveE = SrcAE;
+            doubletrouble = 1'b1;
+        end
+    end
+
+    preserveFSM preserve(
+        .clk(clk),
+        .preserve(doubletrouble),
+        .preserve(preserveE)
+    );
+
+    always_comb begin
+        if((forwardBE != 2'b00)  && stall)begin
+            reserve = SrcBE;
+        end
     end
 
     
