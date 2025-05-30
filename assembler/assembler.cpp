@@ -251,9 +251,16 @@ uint32_t encodeControl(string op, const vector<string>& args, int pc) {
         
         uint32_t imm = (offset>>2) & 0x3FFFF;
     
-        uint32_t imm_17_8 = (imm >> 8) & 0x3FF;   // bits [17:8] -> [28:19]
-        uint32_t imm_7    = (imm >> 7) & 0x1;     // bit [7]     -> [13]
+        uint32_t imm_17_8 = (imm >> 6) & 0x3FF;   // bits [17:8] -> [28:19]
+        uint32_t imm_7    = (imm >> 5) & 0x1;     // bit [7]     -> [13]
         uint32_t imm_6_2  = imm & 0x1F;           // bits [6:2]  -> [4:0]
+
+        std::cout << "Target" <<target << std::endl;
+        std::cout << "Offset" <<offset << std::endl;
+        std::cout << "Imm" <<imm << std::endl;
+        std::cout << "imm_17_8: " << imm_17_8 << std::endl;
+        std::cout << "imm_7: " << imm_7 << std::endl;
+        std::cout << "imm_6_2: " << imm_6_2 << std::endl;
     
         return (opcode << 29)
              | (imm_17_8 << 19)

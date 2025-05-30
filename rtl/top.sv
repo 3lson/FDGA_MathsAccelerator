@@ -382,7 +382,7 @@ module top #(
             reqAE = 1'b1;
         end
         else begin
-            reserveAE = 32'b0;
+            reserveAE = SrcAE;
             reqAE = 1'b0;
         end
     end
@@ -395,7 +395,7 @@ module top #(
             reqBE = 1'b1;
         end
         else begin
-            reserveBE = 32'b0;
+            reserveBE = SrcBE;
             reqBE = 1'b0;
         end
     end
