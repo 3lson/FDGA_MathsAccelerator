@@ -17,7 +17,7 @@ module controlunit #(
     output logic                isLoadE,
     output logic                exit,
     output logic                floatingALU, //floating point flag
-    output logic                floatingRead,
+    output logic [1:0]          floatingRead,
     output logic                floatingWrite
 );
 
@@ -48,7 +48,7 @@ module controlunit #(
         WDME = 1'b0;
         isLoadE = 1'b0;
         floatingALU = 1'b0;
-        floatingRead = 1'b0;
+        floatingRead = 2'b00;
         floatingWrite = 1'b0;
 
         case (op)
@@ -105,7 +105,7 @@ module controlunit #(
                         ResultSrc = 1'b1;
                         WDME = 1'b0;
                         isLoadE = 1'b1;
-                        floatingRead = 1'b0;
+                        floatingRead = 2'b00;
                         floatingWrite = 1'b1;
                     end
 
@@ -127,7 +127,7 @@ module controlunit #(
                             ALUsrc = 1'b0; // Uses rd2
                             ImmSrc = 3'b010; // Store immediate
                             ALUsrc = 1'b1;
-                            floatingRead = 1'b0;
+                            floatingRead = 2'b10;
                             floatingWrite = 1'b1;
                     end
                     default: begin
@@ -201,7 +201,7 @@ module controlunit #(
                 floatingALU = 1'b1;
                 ALUsrc = 1'b0;
                 RegWrite = 1'b1;
-                floatingRead = 1'b1;
+                floatingRead = 2'b01;
                 floatingWrite = 1'b1;
 
                 case(funct4)
@@ -215,12 +215,12 @@ module controlunit #(
                 `FALU_ABS: ALUctrl = `FALU_ABS; 
                 `FALU_FCVT_WS: begin
                     ALUctrl = `FALU_FCVT_WS;
-                    floatingRead = 1'b1;
+                    floatingRead = 2'b01;
                     floatingWrite = 1'b0;
                 end
                 `FALU_FCVT_SW: begin
                     ALUctrl = `FALU_FCVT_SW;
-                    floatingRead = 1'b0;
+                    floatingRead = 2'b00;
                     floatingWrite =  1'b1;
                 end
                 default ALUctrl = `FALU_ADD;
@@ -240,7 +240,7 @@ module controlunit #(
                 isLoadE = 1'b0;
                 exit = 1'b0;
                 floatingALU = 1'b0;
-                floatingRead = 1'b0;
+                floatingRead = 2'b00;
                 floatingWrite = 1'b0;
             end
         endcase
