@@ -352,7 +352,7 @@ module top #(
     //RD1 mux
     always_comb begin
         case(forwardAE)
-        2'b00: SrcAE = preserveAE ? reserveE:RD1E;
+        2'b00: SrcAE = preserveAE ? reserveAE:RD1E;
         2'b01: SrcAE = ALUResultM;
         2'b10: SrcAE = WD3W;
         default: SrcAE = RD1E;
@@ -362,7 +362,7 @@ module top #(
         //RD2 mux
     always_comb begin
         case(forwardBE)
-        2'b00: WriteDataE = preserveBE ? reserveE:RD2E;
+        2'b00: WriteDataE = preserveBE ? reserveBE:RD2E;
         2'b01: WriteDataE = ALUResultM;
         2'b10: WriteDataE = WD3W;
         default: WriteDataE = RD2E;
@@ -370,32 +370,32 @@ module top #(
     end
 
 
-    logic [31:0] reserveE;
+    logic [31:0] reserveAE, reserveBE;
     logic reqAE, reqBE;
     logic preserveAE, preserveBE;
 
     always_comb begin
-        reserveE = 32'b0;
+        reserveAE = 32'b0;
         reqAE = 1'b0;
         if((forwardAE == 2'b10)  && stall)begin
-            reserveE = SrcAE;
+            reserveAE = SrcAE;
             reqAE = 1'b1;
         end
         else begin
-            reserveE = 32'b0;
+            reserveAE = 32'b0;
             reqAE = 1'b0;
         end
     end
 
     always_comb begin
-        reserveE = 32'b0;
+        reserveBE = 32'b0;
         reqBE = 1'b0;
         if((forwardBE == 2'b10)  && stall)begin
-            reserveE = SrcBE;
+            reserveBE = SrcBE;
             reqBE = 1'b1;
         end
         else begin
-            reserveE = 32'b0;
+            reserveBE = 32'b0;
             reqBE = 1'b0;
         end
     end
