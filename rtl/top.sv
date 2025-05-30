@@ -359,41 +359,53 @@ module top #(
         endcase
     end
 
-    logic [31:0] reserveE;
-    logic preserveE;
-    logic doubletrouble;
-
-    always_comb begin
-        preserveE = 1'b0;
-        if((forwardAE != 2'b00)  && stall)begin
-            reserveE = SrcAE;
-            doubletrouble = 1'b1;
-        end
-    end
-
-    preserveFSM preserve(
-        .clk(clk),
-        .preserve(doubletrouble),
-        .preserve(preserveE)
-    );
-
-    always_comb begin
-        if((forwardBE != 2'b00)  && stall)begin
-            reserve = SrcBE;
-        end
-    end
-
-    
-    //RD2 mux
+        //RD2 mux
     always_comb begin
         case(forwardBE)
-        2'b00: WriteDataE = RD2E;
+        2'b00: WriteDataE = preserveE ? reserveE:RD2E;
         2'b01: WriteDataE = ALUResultM;
         2'b10: WriteDataE = WD3W;
         default: WriteDataE = RD2E;
         endcase
     end
 
+
+    logic [31:0] reserveE;
+    logic reqE;
+    logic preserveE;
+
+    always_comb begin
+        reserveE = 32'b0;
+        reqE = 1'b0;
+        if((forwardAE != 2'b00)  && stall)begin
+            reserveE = SrcAE;
+            reqE = 1'b1;
+        end
+        else begin
+            reserveE = 32'b0;
+            reqE = 1'b0;
+        end
+    end
+
+    always_comb begin
+        reserveE = 32'b0;
+        reqE = 1'b0;
+        if((forwardBE != 2'b00)  && stall)begin
+            reserveE = SrcBE;
+            reqE = 1'b1;
+        end
+        else begin
+            reserveE = 32'b0;
+            reqE = 1'b0;
+        end
+    end
+
+    preserveFSM preserve(
+        .clk(clk),
+        .rst(rst),
+        .req(reqE),
+        .preserve(preserveE)
+    );
 
     //Completed
     assign SrcBE = ALUsrcE ? ImmExtE : WriteDataE;
