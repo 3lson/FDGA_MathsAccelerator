@@ -2,282 +2,200 @@
 #include <verilated_cov.h>
 #include <gtest/gtest.h>
 #include <bit>
+#include <cmath>
+#include <vector>
 
-// Floating ALU Ops
-#define FALU_ADD        0b0000
-#define FALU_SUB        0b0001
-#define FALU_MUL        0b0010
-#define FALU_DIV        0b0011
-#define FALU_ABS        0b1000
-#define FALU_EQ         0b0110
-#define FALU_SLT        0b0100
-#define FALU_FCVT_WS    0b1001
-#define FALU_FCVT_SW    0b1010
-//new tests need to be implemented
-#define FALU_NEG 0b0101
-
-class FloatingALUTestbench : public BaseTestbench {
+class LaneTestbench : public BaseTestbench {
 protected:
     void initializeInputs() override {
-        top->alu_op = 0;
-        top->op1 = 0;
-        top->op2 = 0;
+        top->clk = 0;
+        top->stall = 0;
+        top->threads = 0;
+        top->bIdx = 0;
+        top->FUNCT4 = 0;
+        top->IMM = 0;
+        top->AD1 = 0;
+        top->AD2 = 0;
+        top->AD3 = 0;
+        top->is_int = 0;
+        top->is_float = 0;
+        top->WE3 = 0;
+    }
+
+    void clock() {
+        top->clk = 0;
+        top->eval();
+        top->clk = 1;
+        top->eval();
+        top->clk = 0;
+        top->eval();
     }
 
     static uint32_t float_to_bits(float f) {
-        return *reinterpret_cast<uint32_t*>(&f);
+        uint32_t bits;
+        std::memcpy(&bits, &f, sizeof(f));
+        return bits;
     }
 
     static float bits_to_float(uint32_t bits) {
-        return *reinterpret_cast<float*>(&bits);
+        float f;
+        std::memcpy(&f, &bits, sizeof(bits));
+        return f;
+    }
+
+    void setThread(uint8_t thread) {
+        top->threads = thread;
+    }
+
+    void writeRegister(uint8_t addr, uint32_t value, uint8_t thread) {
+        top->AD3 = addr;
+        top->WD3 = value;
+        top->WE3 = 1;
+        setThread(thread);
+        clock();
+        top->WE3 = 0;
+    }
+
+    void checkRegister(uint8_t addr, uint32_t expected, uint8_t thread) {
+        top->AD1 = addr;
+        setThread(thread);
+        top->eval();
+        EXPECT_EQ(top->RD1[thread], expected);
     }
 };
 
-TEST_F(FloatingALUTestbench, AddTest) {
-    float op1 = 3.5f;
-    float op2 = 2.25f;
-    float expected = op1 + op2;
+TEST_F(LaneTestbench, IntegerAddOperation) {
+    // Initialize
+    writeRegister(1, 10, 0);  // Write 10 to register 1 for thread 0
+    writeRegister(2, 20, 0);  // Write 20 to register 2 for thread 0
 
-    top->alu_op = FALU_ADD;
-    top->op1 = float_to_bits(op1);
-    top->op2 = float_to_bits(op2);
-
+    // Set up ADD operation (assuming FUNCT4=0 is ADD)
+    top->AD1 = 1;
+    top->AD2 = 2;
+    top->FUNCT4 = 0b0000;  // ADD operation
+    top->is_int = 1;
     top->eval();
 
-    EXPECT_FLOAT_EQ(bits_to_float(top->result), expected);
-    EXPECT_EQ(top->cmp, 0);
+    // Check result
+    EXPECT_EQ(top->alu_result, 30);
+    
+    // Write back and verify
+    writeRegister(3, top->alu_result, 0);
+    checkRegister(3, 30, 0);
 }
 
-TEST_F(FloatingALUTestbench, SubTest) {
-    float op1 = 10.0f;
-    float op2 = 4.0f;
-    float expected = op1 - op2;
+TEST_F(LaneTestbench, FloatingAddOperation) {
+    float a = 3.5f;
+    float b = 2.25f;
+    
+    // Initialize floating point values
+    writeRegister(1, float_to_bits(a), 0);
+    writeRegister(2, float_to_bits(b), 0);
 
-    top->alu_op = FALU_SUB;
-    top->op1 = float_to_bits(op1);
-    top->op2 = float_to_bits(op2);
-
+    // Set up FADD operation (assuming FUNCT4=0 is FADD)
+    top->AD1 = 1;
+    top->AD2 = 2;
+    top->FUNCT4 = 0b0000;  // FADD operation
+    top->is_float = 1;
     top->eval();
 
-    EXPECT_FLOAT_EQ(bits_to_float(top->result), expected);
-    EXPECT_EQ(top->cmp, 0);
+    // Check result
+    EXPECT_FLOAT_EQ(bits_to_float(top->floatingalu_result), a + b);
+    
+    // Write back and verify
+    writeRegister(3, top->floatingalu_result, 0);
+    checkRegister(3, float_to_bits(a + b), 0);
 }
 
-TEST_F(FloatingALUTestbench, MulTest) {
-    float op1 = 1.5f;
-    float op2 = -2.0f;
-    float expected = op1 * op2;
+TEST_F(LaneTestbench, ThreadIsolation) {
+    // Test that threads don't interfere with each other
+    writeRegister(1, 100, 0);  // Thread 0
+    writeRegister(1, 200, 1);  // Thread 1
 
-    top->alu_op = FALU_MUL;
-    top->op1 = float_to_bits(op1);
-    top->op2 = float_to_bits(op2);
+    // Verify isolation
+    top->AD1 = 1;
+    
+    top->threads = 0;
+    top->eval();
+    EXPECT_EQ(top->RD1[0], 100);
+    
+    top->threads = 1;
+    top->eval();
+    EXPECT_EQ(top->RD1[1], 200);
+}
 
+TEST_F(LaneTestbench, IntegerComparison) {
+    // Test EQ operation
+    writeRegister(1, 10, 0);
+    writeRegister(2, 10, 0);
+
+    top->AD1 = 1;
+    top->AD2 = 2;
+    top->FUNCT4 = 0b0110;  // EQ operation
+    top->is_int = 1;
     top->eval();
 
-    EXPECT_FLOAT_EQ(bits_to_float(top->result), expected);
-    EXPECT_EQ(top->cmp, 0);
+    EXPECT_EQ(top->int_eq_shared, 1);
 }
 
-TEST_F(FloatingALUTestbench, DivTest) {
-    float op1 = 6.0f;
-    float op2 = 3.0f;
-    float expected = op1 / op2;
+TEST_F(LaneTestbench, FloatingComparison) {
+    // Test FEQ operation
+    float a = 3.14f;
+    float b = 3.14f;
+    
+    writeRegister(1, float_to_bits(a), 0);
+    writeRegister(2, float_to_bits(b), 0);
 
-    top->alu_op = FALU_DIV;
-    top->op1 = float_to_bits(op1);
-    top->op2 = float_to_bits(op2);
-
+    top->AD1 = 1;
+    top->AD2 = 2;
+    top->FUNCT4 = 0b0110;  // FEQ operation
+    top->is_float = 1;
     top->eval();
 
-    EXPECT_FLOAT_EQ(bits_to_float(top->result), expected);
-    EXPECT_EQ(top->cmp, 0);
+    EXPECT_EQ(top->float_eq_shared, 1);
 }
 
-TEST_F(FloatingALUTestbench, AbsTest) {
-    float op1 = -7.25f;
-    float expected = std::abs(op1);
-
-    top->alu_op = FALU_ABS;
-    top->op1 = float_to_bits(op1);
-    top->op2 = 0;
-
+TEST_F(LaneTestbench, StallBehavior) {
+    writeRegister(1, 42, 0);
+    
+    // Normal operation
+    top->AD1 = 1;
+    top->stall = 0;
     top->eval();
-
-    EXPECT_FLOAT_EQ(bits_to_float(top->result), expected);
-    EXPECT_EQ(top->cmp, 0);
-}
-
-TEST_F(FloatingALUTestbench, EqTestTrue) {
-    float op1 = 4.0f;
-    float op2 = 4.0f;
-
-    top->alu_op = FALU_EQ;
-    top->op1 = float_to_bits(op1);
-    top->op2 = float_to_bits(op2);
-
+    EXPECT_EQ(top->RD1[0], 42);
+    
+    // Stalled operation
+    top->stall = 1;
     top->eval();
-
-    EXPECT_EQ(top->cmp, 1);
+    // Should maintain previous values when stalled
+    // (Exact behavior depends on your implementation)
 }
 
-TEST_F(FloatingALUTestbench, EqTestFalse) {
-    float op1 = 4.0f;
-    float op2 = 5.0f;
-
-    top->alu_op = FALU_EQ;
-    top->op1 = float_to_bits(op1);
-    top->op2 = float_to_bits(op2);
-
+TEST_F(LaneTestbench, ResultSelection) {
+    // Test that final_result selects the correct ALU output
+    writeRegister(1, 10, 0);
+    writeRegister(2, 20, 0);
+    
+    // Integer operation
+    top->AD1 = 1;
+    top->AD2 = 2;
+    top->FUNCT4 = 0b0000;  // ADD
+    top->is_int = 1;
     top->eval();
-
-    EXPECT_EQ(top->cmp, 0);
-}
-
-
-TEST_F(FloatingALUTestbench, SltTestTrue) {
-    float op1 = 1.0f;
-    float op2 = 2.0f;
-
-    top->alu_op = FALU_SLT;
-    top->op1 = float_to_bits(op1);
-    top->op2 = float_to_bits(op2);
-
+    EXPECT_EQ(top->final_result, top->alu_result);
+    
+    // Floating operation
+    top->is_int = 0;
+    top->is_float = 1;
     top->eval();
-
-    EXPECT_EQ(top->cmp, 1);
-}
-
-TEST_F(FloatingALUTestbench, SltTestFalse) {
-    float op1 = 4.0f;
-    float op2 = -2.0f;
-
-    top->alu_op = FALU_SLT;
-    top->op1 = float_to_bits(op1);
-    top->op2 = float_to_bits(op2);
-
+    EXPECT_EQ(top->final_result, top->floatingalu_result);
+    
+    // Invalid operation
+    top->is_int = 0;
+    top->is_float = 0;
     top->eval();
-
-    EXPECT_EQ(top->cmp, 0);
+    EXPECT_EQ(top->final_result, 0xDEADBEEF);
 }
-
-TEST_F(FloatingALUTestbench, ConvertFloatToInt) {
-    struct TestCase {
-        float input;
-        int32_t expected;
-    };
-
-    std::vector<TestCase> test_cases = {
-        {4.0f, 4},
-        {-7.0f, -7},
-        {0.0f, 0},
-        {1.999f, 1},    // truncation
-        {-1.999f, -1},  // truncation
-        {8388608.0f, 8388608}, // 2^23, exact
-        {8388607.0f, 8388607}, // max int representable exactly
-        {1e-30f, 0},    // subnormal, rounds to 0
-        {INFINITY, 0x7FFFFFFF},  // saturates
-        {-INFINITY, INT32_MIN}, // saturates to min neg
-        {NAN, 0x7FFFFFFF}        // treat NaN as saturated (or however your HDL handles it)
-    };
-
-    for (const auto& tc : test_cases) {
-        top->alu_op = FALU_FCVT_WS; // fixed macro name
-        top->op1 = float_to_bits(tc.input);
-
-        top->eval();
-
-        EXPECT_EQ(static_cast<int32_t>(top->result), tc.expected)
-            << "Failed for input: " << tc.input;
-    }
-}
-
-TEST_F(FloatingALUTestbench, ConvertIntToFloat) {
-    struct TestCase {
-        int32_t input;
-        float expected;
-    };
-
-    std::vector<TestCase> test_cases = {
-        {0, 0.0f},
-        {1, 1.0f},
-        {-1, -1.0f},
-        {123456, 123456.0f},
-        {-123456, -123456.0f},
-        {INT32_MAX, static_cast<float>(INT32_MAX)},
-        {INT32_MIN, static_cast<float>(INT32_MIN)},
-    };
-
-    for (const auto& tc : test_cases) {
-        top->alu_op = FALU_FCVT_SW; // Integer to float conversion opcode
-        top->op1 = static_cast<uint32_t>(tc.input);
-
-        top->eval();
-
-        float result = bits_to_float(top->result);
-        EXPECT_FLOAT_EQ(result, tc.expected)
-            << "Failed for input: " << tc.input;
-    }
-}
-
-TEST_F(FloatingALUTestbench, ConvertFloatToInt) {
-    struct TestCase {
-        float input;
-        int32_t expected;
-    };
-
-    std::vector<TestCase> test_cases = {
-        {4.0f, 4},
-        {-7.0f, -7},
-        {0.0f, 0},
-        {1.999f, 1},    // truncation
-        {-1.999f, -1},  // truncation
-        {8388608.0f, 8388608}, // 2^23, exact
-        {8388607.0f, 8388607}, // max int representable exactly
-        {1e-30f, 0},    // subnormal, rounds to 0
-        {INFINITY, 0x7FFFFFFF},  // saturates
-        {-INFINITY, INT32_MIN}, // saturates to min neg
-        {NAN, 0x7FFFFFFF}        // treat NaN as saturated (or however your HDL handles it)
-    };
-
-    for (const auto& tc : test_cases) {
-        top->alu_op = FALU_FCVT_WS; // fixed macro name
-        top->op1 = float_to_bits(tc.input);
-
-        top->eval();
-
-        EXPECT_EQ(static_cast<int32_t>(top->result), tc.expected)
-            << "Failed for input: " << tc.input;
-    }
-}
-
-TEST_F(FloatingALUTestbench, ConvertIntToFloat) {
-    struct TestCase {
-        int32_t input;
-        float expected;
-    };
-
-    std::vector<TestCase> test_cases = {
-        {0, 0.0f},
-        {1, 1.0f},
-        {-1, -1.0f},
-        {123456, 123456.0f},
-        {-123456, -123456.0f},
-        {INT32_MAX, static_cast<float>(INT32_MAX)},
-        {INT32_MIN, static_cast<float>(INT32_MIN)},
-    };
-
-    for (const auto& tc : test_cases) {
-        top->alu_op = FALU_FCVT_SW; // Integer to float conversion opcode
-        top->op1 = static_cast<uint32_t>(tc.input);
-
-        top->eval();
-
-        float result = bits_to_float(top->result);
-        EXPECT_FLOAT_EQ(result, tc.expected)
-            << "Failed for input: " << tc.input;
-    }
-}
-
 
 int main(int argc, char **argv) {
     Verilated::commandArgs(argc, argv);

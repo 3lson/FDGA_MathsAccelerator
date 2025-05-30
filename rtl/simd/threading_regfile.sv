@@ -15,7 +15,7 @@ UNUSED 6. smid (smid): The streaming multiprocessor ID
 
 */
 
-module threading_regfile (
+module threadingregfile (
     input   logic           clk,
     input   logic           WE3,            // Write enable
     input   logic [4:0]     AD1,            // Read register 1 address
@@ -27,7 +27,7 @@ module threading_regfile (
     input   logic [31:0]    bIdx,
 
     output  logic [31:0]    RD1,            // Read data 1
-    output  logic [31:0]    RD2            // Read data 2
+    output  logic [31:0]    RD2,            // Read data 2
 
     // Save for predicates
     // input logic          predicate_en,
