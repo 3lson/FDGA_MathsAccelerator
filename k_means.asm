@@ -112,7 +112,7 @@ li t2, 3
 slt t0, t1, t2 
 beqz t0, for_end1 # if (i>=3) break
 
-# centr1oids_x[i] = points_x[i]
+# centroids_x[i] = points_x[i]
 # centroids_y[i] = points_y[i]
 lw t0, -116(s0)
 slli t0, t0, 2

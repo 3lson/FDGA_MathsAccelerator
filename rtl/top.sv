@@ -498,7 +498,7 @@ module top #(
     //     if (!rst) begin
     //         $display("PCF=%h, instrF=%h", PCF, instrF);
     //         $display("PCD=%h, instrD=%h, ImmSrcD=%h", PCD, instrD, ImmSrcD);
-    //         $display("PCE=%h, ALUResultE=%h, ALUfloat=%h,floatingE=%h", PCE, ALUResultE,ALUfloat,floatingE);
+    //         $display("PCE=%h, ALUResultE=%h, ALUfloat=%h", PCE, ALUResultE, ALUfloat);
     //         $display("ALUctrlE=%b, SrcAE=%h, SrcBE=%h", ALUctrlE, SrcAE, SrcBE);
     //         $display("ALUResultM=%h, ReadDataM=%h", ALUResultM, ReadDataM);
     //         $display( "WD3W=%h", WD3W);
