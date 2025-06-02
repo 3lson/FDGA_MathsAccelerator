@@ -1,99 +1,160 @@
 module lane (
 
     // verilator lint_off UNSIGNED
-    input logic         clk,
-    input logic         stall,
-    input logic [3:0]   threads,
-    input logic [31:0]  bIdx,
-    input logic [4:0]   FUNCT4,
-    input logic [31:0]  IMM,
-    input logic [4:0]   AD1,
-    input logic [4:0]   AD2,
-    input logic [4:0]   AD3,
-
-    // types?
-    input logic is_int,
-    // input logic is_imm,
-    input logic is_float,
+    input   logic         clk,
+    input   logic         stall,
+    input   logic [3:0]   tIdx,
+    input   logic [31:0]  bIdx,
+    input   logic [4:0]   FUNCT4,
+    input   logic [31:0]  IMM,
+    input   logic [4:0]   AD1,
+    input   logic [4:0]   AD2,
+    input   logic [4:0]   AD3,
+    input   logic         is_int,
+    input   logic         is_float,
+    input   logic         WE3,
+    // ID Stage Inputs from RF
+    input   logic [31:0] RD1,
+    input   logic [31:0] RD2,    
+  
+    // --- Interface to an EXTERNAL Register File ---
+    // ID Stage Outputs to RF (for reading)
+    output  logic [4:0]  AD1_out,
+    output  logic [4:0]  AD2_out,
+    output  logic [3:0]  tIdx_out,
     
-    input logic         WE3    
-    // predicates, need implementation later
-    // input logic is_predicate_setter,
-    // input logic is_predicate_getter,
 
-    // for mmu?
-    // input logic [8:0] mmu_read_data,
-    // input logic is_memforce,
-    // input logic is_mem,
-    // output logic mmu_write_en,
-    // output logic mmu_write_force,
-    // output logic [8:0] mmu_write_data,
-    // output logic [17:0] mmu_addr,
+    output  logic [4:0]  AD3_out,
+    output  logic [31:0] WD3_out,
+    output  logic        WE3_out,
+    output  logic [3:0]  tIdx_out, // To select thread in RF for writing
 
-    // Need to fit this somewhere
-    // input   logic [4:0]     thread_read,
-    // input   logic [4:0]     thread_write,
+    // Stall signal output by this lane to the instruction issuer
+    output  logic        stall_out
 
 );
 
-logic [31:0] op1_int, op2_int;
-logic [31:0] op1_float, op2_float;
+// Temporary structs for pipeline, can be changed later if necessary
 
-assign op1_int   = RD1[0];
-assign op2_int   = RD2[0];
-assign op1_float = RD1[0];
-assign op2_float = RD2[0];
+// ID -> EX Register
+typedef struct packed {
+    logic   [31:0]  op1_id;
+    logic   [31:0]  op2_id;      // Will hold either RF data or IMM
+    logic   [4:0]   RD_id;       // Destination register address
+    logic   [4:0]   FUNCT4_id;
+    logic           is_int_id;
+    logic           is_float_id;
+    logic           WE3_id; // Original WE3 for the instruction
+    logic   [3:0]   tIdx_id; // Pipelined thread ID
+} id_ex_pipe;
 
-logic [31:0] RD1 [3:0], RD2 [3:0];
-logic float_eq_shared, int_eq_shared;
-logic [31:0] alu_result, floatingalu_result;
-logic [31:0] final_result;
+id_ex_pipe id_ex_data_in, id_ex_data_out
 
+// EX -> MEM Register (MEM is mostly a pass-through here)
+typedef struct packed {
+    logic   [31:0]  result_ex; // Result from ALU or FPU
+    logic   [4:0]   RD_ex;
+    logic           WE3_ex;
+    logic   [3:0]   tIdx_ex;
+} ex_mem_pipe;
+
+ex_mem_pipe ex_mem_data_in, ex_mem_data_out;
+
+// MEM -> WB Register
+typedef struct packed {
+    logic   [31:0]  data_to_writeback;
+    logic   [4:0]   RD_mem;
+    logic           WE3_mem;
+    logic   [3:0]   tIdx_mem;
+} mem_wb_pipe;
+
+mem_wb_pipe mem_wb_data_in, mem_wb_data_out;
 
 // What we need in each lane:
-// Registers
 // Regular ALU
 // Floating Point ALU
 
-registerfile threading_registers(
-    .clk(clk),
-    .WE3(WE3),              // Write enable
-    .AD1(AD1),              // Read register 1 address
-    .AD2(AD2),              // Read register 2 address
-    .AD3(AD3),              // Write register address
-    .WD3(final_result),                 // Write data
-    .thread_read(threads),
-    .thread_write(threads),
-    .bIdx(bIdx),
-    .RD1(RD1),              // Read data 1
-    .RD2(RD2)
-);
+/*
+    Is any of this necessary??
+    // --- Stall Logic ---
+    // Lane stalls if:
+    // 1. EX stage needs to stall (e.g., multi-cycle FPU not ready - ex_internal_stall)
+    // 2. MEM stage needs to stall (e.g., waiting for memory - mem_internal_stall)
+    // 3. WB stage is stalled by external RF (stall_from_wb)
+    logic ex_internal_stall; // Assume 0 for now (ALU/FPU are 1 cycle)
+    logic mem_internal_stall; // Assume 0 for now (no memory ops)
+
+    assign ex_internal_stall = 1'b0;
+    assign mem_internal_stall = 1'b0;
+
+    logic stall_ex_stage, stall_mem_stage;
+    assign stall_mem_stage   = mem_internal_stall || stall_from_wb;
+    assign stall_ex_stage    = ex_internal_stall  || stall_mem_stage;
+    assign lane_is_stalled_o = stall_ex_stage; // ID stage stalls if EX stalls
+
+
+    // --- Stage 1: ID (Instruction Decode / Operand Fetch) ---
+    // Outputs to external Register File for reading operands
+    assign rf_AD1_read_o      = instr_AD1_rs1;
+    assign rf_AD2_read_o      = instr_AD2_rs2;
+    assign rf_thread_read_o   = instr_threads_id;
+
+    // Logic to prepare data for id_ex_data register
+    always_comb begin
+        id_ex_data_next.operand1          = rf_RD1_data_i; // Data from RF
+        id_ex_data_next.operand2          = instr_is_imm_op ? instr_IMM : rf_RD2_data_i;
+        id_ex_data_next.rd_addr           = instr_AD3_rd;
+        id_ex_data_next.funct4_ctrl       = instr_FUNCT4;
+        id_ex_data_next.is_int_op         = instr_is_int;
+        id_ex_data_next.is_float_op       = instr_is_float;
+        id_ex_data_next.write_enable_instr= instr_WE3;
+        id_ex_data_next.thread_id_pipe    = instr_threads_id;
+
+        if (enable_new_instr && !lane_is_stalled_o) begin
+            id_ex_data_next.valid = 1'b1;
+        end else if (lane_is_stalled_o) begin
+            id_ex_data_next = id_ex_data; // Hold previous data
+        end else begin // No new instruction, and not stalled (so bubble)
+            id_ex_data_next.valid = 1'b0;
+        end
+    end
+*/
+
+logic           int_eq, float_eq;
+logic   [31:0]  alu_result, floatingalu_result;
 
 ALU ALU(
-    .ALUop1(op1_int),    
-    .ALUop2(op2_int),    
-    .ALUctrl(FUNCT4),
+    .ALUop1(id_ex_data_in.op1_id),    
+    .ALUop2(id_ex_data_in.op2_id),    
+    .ALUctrl(id_ex_data_in.FUNCT4_id),
     .Result(alu_result), 
-    .EQ(int_eq_shared)       
+    .EQ(int_eq)       
 );
 
 floating_alu floating_alu(
-    .alu_op(FUNCT4),
-    .op1(op1_float),
-    .op2(op2_float),
+    .alu_op(id_ex_data_in.FUNCT4_id),
+    .op1(id_ex_data_in.op1_id),
+    .op2(id_ex_data_in.op2_id),
     .result(floatingalu_result),
-    .cmp(float_eq_shared)
+    .cmp(float_eq)
 );
 
-// Pipeline also needs to be implemented locally
-
+// Logic to prepare data for ex_mem_data register
 always_comb begin
-    if (is_int)
-        final_result = alu_result;
-    else if (is_float)
-        final_result = floatingalu_result;
-    else
-        final_result = 32'hDEADBEEF; // invalid instruction
+    if (id_ex_data_out.is_int_id) begin
+        ex_mem_data_in.result_ex = alu_result;
+    end else if (id_ex_data_out.is_float_id) begin
+        ex_mem_data_in.result_ex = floatingalu_result;
+    end else begin
+        ex_mem_data_in.result_ex = 32'hDEADBEEF; // Should be guarded by valid
+    end
+    ex_mem_data_in.RD_ex            = id_ex_data_out.RD_id;
+    ex_mem_data_in.WE3_ex           = id_ex_data_out.WE3_id;
+    ex_mem_data_in.tIdx_ex   = id_ex_data_out.tIdx_ex;
+
+    if (stall) begin
+        ex_mem_data_in = ex_mem_data; // Hold
+    end
 end
 
 endmodule 
