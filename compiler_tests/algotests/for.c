@@ -1,29 +1,29 @@
 float OUT_centroids_x[3];
 float OUT_centroids_y[3];
 
-float OUT_clusters_x[3][27];
-float OUT_clusters_y[3][27];
+float OUT_clusters_x[3][9];
+float OUT_clusters_y[3][9];
 int OUT_cluster_sizes[3];
 
 
-int main2(){
+int main(){
     float centroids_x[3];
     float centroids_y[3];
     float old_centroids_x[3];
     float old_centroids_y[3];
-    float clusters_x[3][27];
-    float clusters_y[3][27];
+    float clusters_x[3][9];
+    float clusters_y[3][9];
     int cluster_sizes[3];
     int max_iter =10;
-    int num_points =27;
+    int num_points =9;
     int cycle;
     int j;
     int i;
     int done =1;
     int best;
 
-    float points_x[27] = {1.0, 2.0, 1.0, 8.0, 9.0, 8.0, -1.0, -2.0, -1.0, 1.0, 2.0, 1.0, 8.0, 9.0, 8.0, -1.0, -2.0, -1.0, 1.0, 2.0, 1.0, 8.0, 9.0, 8.0, -1.0, -2.0, -1.0};
-    float points_y[27] = {1.0, 1.0, 2.0, 8.0, 8.0, 9.0, -1.0, -1.0, -2.0, 1.0, 1.0, 2.0, 8.0, 8.0, 9.0, -1.0, -1.0, -2.0, 1.0, 1.0, 2.0, 8.0, 8.0, 9.0, -1.0, -1.0, -2.0}; 
+    float points_x[9] = {1.0, 2.0, 1.0, 8.0, 9.0, 8.0, -1.0, -2.0, -1.0};
+    float points_y[9] = {1.0, 1.0, 2.0, 8.0, 8.0, 9.0, -1.0, -1.0, -2.0}; 
 
     for(i=0; i<3; i++){
         centroids_x[i] = points_x[i];
@@ -76,5 +76,16 @@ int main2(){
             break;
         }
     }
+
+    for (i = 0; i < 3; i++) {
+        OUT_centroids_x[i] = centroids_x[i];
+        OUT_centroids_y[i] = centroids_y[i];
+        OUT_cluster_sizes[i] = cluster_sizes[i];
+        for (j = 0; j < cluster_sizes[i]; j++) {
+            OUT_clusters_x[i][j] = clusters_x[i][j];
+            OUT_clusters_y[i][j] = clusters_y[i][j];
+        }
+    }
+    
     return 5;
 }

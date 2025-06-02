@@ -211,9 +211,16 @@ uint32_t encodeStore(string op, const vector<string>& args) {
     int funct4 = (op == "fsw") ? 0b1001 : 0b0001;
     int rs2 = (op == "fsw") ? floatregisterMap[args[0]] : intregisterMap[args[0]];
 
-    int paren = args[1].find('(');
-    string immStr = args[1].substr(0, paren);
-    string rs1Str = args[1].substr(paren + 1, args[1].size() - paren - 2);
+    string fullExpr = args[1];
+    size_t paren = fullExpr.rfind('(');
+    if (paren == string::npos || fullExpr.back() != ')') {
+        cerr << "Invalid store format: " << fullExpr << endl;
+        return 0;
+    }
+
+    string immStr = fullExpr.substr(0, paren);  // handle %lo(.LC0)
+    string rs1Str = fullExpr.substr(paren + 1, fullExpr.size() - paren - 2);  // t0
+
     int imm = resolveSymbol(immStr, labelMap);
     int rs1 = intregisterMap[rs1Str];
     uint32_t uimm = static_cast<uint32_t>(imm) & 0x7FFF;
@@ -254,14 +261,7 @@ uint32_t encodeControl(string op, const vector<string>& args, int pc) {
         uint32_t imm_17_8 = (imm >> 6) & 0x3FF;   // bits [17:8] -> [28:19]
         uint32_t imm_7    = (imm >> 5) & 0x1;     // bit [7]     -> [13]
         uint32_t imm_6_2  = imm & 0x1F;           // bits [6:2]  -> [4:0]
-
-        std::cout << "Target" <<target << std::endl;
-        std::cout << "Offset" <<offset << std::endl;
-        std::cout << "Imm" <<imm << std::endl;
-        std::cout << "imm_17_8: " << imm_17_8 << std::endl;
-        std::cout << "imm_7: " << imm_7 << std::endl;
-        std::cout << "imm_6_2: " << imm_6_2 << std::endl;
-    
+            
         return (opcode << 29)
              | (imm_17_8 << 19)
              | (rs2 << 14)
@@ -307,11 +307,14 @@ int main() {
     vector<pair<int, uint32_t>> data;
     string line;
     uint32_t instr_pc = 0;
-    uint32_t data_pc = 0;
+    uint32_t data_pc = 0;  // This will be used for all data (constants + globals)
+    uint32_t globalDataStart = 0;
 
     // First pass - collect labels and instructions
     string current_section = ".text";  // default section
     string pending_label = ""; // To track labels that precede .word directives
+    bool in_rodata = false;
+    bool in_data = false;
     
     while (getline(input, line)) {
         if (line.empty() || line[0] == '#') continue;
@@ -323,9 +326,20 @@ int main() {
             line.find(".size") != string::npos ||
             line.find(".type") != string::npos ||
             line.find(".rodata") != string::npos) {
-            if (line.find(".rodata") != string::npos) current_section = ".rodata";
-            else if (line.find(".data") != string::npos) current_section = ".data";
-            else current_section = ".text";
+            
+            if (line.find(".rodata") != string::npos) {
+                current_section = ".rodata";
+                in_rodata = true;
+                in_data = false;
+            } else if (line.find(".data") != string::npos) {
+                current_section = ".data";
+                in_rodata = false;
+                in_data = true;
+            } else if (line.find(".text") != string::npos) {
+                current_section = ".text";
+                in_rodata = false;
+                in_data = false;
+            }
             continue;
         }
 
@@ -345,10 +359,16 @@ int main() {
             string label = line.substr(0, colon);
             label.erase(0, label.find_first_not_of(" \t"));
             label.erase(label.find_last_not_of(" \t") + 1);
-            if (current_section == ".text")
+            
+            if (current_section == ".text") {
                 labelMap[label] = instr_pc;
-            else
+            } else {
+                // Both .rodata and .data labels get assigned to the same memory space
+                // This ensures global arrays come right after constants
                 labelMap[label] = data_pc;
+                cout << "Assigning " << label << " to data address 0x" << hex << data_pc << dec << endl;
+            }
+            
             pending_label = label;
             line = line.substr(colon + 1);
             line.erase(0, line.find_first_not_of(" \t"));
@@ -359,20 +379,35 @@ int main() {
                 instructions.emplace_back(instr_pc, line);
                 instr_pc += 4;
             }
-        } else {
+        } else { // .rodata or .data sections
             if (line.find(".word") != string::npos) {
                 string valueStr = line.substr(line.find(".word") + 5);
                 valueStr.erase(0, valueStr.find_first_not_of(" \t"));
                 uint32_t value = static_cast<uint32_t>(stoul(valueStr));
                 data.emplace_back(data_pc, value);
+                
                 if (!pending_label.empty()) {
                     labelMap[pending_label] = data_pc;
                     labelDataValues[pending_label] = value;
+                    cout << "Label " << pending_label << " assigned to data address 0x" 
+                         << hex << data_pc << " with value 0x" << value << dec << endl;
                     pending_label = "";
                 }
+                
                 data_pc += 4;
             } else if (line.find(".zero") != string::npos) {
-                int size = stoi(line.substr(line.find(".zero") + 5));
+                string sizeStr = line.substr(line.find(".zero") + 5);
+                sizeStr.erase(0, sizeStr.find_first_not_of(" \t"));
+                int size = stoi(sizeStr);
+
+                if (!pending_label.empty()) {
+                    labelMap[pending_label] = data_pc;
+                    cout << "Global array " << pending_label << " assigned to data address 0x" 
+                         << hex << data_pc << dec << " (size: " << size << " bytes)" << endl;
+                    pending_label = "";
+                }
+
+                // Add zero-initialized data entries
                 for (int i = 0; i < size; i += 4) {
                     data.emplace_back(data_pc, 0);
                     data_pc += 4;
@@ -409,29 +444,26 @@ int main() {
             continue;
         }
 
-        instrOut << hex << setw(2) << setfill('0') << (instr & 0xFF) << endl;
-        instrOut << hex << setw(2) << setfill('0') << ((instr >> 8) & 0xFF) << endl;
-        instrOut << hex << setw(2) << setfill('0') << ((instr >> 16) & 0xFF) << endl;
-        instrOut << hex << setw(2) << setfill('0') << ((instr >> 24) & 0xFF) << endl;
+        // instrOut << hex << setw(2) << setfill('0') << (instr & 0xFF) << endl;
+        // instrOut << hex << setw(2) << setfill('0') << ((instr >> 8) & 0xFF) << endl;
+        // instrOut << hex << setw(2) << setfill('0') << ((instr >> 16) & 0xFF) << endl;
+        // instrOut << hex << setw(2) << setfill('0') << ((instr >> 24) & 0xFF) << endl;
 
-        // cout << "0x" << hex << instr << dec << endl;
-        // instrOut << hex << setw(8) << setfill('0') << instr << endl;
-
+        cout << "0x" << hex << instr << dec << endl;
+        instrOut << hex << setw(8) << setfill('0') << instr << endl;
     }
 
     // Output data section
     cout << "\nData section:" << endl;
     for (auto& [addr, value] : data) {
-        uint32_t offset = addr;
-        std::cout << "Offset " <<offset << std::endl;
-        
-        // cout << "0x" << hex << addr << ": 0x" << value << dec << endl;
-        // dataOut << hex << setw(8) << setfill('0') << value << endl;
-        
+
         dataOut << hex << setw(2) << setfill('0') << (value & 0xFF) << endl;
         dataOut << hex << setw(2) << setfill('0') << ((value >> 8) & 0xFF) << endl;
         dataOut << hex << setw(2) << setfill('0') << ((value >> 16) & 0xFF) << endl;
         dataOut << hex << setw(2) << setfill('0') << ((value >> 24) & 0xFF) << endl;
+
+        // cout << "0x" << hex << addr << ": 0x" << value << dec << endl;
+        // dataOut << hex << setw(8) << setfill('0') << value << endl;
     }
 
     input.close();
