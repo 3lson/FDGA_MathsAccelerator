@@ -6,7 +6,7 @@
 # Constants
 SCRIPT_DIR=$(dirname "$(realpath "$0")")
 TEST_FOLDER=$(realpath "$SCRIPT_DIR/test/tmp_test")
-RTL_FOLDER=$(realpath "$SCRIPT_DIR/../rtl")
+RTL_FOLDER=$(realpath "$SCRIPT_DIR/../rtl/simd")
 GREEN=$(tput setaf 2)
 RED=$(tput setaf 1)
 RESET=$(tput sgr0)
