@@ -15,31 +15,33 @@ UNUSED 6. smid (smid): The streaming multiprocessor ID
 
 */
 
-module threadingregfile (
+module threadingregfile #(
+
+    parameter thread_idx = 0
+
+)(
     input   logic           clk,
     input   logic           WE3,            // Write enable
     input   logic [4:0]     AD1,            // Read register 1 address
     input   logic [4:0]     AD2,            // Read register 2 address
     input   logic [4:0]     AD3,            // Write register address
     input   logic [31:0]    WD3,            // Write data
-    input   logic [4:0]     thread_read,
-    input   logic [4:0]     thread_write,
+    input   logic [3:0]     thread_read,
+    input   logic [3:0]     thread_write,
     input   logic [31:0]    bIdx,
 
     output  logic [31:0]    RD1,            // Read data 1
     output  logic [31:0]    RD2,            // Read data 2
 
     // Save for predicates
-    // input logic          predicate_en,
-    // input logic          predicate_read,
-    // output logic         predicate_write
+    input logic          pred_en,
+    input logic          pred_read,
+    output logic         pred_write
 );
     // Is registers[31:0] still necessary?
-    /* verilator lint_off UNUSED */
-    logic [31:0] registers [31:0];
-    /* verilator lint_on UNUSED */
-    logic [31:0] special_variables [4];
-    logic [31:0] threading_registers [16][32]; // check how many registers we can actually use
+    logic [31:0] special_variables      [4];
+    logic [31:0] threading_registers    [16][28]; // check how many registers we can actually use
+    logic        thread_pred            [16];
     // remember to add thread predication for optimisation
 
     initial begin
@@ -55,7 +57,7 @@ module threadingregfile (
     // set bDim as 1 because only 1 block necessary
     // laneId put as placeholder for now
     always_comb begin
-        special_variables[0] = 32'd0;       // x28: tIdx
+        special_variables[0] = thread_idx;       // x28: tIdx
         special_variables[1] = bIdx;        // x29: bIdx
         special_variables[2] = 32'd1;       // x30: bDim
         special_variables[3] = 32'd0;       // x31: lId
@@ -76,12 +78,17 @@ module threadingregfile (
         end else begin
             RD2 = special_variables[AD2-28];
         end
+
+        pred_write = thread_predicates[read_thread];
     end
 
     // Synchronous write (non-continuous)
     always_ff @(posedge clk) begin
         if (WE3 && AD3 != 0 && AD3 < 28) begin // Don't write to x0
             threading_registers[thread_write][AD3] <= WD3;
+        end
+        if (pred_en) begin
+            thread_pred[thread_write] <= pred_read;
         end
     end
 
