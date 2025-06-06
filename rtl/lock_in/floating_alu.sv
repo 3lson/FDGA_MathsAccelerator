@@ -1,14 +1,14 @@
-`include "define.sv"
+`include "common.sv"
 // =================================================
 // A 32-bit Floating Point ALU
 // with ADD, SUB, MUL, DIV, EQ, NEQ, ABS and SLT
 // =================================================
 module floating_alu (
-    input  logic [3:0]  alu_op,
-    input  logic [31:0] op1,
-    input  logic [31:0] op2,
-    output logic [31:0] result,
-    output logic        cmp
+    input   logic [31:0] op1,
+    input   logic [31:0] op2,
+    input   alu_f_instruction_t instruction,
+    output  logic [31:0] result,
+    output  logic        cmp
 );
 
 // 1 sign bit, 8 exponent bits and 23 mantissa bits
@@ -80,9 +80,9 @@ always_comb begin
     intermediary_exponent = 0;
     shift = 0;
 
-    case (alu_op)
-        `FALU_ADD, `FALU_SUB: begin
-            if(alu_op == `FALU_SUB) op2_sign_bit = ~op2_sign_bit;
+    case (instruction)
+        FADD, FSUB: begin
+            if(instruction == FSUB) op2_sign_bit = ~op2_sign_bit;
 
             if (op1_biased_exponent > op2_biased_exponent) begin
                 exp_diff = op1_biased_exponent - op2_biased_exponent;
@@ -167,7 +167,7 @@ always_comb begin
             end
         end
 
-        `FALU_MUL: begin
+        FMUL: begin
             product = op1_significand * op2_significand;
             if (product[47]) begin
                 result_exp = op1_biased_exponent + op2_biased_exponent - 127 + 1;
@@ -197,7 +197,7 @@ always_comb begin
             end
         end
 
-        `FALU_DIV: begin
+        FDIV: begin
             numerator = {op1_significand, 24'd0};
             denominator = {24'd0, op2_significand};
             quotient = numerator / denominator;
@@ -241,25 +241,16 @@ always_comb begin
 
         end
 
-        `FALU_NEG: result = {~op1[31], op1[30:0]}; //negate the sign bit
+        FNEG: result = {~op1[31], op1[30:0]}; //negate the sign bit
         
-        `FALU_ABS: result = {0'b0, op1[30:0]};
+        FABS: result = {0'b0, op1[30:0]};
 
-        `FALU_EQ: begin
+        FEQ: begin
             cmp = (op1 == op2) ? 1'b1:1'b0;
             result = (op1 == op2) ? 32'd1:32'd0;
         end
 
-        `FALU_SLT: begin
-            if (op1_sign_bit != op2_sign_bit) begin
-                cmp = op1_sign_bit;
-            end else if (op1_biased_exponent != op2_biased_exponent) begin
-                cmp = (op1_biased_exponent < op2_biased_exponent) ^ op1_sign_bit;
-            end else begin
-                cmp = (op1_significand < op2_significand) ^ op1_sign_bit;
-            end
-        end
-        4'd9: begin // Float to int conversion (FCVT_WS)
+        FCVT_W_S: begin // Float to int conversion (FCVT_WS)
             if (op1_biased_exponent == 8'hFF) begin
                 result = op1_sign_bit ? 32'h80000000 : 32'h7FFFFFFF;
             end else if (op1_biased_exponent == 0) begin
@@ -283,54 +274,7 @@ always_comb begin
             end
         end
 
-        4'd10: begin
-            if (op1 == 32'd0) begin
-                result = 32'd0;
-            end else begin
-                abs_op1 = op1[31] ? -op1 : op1;
-                significant_one = 31;
-                
-                while (significant_one > 0 && !abs_op1[significant_one]) begin
-                    significant_one = significant_one - 1;
-                end
-                
-                op1_biased_exponent = 127 + significant_one;
-                
-                if (significant_one >= 23) begin
-                    op1_significand = abs_op1 >> (significant_one - 23);
-                end else begin
-                    op1_significand = abs_op1 << (23 - significant_one);
-                end
-                
-                result = {op1[31], op1_biased_exponent, op1_significand[22:0]};
-            end
-        end
-
-        `FALU_FCVT_WS: begin // Float to int conversion (FCVT_WS)
-            if (op1_biased_exponent == 8'hFF) begin
-                result = op1_sign_bit ? 32'h80000000 : 32'h7FFFFFFF;
-            end else if (op1_biased_exponent == 0) begin
-                result = 32'd0;
-            end else begin
-                op1_unbiased_exponent = op1_biased_exponent - 127;
-                
-                if (op1_unbiased_exponent < 0 || op1_unbiased_exponent > 127) begin
-                    result = 32'd0;
-                end else if (op1_unbiased_exponent > 30) begin
-                    result = op1_sign_bit ? 32'h80000000 : 32'h7FFFFFFF;
-                end else begin
-                    if (op1_unbiased_exponent >= 23) begin
-                        op1_int = op1_significand << (op1_unbiased_exponent - 23);
-                    end else begin
-                        op1_int = op1_significand >> (23 - op1_unbiased_exponent);
-                    end
-                    
-                    result = op1_sign_bit ? -op1_int : op1_int;
-                end
-            end
-        end
-
-        `FALU_FCVT_SW: begin
+        FCVT_S_W: begin
             if (op1 == 32'd0) begin
                 result = 32'd0;
             end else begin

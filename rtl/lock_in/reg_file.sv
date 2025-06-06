@@ -1,45 +1,46 @@
 `default_nettype none
 `timescale 1ns/1ns
+`include "common.sv"
 
 module reg_file #(
-    parameter int THREADS_PER_WARP = 32,
+    parameter int THREADS_PER_WARP = 16,
     parameter int DATA_WIDTH = `DATA_WIDTH
 ) (
-    input wire clk,
-    input wire reset,
-    input wire enable, // Warp enable signal
+    input   wire                            clk,
+    input   wire                            reset,
+    input   wire                            enable, // Warp enable signal
 
     // Per-thread enable signals (execution mask)
-    input logic [THREADS_PER_WARP-1:0] thread_enable,
+    input   logic   [THREADS_PER_WARP-1:0]  thread_enable,
 
     // Warp and block identifiers
-    input data_t warp_id,
-    input data_t block_id,
-    input data_t block_size,
-    input warp_state_t warp_state,
+    input   data_t                          warp_id,
+    input   data_t                          block_id,
+    input   data_t                          block_size,
+    input   warp_state_t warp_state,
 
     // Decoded instruction fields
-    input logic decoded_reg_write_enable,           // Write enable for the register file
-    input reg_input_mux_t decoded_reg_input_mux,    // Determines the source of data to write
-    input data_t decoded_immediate,                 // Immediate value for constant writes
-    input logic [4:0] decoded_rd_address,           // Destination register index
-    input logic [4:0] decoded_rs1_address,          // Source register 1 index
-    input logic [4:0] decoded_rs2_address,          // Source register 2 index
+    input   logic                           decoded_reg_write_enable,           // Write enable for the register file
+    input   reg_input_mux_t                 decoded_reg_input_mux,    // Determines the source of data to write
+    input   data_t                          decoded_immediate,                 // Immediate value for constant writes
+    input   logic   [4:0]                   decoded_rd_address,           // Destination register index
+    input   logic   [4:0]                   decoded_rs1_address,          // Source register 1 index
+    input   logic   [4:0]                   decoded_rs2_address,          // Source register 2 index
 
     // Inputs from ALU and LSU per thread
-    input data_t alu_out      [THREADS_PER_WARP],
-    input data_t lsu_out      [THREADS_PER_WARP],
+    input   data_t                          alu_out [THREADS_PER_WARP],
+    input   data_t                          lsu_out [THREADS_PER_WARP],
 
     // Outputs per thread
-    output data_t rs1         [THREADS_PER_WARP],
-    output data_t rs2         [THREADS_PER_WARP]
+    output  data_t                          rs1     [THREADS_PER_WARP],
+    output  data_t                          rs2     [THREADS_PER_WARP]
 );
 
 // Special-purpose register indices
-localparam int ZERO_REG = 0;
-localparam int THREAD_ID_REG = 1;
-localparam int BLOCK_ID_REG = 2;
-localparam int BLOCK_SIZE_REG = 3;
+localparam int ZERO_REG         = 0;
+localparam int THREAD_ID_REG    = 29;
+localparam int BLOCK_ID_REG     = 30;
+localparam int BLOCK_SIZE_REG   = 31;
 
 // Register file: each thread has its own set of 32 registers
 data_t registers [THREADS_PER_WARP][32];
@@ -56,19 +57,19 @@ end
 always @(posedge clk) begin
     if (reset) begin
         for (int i = 0; i < THREADS_PER_WARP; i++) begin
-            registers[i][ZERO_REG]     <= {DATA_WIDTH{1'b0}};
-            registers[i][THREAD_ID_REG]<= thread_ids[i];
-            registers[i][BLOCK_ID_REG] <= block_id;
+            registers[i][ZERO_REG]      <= {DATA_WIDTH{1'b0}};
+            registers[i][THREAD_ID_REG] <= thread_ids[i];
+            registers[i][BLOCK_ID_REG]  <= block_id;
             registers[i][BLOCK_SIZE_REG]<= block_size;
-            for (int j = 4; j < 32; j++) begin
+            for (int j = 1; j < 29; j++) begin
                 registers[i][j] <= {DATA_WIDTH{1'b0}};
             end
         end
     end else if (enable) begin
         for (int i = 0; i < THREADS_PER_WARP; i++) begin
-            registers[i][ZERO_REG]     <= {DATA_WIDTH{1'b0}};
-            registers[i][THREAD_ID_REG]<= thread_ids[i];
-            registers[i][BLOCK_ID_REG] <= block_id;
+            registers[i][ZERO_REG]      <= {DATA_WIDTH{1'b0}};
+            registers[i][THREAD_ID_REG] <= thread_ids[i];
+            registers[i][BLOCK_ID_REG]  <= block_id;
             registers[i][BLOCK_SIZE_REG]<= block_size;
         end
 
@@ -81,7 +82,7 @@ always @(posedge clk) begin
 
                 if (warp_state == WARP_UPDATE) begin
                     // Prevent writes to read-only registers
-                    if (decoded_reg_write_enable && decoded_rd_address >= 4) begin
+                    if (decoded_reg_write_enable && decoded_rd_address > 0 && decoded_rd_address < 29 ) begin
                         case (decoded_reg_input_mux)
                             ALU_OUT: begin
                                 registers[i][decoded_rd_address] <= alu_out[i];
@@ -90,7 +91,7 @@ always @(posedge clk) begin
                             LSU_OUT: registers[i][decoded_rd_address] <= lsu_out[i];
                             IMMEDIATE: registers[i][decoded_rd_address] <= decoded_immediate;
                             VECTOR_TO_SCALAR: begin
-                                // noop
+                                // noopmmit -m ""
                             end
                             default: $error("Invalid decoded_reg_input_mux value");
                         endcase

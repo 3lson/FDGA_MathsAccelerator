@@ -23,7 +23,7 @@ protected:
         // Initialize ALU inputs to 0
         top->ALUop1 = 0;
         top->ALUop2 = 0;
-        top->ALUctrl = 0;
+        top->instruction = 0;
     }
 };
 
@@ -34,7 +34,7 @@ TEST_F(ALUTestbench,AddTest) {
     // Set inputs for addition operation
     top->ALUop1 = op1;
     top->ALUop2 = op2;
-    top->ALUctrl = ALU_ADD;
+    top->instruction = ALU_ADD;
 
     top->eval();
 
@@ -51,7 +51,7 @@ TEST_F(ALUTestbench, SubtractionTest)
     // Set inputs for subtraction operation
     top->ALUop1 = op1;
     top->ALUop2 = op2;
-    top->ALUctrl = ALU_SUB;
+    top->instruction = ALU_SUB;
 
     top->eval();
 
@@ -68,7 +68,7 @@ TEST_F(ALUTestbench, MulTest)
     // Set inputs for subtraction operation
     top->ALUop1 = op1;
     top->ALUop2 = op2;
-    top->ALUctrl = ALU_MUL;
+    top->instruction = ALU_MUL;
 
     top->eval();
 
@@ -84,7 +84,7 @@ TEST_F(ALUTestbench, DivTest){
     // Set inputs for subtraction operation
     top->ALUop1 = op1;
     top->ALUop2 = op2;
-    top->ALUctrl = ALU_DIV;
+    top->instruction = ALU_DIV;
 
     top->eval();
 
@@ -100,7 +100,7 @@ TEST_F(ALUTestbench, LessThanTestTrue){
     // Set inputs for subtraction operation
     top->ALUop1 = op1;
     top->ALUop2 = op2;
-    top->ALUctrl = ALU_SLT;
+    top->instruction = ALU_SLT;
 
     top->eval();
 
@@ -116,7 +116,7 @@ TEST_F(ALUTestbench, GreaterThanTestTrue){
     // Set inputs for subtraction operation
     top->ALUop1 = op1;
     top->ALUop2 = op2;
-    top->ALUctrl = ALU_SGT;
+    top->instruction = ALU_SGT;
 
     top->eval();
 
@@ -132,7 +132,7 @@ TEST_F(ALUTestbench, EqualToTestFalse){
     // Set inputs for subtraction operation
     top->ALUop1 = op1;
     top->ALUop2 = op2;
-    top->ALUctrl = ALU_SEQ;
+    top->instruction = ALU_SEQ;
 
     top->eval();
 
@@ -148,7 +148,7 @@ TEST_F(ALUTestbench, EqualToTestTrue){
     // Set inputs for Equal to operation
     top->ALUop1 = op1;
     top->ALUop2 = op2;
-    top->ALUctrl = ALU_SEQ;
+    top->instruction = ALU_SEQ;
 
     top->eval();
 
@@ -164,7 +164,7 @@ TEST_F(ALUTestbench, MinTestOp1){
     // Set inputs for Minimum operation
     top->ALUop1 = op1;
     top->ALUop2 = op2;
-    top->ALUctrl = ALU_MIN;
+    top->instruction = ALU_MIN;
 
     top->eval();
 
@@ -180,7 +180,7 @@ TEST_F(ALUTestbench, MinTestOp2){
     // Set inputs for Minimum operation
     top->ALUop1 = op1;
     top->ALUop2 = op2;
-    top->ALUctrl = ALU_MIN;
+    top->instruction = ALU_MIN;
 
     top->eval();
 
@@ -196,7 +196,7 @@ TEST_F(ALUTestbench, AbsTest){
     // Set inputs for absolute operation
     top->ALUop1 = 0xc1000000;
     top->ALUop2 = op2;
-    top->ALUctrl = ALU_ABS;
+    top->instruction = ALU_ABS;
 
     top->eval();
 

@@ -5,32 +5,32 @@
 
 module compute_core#(
     parameter int WARPS_PER_CORE = 4,            // Number of warps to in each core
-    parameter int THREADS_PER_WARP = 32          // Number of threads per warp (max 32)
+    parameter int THREADS_PER_WARP = 16          // Number of threads per warp (max 32)
     )(
-    input wire clk,
-    input wire reset,
+    input   wire                            clk,
+    input   wire                            reset,
 
-    input logic start,
-    output logic done,
+    input   logic                           start,
+    output  logic                           done,
 
-    input data_t block_id,
-    input kernel_config_t kernel_config,
+    input   data_t                          block_id,
+    input   kernel_config_t                 kernel_config,
 
     // Instruction Memory
-    input logic [WARPS_PER_CORE-1:0] instruction_mem_read_ready,
-    input instruction_t instruction_mem_read_data [WARPS_PER_CORE],
-    output logic [WARPS_PER_CORE-1:0] instruction_mem_read_valid,
-    output instruction_memory_address_t instruction_mem_read_address [WARPS_PER_CORE],
+    input   logic   [WARPS_PER_CORE-1:0]    instruction_mem_read_ready,
+    input   instruction_t                   instruction_mem_read_data       [WARPS_PER_CORE],
+    output  logic   [WARPS_PER_CORE-1:0]    instruction_mem_read_valid,
+    output  instruction_memory_address_t    instruction_mem_read_address    [WARPS_PER_CORE],
 
     // Data Memory
-    output logic [NUM_LSUS-1:0] data_mem_read_valid,
-    output data_memory_address_t data_mem_read_address [NUM_LSUS],
-    input logic [NUM_LSUS-1:0] data_mem_read_ready,
-    input data_t data_mem_read_data [NUM_LSUS],
-    output logic [NUM_LSUS-1:0] data_mem_write_valid,
-    output data_memory_address_t data_mem_write_address [NUM_LSUS],
-    output data_t data_mem_write_data [NUM_LSUS],
-    input logic [NUM_LSUS-1:0] data_mem_write_ready
+    output  logic   [NUM_LSUS-1:0]          data_mem_read_valid,
+    output  data_memory_address_t           data_mem_read_address           [NUM_LSUS],
+    input   logic   [NUM_LSUS-1:0]          data_mem_read_ready,
+    input   data_t                          data_mem_read_data              [NUM_LSUS],
+    output  logic   [NUM_LSUS-1:0]          data_mem_write_valid,
+    output  data_memory_address_t           data_mem_write_address          [NUM_LSUS],
+    output  data_t                          data_mem_write_data             [NUM_LSUS],
+    input   logic   [NUM_LSUS-1:0]          data_mem_write_ready
 );
 
 typedef logic [THREADS_PER_WARP-1:0] warp_mask_t;
