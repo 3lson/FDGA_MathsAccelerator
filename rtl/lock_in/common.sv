@@ -27,7 +27,7 @@ typedef struct packed {
 `define FUNCT4_WIDTH 4
 
 // Halt Instruction Opcode
-`define OPCODE_HALT     7'b1111111
+`define OPCODE_HALT     3'b110
 
 // Vector-Scalar Instruction Opcodes (SX_SLTI and SX_SLT)
 // SX_SLTI sets one bit of a scalar register based on thread's comparison result
@@ -38,10 +38,10 @@ typedef struct packed {
 // The entire opcode is 7 bits, the most significant bit decides whether the instruction is vector or scalar
 `define OPCODE_R        3'b000          // Used by all R-type instructions (ADD, SUB, SLL, SLT, XOR, SRL, SRA)
 `define OPCODE_I        3'b001          // Used by ALU I-type instructions (ADDI, SLTI, XORI, ORI, ANDI, SLLI, SRLI, SRAI)
-`define OPCODE_S        3'b100          // Used by store instructions (SB, SH, SW)
-`define OPCODE_P        3'b011          // Used by LUI
-`define OPCODE_LOAD     3'b100          // Used by load instructions (LB, LH, LW)
+`define OPCODE_UP       3'b011          // Used by LUI
+`define OPCODE_M        3'b100          // Used by load instructions (LB, LH, LW)
 `define OPCODE_F        3'b010          // Floating Point F-Type
+`define OPCODE_J        3'b111
 
 // Those instructions can only be used by scalar instructions
 `define OPCODE_C        3'b111          // Control Flow C-Type
@@ -52,7 +52,7 @@ typedef logic [`FUNCT4_WIDTH-1:0] funct4_t;
 typedef logic [11:0] imm12_t;
 
 // alu instructions enum
-typedef enum logic [4:0] {
+typedef enum logic [3:0] {
     // register instructions
     ADD,
     SUB,
@@ -127,37 +127,45 @@ typedef enum logic [2:0] {
     VECTOR_TO_SCALAR
 } reg_input_mux_t;
 
-// sign extend function
-function automatic data_t sign_extend(imm12_t imm12);
-    data_t signed_imm12;
-    if (imm12[11]) begin
-        signed_imm12 = {{20{1'b1}}, imm12};
+function automatic data_t sign_extend_14(logic [13:0] imm14);
+    data_t signed_imm14;
+    if (imm14[13]) begin
+        signed_imm14 = {{18{1'b1}}, imm14};
     end else begin
-        signed_imm12 = {{20{1'b0}}, imm12};
+        signed_imm14 = {{18{1'b0}}, imm14};
     end
-    return signed_imm12;
+    return signed_imm14;
 endfunction
 
-// sign extend function for 13-bit immediate values
-function automatic data_t sign_extend_13(logic[12:0] imm13);
-    data_t signed_imm13;
-    if (imm13[12]) begin
-        signed_imm13 = {{19{1'b1}}, imm13};
+function automatic data_t sign_extend_15(logic[14:0] imm15);
+    data_t signed_imm15;
+    if (imm15[14]) begin
+        signed_imm15 = {{17{1'b1}}, imm15};
     end else begin
-        signed_imm13 = {{19{1'b0}}, imm13};
+        signed_imm15 = {{17{1'b0}}, imm15};
     end
-    return signed_imm13;
+    return signed_imm15;
+endfunction
+
+function automatic data_t sign_extend_18(logic[17:0] imm18);
+    data_t signed_imm18;
+    if (imm18[17]) begin
+        signed_imm18 = {{14{1'b1}}, imm18};
+    end else begin
+        signed_imm18 = {{14{1'b0}}, imm18};
+    end
+    return signed_imm18;
 endfunction
 
 // sign extend function for 21-bit immediate values
-function automatic data_t sign_extend_21(logic[20:0] imm21);
-    data_t signed_imm21;
-    if (imm21[20]) begin
-        signed_imm21 = {{11{1'b1}}, imm21};
+function automatic data_t sign_extend_28(logic[27:0] imm28);
+    data_t signed_imm28;
+    if (imm28[27]) begin
+        signed_imm28 = {{4{1'b1}}, imm28};
     end else begin
-        signed_imm21 = {{11{1'b0}}, imm21};
+        signed_imm28 = {{4{1'b0}}, imm28};
     end
-    return signed_imm21;
+    return signed_imm28;
 endfunction
 
 `endif // COMMON_SV
