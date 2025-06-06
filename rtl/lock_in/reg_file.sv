@@ -91,7 +91,7 @@ always @(posedge clk) begin
                             LSU_OUT: registers[i][decoded_rd_address] <= lsu_out[i];
                             IMMEDIATE: registers[i][decoded_rd_address] <= decoded_immediate;
                             VECTOR_TO_SCALAR: begin
-                                // noopmmit -m ""
+                                // noop
                             end
                             default: $error("Invalid decoded_reg_input_mux value");
                         endcase
