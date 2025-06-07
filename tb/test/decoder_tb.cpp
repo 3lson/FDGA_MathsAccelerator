@@ -29,19 +29,19 @@
 #define MULI    11
 #define DIVI    12
 #define SLLI    13
-#define FADD    0
-#define FSUB    1
-#define FMUL    2
-#define FDIV    3
-#define FLT     4
-#define FNEG    5
-#define FEQ     6
-#define FMIN    7
-#define FABS    8
-#define FCVT_W_S 9
-#define FCVT_S_W 10
-#define BEQ     14
-#define JAL     15
+#define FADD    14
+#define FSUB    15
+#define FMUL    16
+#define FDIV    17
+#define FLT     18
+#define FNEG    19
+#define FEQ     20
+#define FMIN    21
+#define FABS    22
+#define FCVT_W_S 23
+#define FCVT_S_W 24
+#define BEQZ     25
+#define JAL     26
 
 // Reg input mux encodings
 #define ALU_OUT         0

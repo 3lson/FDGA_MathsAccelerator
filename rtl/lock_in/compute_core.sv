@@ -1,6 +1,8 @@
 `default_nettype none
 `timescale 1ns/1ns
 
+// This simulates the execution of a block of warps which contains multiple threads
+
 `include "common.sv"
 
 module compute_core#(
@@ -97,12 +99,13 @@ alu warp_alu_inst(
     .enable(decoded_scalar_instruction[current_warp]),
 
     .pc(pc[current_warp]),
-    .rs1(scalar_rs1),
-    .rs2(scalar_rs2),
-    .imm(decoded_immediate[current_warp]),
+    .ALUop1(scalar_rs1),
+    .ALUop2(scalar_rs2),
+    .IMM(decoded_immediate[current_warp]),
     .instruction(decoded_alu_instruction[current_warp]),
 
-    .alu_out(scalar_alu_out)
+    .Result(scalar_alu_out),
+    .EQ() //unused
 );
 
 lsu warp_lsu_inst (
@@ -253,9 +256,10 @@ always @(posedge clk) begin
                         end
                     end else if (decoded_alu_instruction[current_warp] == JAL) begin
                         next_pc[current_warp] <= scalar_alu_out;
-                    end else if (decoded_alu_instruction[current_warp] == JALR) begin
-                        next_pc[current_warp] <= scalar_alu_out;
-                    end else begin
+                    end //else if (decoded_alu_instruction[current_warp] == JALR) begin
+                        //next_pc[current_warp] <= scalar_alu_out;
+                    //end 
+                    else begin
                         // Other scalar instruction
                         next_pc[current_warp] <= pc[current_warp] + 1;
                     end
@@ -410,12 +414,13 @@ generate
             .enable(t_enable),
 
             .pc(pc[current_warp]),
-            .rs1(rs1[i]),
-            .rs2(rs2[i]),
-            .imm(decoded_immediate[current_warp]),
+            .ALUop1(rs1[i]),
+            .ALUop2(rs2[i]),
+            .IMM(decoded_immediate[current_warp]),
             .instruction(decoded_alu_instruction[current_warp]),
 
-            .alu_out(alu_out[i])
+            .Result(alu_out[i]),
+            .EQ() // unused
         );
 
         lsu lsu_inst(

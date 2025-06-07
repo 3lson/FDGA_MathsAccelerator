@@ -1,3 +1,5 @@
+// This wrapper is added solely for module testbenching purposes because fetcher contains structs not supported in Verilator
+
 `default_nettype none
 `timescale 1ns / 1ns
 `include "common.sv"

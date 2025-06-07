@@ -96,7 +96,6 @@ module decoder(
                         decoded_alu_instruction     <= JAL;
                         $display("Decoding instruction 0b%32b", instruction);
                         decoded_immediate           <= sign_extend_28(imm_j);
-                        decoded_alu_instruction <= JAL;
                         
                     end
 
@@ -107,7 +106,7 @@ module decoder(
                         decoded_rs2_address         <= rs2;
                         decoded_immediate           <= sign_extend_18(imm_b);
                         decoded_branch              <= 1;
-                        decoded_alu_instruction     <= BEQ;
+                        decoded_alu_instruction     <= BEQZ;
 
                     end
 

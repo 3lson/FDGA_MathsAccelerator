@@ -52,7 +52,7 @@ typedef logic [`FUNCT4_WIDTH-1:0] funct4_t;
 typedef logic [11:0] imm12_t;
 
 // alu instructions enum
-typedef enum logic [3:0] {
+typedef enum logic [4:0] {
     // register instructions
     ADD,
     SUB,
@@ -70,14 +70,7 @@ typedef enum logic [3:0] {
     DIVI,
     SLLI,
 
-    // compare instructions
-    BEQ,
-
-    // jump instructions
-    JAL
-} alu_instruction_t;
-
-typedef enum logic [3:0] {
+    // F-type instructions
     FADD,
     FSUB,
     FMUL,
@@ -88,8 +81,14 @@ typedef enum logic [3:0] {
     FMIN,
     FABS,
     FCVT_W_S,
-    FCVT_S_W
-} alu_f_instruction_t;
+    FCVT_S_W,
+
+    // compare instructions
+    BEQZ,
+
+    // jump instructions
+    JAL
+} alu_instruction_t;
 
 // warp state enum
 typedef enum logic [2:0] {

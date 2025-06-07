@@ -6,7 +6,7 @@
 module floating_alu (
     input   logic [31:0] op1,
     input   logic [31:0] op2,
-    input   alu_f_instruction_t instruction,
+    input   alu_instruction_t instruction,
     output  logic [31:0] result,
     output  logic        cmp
 );

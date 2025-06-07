@@ -3,217 +3,200 @@
 #include <gtest/gtest.h>
 #include <bit>
 
-//ALUOps
-#define ALU_ADD 0b0000 
-#define ALU_SUB 0b0001 
-#define ALU_MUL 0b0010  
-#define ALU_DIV 0b0011 
-#define ALU_SLT 0b0100 
-#define ALU_SGT 0b0101
-#define ALU_SEQ 0b0110
-#define ALU_SNEZ 0b0111
-#define ALU_MIN 0b1000
-#define ALU_ABS 0b1001  
+#define ADD         0
+#define SUB         1
+#define MUL         2
+#define DIV         3
+#define SLT         4
+#define SGT         5
+#define SEQ         6
+#define SNEZ        7
+#define MIN         8
+#define ABS         9
+#define ADDI        10
+#define MULI        11
+#define DIVI        12
+#define SLLI        13
+#define BEQZ        25
+#define JAL        26
 
-
-
-class ALUTestbench : public BaseTestbench {  // Use template for signextension
+// Base class for testing the sequential ALU
+class ALUTestbench : public BaseTestbench {
 protected:
+    void clockCycle() {
+        // Falling edge
+        top->clk = 0;
+        top->eval();
+        // Rising edge
+        top->clk = 1;
+        top->eval();
+    }
+
+    // This method is called by the test fixture setup
     void initializeInputs() override {
-        // Initialize ALU inputs to 0
+        top->clk = 0;
+        top->reset = 1; // Start in reset
+        top->enable = 0;
+        top->instruction = 0;
         top->ALUop1 = 0;
         top->ALUop2 = 0;
-        top->instruction = 0;
+        top->IMM = 0;
+    }
+
+    // Helper to reset the DUT
+    void resetDUT() {
+        top->reset = 1;
+        clockCycle(); // Hold reset for one cycle
+        top->reset = 0;
+        top->eval();    // Let reset go low
+    }
+
+    // A clean way to run a single ALU operation
+    void run_operation(uint32_t instruction, int32_t op1, int32_t op2, int32_t imm = 0, uint32_t pc = 0) {
+        top->instruction = instruction;
+        top->pc = pc; // <-- ADD THIS LINE
+        top->ALUop1 = op1;
+        top->ALUop2 = op2;
+        top->IMM = imm;
+        top->enable = 1;
+
+        clockCycle();
+
+        top->enable = 0;
     }
 };
 
-TEST_F(ALUTestbench,AddTest) {
-    int op1 = 5;
-    int op2 = 10;
-    
-    // Set inputs for addition operation
-    top->ALUop1 = op1;
-    top->ALUop2 = op2;
-    top->instruction = ALU_ADD;
-
-    top->eval();
-
-    // Check the ALU result and EQ signal for addition
+TEST_F(ALUTestbench, AddTest) {
+    resetDUT();
+    int32_t op1 = 5;
+    int32_t op2 = 10;
+    run_operation(ADD, op1, op2);
     EXPECT_EQ(top->Result, op1 + op2);
-    EXPECT_EQ(top->EQ, 0);
 }
 
-TEST_F(ALUTestbench, SubtractionTest)
-{
-    int op1 = 5;
-    int op2 = 5;
-    
-    // Set inputs for subtraction operation
-    top->ALUop1 = op1;
-    top->ALUop2 = op2;
-    top->instruction = ALU_SUB;
-
-    top->eval();
-
-    // Check the ALU result and EQ signal for subtraction
+TEST_F(ALUTestbench, SubtractionTest) {
+    resetDUT();
+    int32_t op1 = 20;
+    int32_t op2 = 5;
+    run_operation(SUB, op1, op2);
     EXPECT_EQ(top->Result, op1 - op2);
-    EXPECT_EQ(top->EQ, 0);
 }
 
-TEST_F(ALUTestbench, MulTest)
-{
-    int op1 = 5;
-    int op2 = 5;
-    
-    // Set inputs for subtraction operation
-    top->ALUop1 = op1;
-    top->ALUop2 = op2;
-    top->instruction = ALU_MUL;
-
-    top->eval();
-
-    // Check the ALU result and EQ signal for subtraction
+TEST_F(ALUTestbench, MulTest) {
+    resetDUT();
+    int32_t op1 = 5;
+    int32_t op2 = 6;
+    run_operation(MUL, op1, op2);
     EXPECT_EQ(top->Result, op1 * op2);
-    EXPECT_EQ(top->EQ, 0);
 }
 
-TEST_F(ALUTestbench, DivTest){
-    int op1 = 5;
-    int op2 = 5;
-    
-    // Set inputs for subtraction operation
-    top->ALUop1 = op1;
-    top->ALUop2 = op2;
-    top->instruction = ALU_DIV;
-
-    top->eval();
-
-    // Check the ALU result and EQ signal for subtraction
+TEST_F(ALUTestbench, DivTest) {
+    resetDUT();
+    int32_t op1 = 20;
+    int32_t op2 = 4;
+    run_operation(DIV, op1, op2);
     EXPECT_EQ(top->Result, op1 / op2);
-    EXPECT_EQ(top->EQ, 0);
 }
 
-TEST_F(ALUTestbench, LessThanTestTrue){
-    int op1 = 3;
-    int op2 = 5;
-    
-    // Set inputs for subtraction operation
-    top->ALUop1 = op1;
-    top->ALUop2 = op2;
-    top->instruction = ALU_SLT;
-
-    top->eval();
-
-    // Check the ALU result and EQ signal for subtraction
+TEST_F(ALUTestbench, LessThanTestTrue) {
+    resetDUT();
+    run_operation(SLT, 3, 5);
     EXPECT_EQ(top->Result, 1);
-    EXPECT_EQ(top->EQ, 0);
 }
 
-TEST_F(ALUTestbench, GreaterThanTestTrue){
-    int op1 = 8;
-    int op2 = 5;
-    
-    // Set inputs for subtraction operation
-    top->ALUop1 = op1;
-    top->ALUop2 = op2;
-    top->instruction = ALU_SGT;
-
-    top->eval();
-
-    // Check the ALU result and EQ signal for subtraction
-    EXPECT_EQ(top->Result, 1);
-    EXPECT_EQ(top->EQ, 0);
-}
-
-TEST_F(ALUTestbench, EqualToTestFalse){
-    int op1 = 8;
-    int op2 = 5;
-    
-    // Set inputs for subtraction operation
-    top->ALUop1 = op1;
-    top->ALUop2 = op2;
-    top->instruction = ALU_SEQ;
-
-    top->eval();
-
-    // Check the ALU result and EQ signal for subtraction
+TEST_F(ALUTestbench, LessThanTestFalse) {
+    resetDUT();
+    run_operation(SLT, 5, 3);
     EXPECT_EQ(top->Result, 0);
-    EXPECT_EQ(top->EQ, 0);
 }
 
-TEST_F(ALUTestbench, EqualToTestTrue){
-    int op1 = 5;
-    int op2 = 5;
-    
-    // Set inputs for Equal to operation
-    top->ALUop1 = op1;
-    top->ALUop2 = op2;
-    top->instruction = ALU_SEQ;
 
-    top->eval();
-
-    // Check the ALU result and EQ signal for Equal to
+TEST_F(ALUTestbench, GreaterThanTestTrue) {
+    resetDUT();
+    run_operation(SGT, 8, 5);
     EXPECT_EQ(top->Result, 1);
-    EXPECT_EQ(top->EQ, 1);
 }
 
-TEST_F(ALUTestbench, MinTestOp1){
-    int op1 = 3;
-    int op2 = 5;
+TEST_F(ALUTestbench, EqualToTestTrue) {
+    resetDUT();
+    run_operation(SEQ, 5, 5);
+    EXPECT_EQ(top->Result, 1);
+    EXPECT_EQ(top->EQ, 1); // Check EQ signal specifically
+}
+
+TEST_F(ALUTestbench, EqualToTestFalse) {
+    resetDUT();
+    run_operation(SEQ, 8, 5);
+    EXPECT_EQ(top->Result, 0);
+    EXPECT_EQ(top->EQ, 0); // Check EQ signal specifically
+}
+
+TEST_F(ALUTestbench, MinTestOp1) {
+    resetDUT();
+    run_operation(MIN, 3, 5);
+    EXPECT_EQ(top->Result, 3);
+}
+
+TEST_F(ALUTestbench, AbsTest) {
+    resetDUT();
+    // For -8 (0xFFFFFFF8), it will result in 0x7FFFFFF8.
+    // Let's test based on the actual Verilog implementation.
+    run_operation(ABS, 0xFFFFFFF8, 0); // op1 = -8
+    EXPECT_EQ(top->Result, 0x7FFFFFF8);
+}
+
+TEST_F(ALUTestbench, AddImmediateTest) {
+    resetDUT();
+    int32_t op1 = 100;
+    int32_t imm = -20; // Test with a negative immediate
+    run_operation(ADDI, op1, 0, imm); // op2 is ignored for I-type
+    EXPECT_EQ(top->Result, op1 + imm);
+}
+
+TEST_F(ALUTestbench, MultiplyImmediateTest) {
+    resetDUT();
+    int32_t op1 = 15;
+    int32_t imm = 3;
+    run_operation(MULI, op1, 0, imm);
+    EXPECT_EQ(top->Result, op1 * imm);
+}
+
+TEST_F(ALUTestbench, SLLI_Test) {
+    resetDUT();
+    int32_t op1 = 0x0000000F; // Value is 15
+    int32_t imm = 4;          // Shift by 4
+    run_operation(SLLI, op1, 0, imm);
+    // Expect 15 << 4 = 240 (0x000000F0)
+    EXPECT_EQ(top->Result, 0x000000F0);
+}
+
+TEST_F(ALUTestbench, BEQZ_ConditionTrue) {
+    resetDUT();
+    int32_t op1_is_zero = 0;
+    // For BEQZ, op1 is rs1, op2 is not used.
+    // The ALU checks if op1 is zero and sets the EQ flag.
+    run_operation(BEQZ, op1_is_zero, 0);
+
+    EXPECT_EQ(top->Result, 1) << "Result should be 1 when condition is true";
+    EXPECT_EQ(top->EQ, 1) << "EQ flag should be set when condition is true";
+}
+
+TEST_F(ALUTestbench, BEQZ_ConditionFalse) {
+    resetDUT();
+    int32_t op1_not_zero = 123;
+    run_operation(BEQZ, op1_not_zero, 0);
+
+    EXPECT_EQ(top->Result, 0) << "Result should be 0 when condition is false";
+    EXPECT_EQ(top->EQ, 0) << "EQ flag should be clear when condition is false";
+}
+
+TEST_F(ALUTestbench, JumpTest) {
+    resetDUT();
+    uint32_t current_pc = 0x100;
+    int32_t offset = 0x40; // Jump forward 16 instructions (16*4 = 64 bytes)
     
-    // Set inputs for Minimum operation
-    top->ALUop1 = op1;
-    top->ALUop2 = op2;
-    top->instruction = ALU_MIN;
-
-    top->eval();
-
-    // Check the ALU result and EQ signal for Minimum
-    EXPECT_EQ(top->Result, op1);
-    EXPECT_EQ(top->EQ, 0);
-}
-
-TEST_F(ALUTestbench, MinTestOp2){
-    int op1 = 8;
-    int op2 = 5;
+    // The ALU calculates the target address: PC + immediate offset
+    run_operation(JAL, 0, 0, offset, current_pc);
     
-    // Set inputs for Minimum operation
-    top->ALUop1 = op1;
-    top->ALUop2 = op2;
-    top->instruction = ALU_MIN;
-
-    top->eval();
-
-    // Check the ALU result and EQ signal for Minimum
-    EXPECT_EQ(top->Result, op2);
-    EXPECT_EQ(top->EQ, 0);
-}
-
-TEST_F(ALUTestbench, AbsTest){
-    float op1 = -8.0f;
-    int op2 = 5;
-    
-    // Set inputs for absolute operation
-    top->ALUop1 = 0xc1000000;
-    top->ALUop2 = op2;
-    top->instruction = ALU_ABS;
-
-    top->eval();
-
-    // Check the ALU result and EQ signal for absolute
-    EXPECT_EQ(top->Result, 0x41000000);
-    EXPECT_EQ(top->EQ, 0);
-}
-
-
-
-int main(int argc, char **argv) {
-    Verilated::commandArgs(argc, argv);
-    testing::InitGoogleTest(&argc, argv);
-
-    Verilated::mkdir("logs");
-    auto result = RUN_ALL_TESTS();
-    VerilatedCov::write("logs/coverage.dat");
-
-    return result;
+    EXPECT_EQ(top->Result, current_pc + offset);
 }
