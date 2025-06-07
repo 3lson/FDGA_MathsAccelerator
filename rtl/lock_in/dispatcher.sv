@@ -23,6 +23,10 @@ module dispatcher #(
     output reg done
 );
 
+initial begin
+    $display("DispatcherPrint:", kernel_config.num_blocks);
+end
+
 data_t total_blocks = kernel_config.num_blocks;
 
 data_t blocks_done;
