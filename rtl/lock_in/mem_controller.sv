@@ -2,10 +2,10 @@
 `timescale 1ns/1ns
 
 module mem_controller #(
-    parameter int DATA_WIDTH,
-    parameter int ADDRESS_WIDTH,
-    parameter int NUM_CONSUMERS, // The number of consumers accessing memory through this controller
-    parameter int NUM_CHANNELS,  // The number of concurrent channels available to send requests to global memory
+    parameter int DATA_WIDTH = 32,
+    parameter int ADDRESS_WIDTH = 16,
+    parameter int NUM_CONSUMERS = 4, // The number of consumers accessing memory through this controller
+    parameter int NUM_CHANNELS = 2,  // The number of concurrent channels available to send requests to global memory
     parameter int WRITE_ENABLE = 1   // Whether this memory controller can write to memory (program memory is read-only)
 ) (
     input wire clk,
@@ -48,7 +48,7 @@ module mem_controller #(
             for (int i = 0; i < NUM_CONSUMERS; i++) begin
                 consumer_read_ready[i] <= 0;
                 consumer_write_ready[i] <= 0;
-                consumer_read_data[i] <= 0;
+                consumer_read_data[i] = 0;
             end
 
             for (int i = 0; i < NUM_CHANNELS; i++) begin
@@ -59,11 +59,11 @@ module mem_controller #(
                 current_consumer[i] <= 0;
                 controller_state[i] <= 0;
                 mem_read_address[i] <= 0;
-                mem_write_address[i] <= 0;
-                mem_write_data[i] <= 0;
+                mem_write_address[i] = 0;
+                mem_write_data[i] = 0;
             end
 
-            channel_serving_consumer = 0;
+            channel_serving_consumer <= 0;
         end else begin
             // For each channel, we handle processing concurrently
             for (int i = 0; i < NUM_CHANNELS; i = i + 1) begin
@@ -72,23 +72,23 @@ module mem_controller #(
                         // While this channel is idle, cycle through consumers looking for one with a pending request
                         for (int j = 0; j < NUM_CONSUMERS; j = j + 1) begin
                             if (consumer_read_valid[j] && !channel_serving_consumer[j]) begin
-                                channel_serving_consumer[j] = 1;
-                                current_consumer[i] <= j[$clog2(NUM_CONSUMERS)-1:0];
+                                channel_serving_consumer[j] <= 1;
+                                current_consumer[i] = j[$clog2(NUM_CONSUMERS)-1:0];
 
                                 mem_read_valid[i] <= 1;
-                                mem_read_address[i] <= consumer_read_address[j];
-                                controller_state[i] <= READ_WAITING;
+                                mem_read_address[i] = consumer_read_address[j];
+                                controller_state[i] = READ_WAITING;
 
                                 // Once we find a pending request, pick it up with this channel and stop looking for requests
                                 break;
                             end else if ((WRITE_ENABLE == 1) && consumer_write_valid[j] && !channel_serving_consumer[j]) begin
-                                channel_serving_consumer[j] = 1;
-                                current_consumer[i] <= j[$clog2(NUM_CONSUMERS)-1:0];
+                                channel_serving_consumer[j] <= 1;
+                                current_consumer[i] = j[$clog2(NUM_CONSUMERS)-1:0];
 
                                 mem_write_valid[i] <= 1;
-                                mem_write_address[i] <= consumer_write_address[j];
-                                mem_write_data[i] <= consumer_write_data[j];
-                                controller_state[i] <= WRITE_WAITING;
+                                mem_write_address[i] = consumer_write_address[j];
+                                mem_write_data[i] = consumer_write_data[j];
+                                controller_state[i] = WRITE_WAITING;
 
                                 // Once we find a pending request, pick it up with this channel and stop looking for requests
                                 break;
@@ -115,14 +115,14 @@ module mem_controller #(
                     // Wait until consumer acknowledges it received response, then reset
                     READ_RELAYING: begin
                         if (!consumer_read_valid[current_consumer[i]]) begin
-                            channel_serving_consumer[current_consumer[i]] = 0;
+                            channel_serving_consumer[current_consumer[i]] <= 0;
                             consumer_read_ready[current_consumer[i]] <= 0;
                             controller_state[i] <= IDLE;
                         end
                     end
                     WRITE_RELAYING: begin
                         if (!consumer_write_valid[current_consumer[i]]) begin
-                            channel_serving_consumer[current_consumer[i]] = 0;
+                            channel_serving_consumer[current_consumer[i]] <= 0;
                             consumer_write_ready[current_consumer[i]] <= 0;
                             controller_state[i] <= IDLE;
                         end

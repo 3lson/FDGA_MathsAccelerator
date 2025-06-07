@@ -12,14 +12,14 @@ module alu (
     input   data_t ALUop1,    
     input   data_t ALUop2, 
     input   data_t IMM,   
-    output  data_t Result, 
-    output  logic EQ      
+    output  data_t Result 
+    // output  logic EQ      
 );
 
     always_ff @(posedge clk) begin
         if (reset) begin
             Result <= 32'b0;
-            EQ <= 1'b0;
+            // EQ <= 1'b0;
         end else if (enable) begin
             case (instruction)
                 // --- R-Type: Control Flow ---
@@ -32,11 +32,11 @@ module alu (
                 SGT: Result <= (ALUop1 > ALUop2) ? 1:0; //GREATER THAN
                 SEQ: begin //EQUALS
                     Result <= (ALUop1 == ALUop2) ? 1:0; 
-                    EQ <= (ALUop1 == ALUop2) ? 1:0;
+                    // EQ <= (ALUop1 == ALUop2) ? 1:0;
                 end
                 SNEZ: begin //Set if Not Equals
                     Result <= (ALUop1 != 0) ? 1 : 0;
-                    EQ <= (ALUop1 != 0) ? 1:0;
+                    // EQ <= (ALUop1 != 0) ? 1:0;
                 end
                 MIN: Result <= (ALUop1 < ALUop2) ? ALUop1:ALUop2; //MINIMUM INSTRUCTION
 
@@ -50,7 +50,7 @@ module alu (
                 BEQZ: begin
                     // The ALU's job is just to check the condition
                     Result <= (ALUop1 == 32'd0) ? 32'd1 : 32'd0;
-                    EQ     <= (ALUop1 == 32'd0);
+                    // EQ     <= (ALUop1 == 32'd0);
                 end
                 JAL: begin
                     // The result is the target address: PC + offset

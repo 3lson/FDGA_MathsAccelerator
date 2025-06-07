@@ -104,8 +104,8 @@ alu warp_alu_inst(
     .IMM(decoded_immediate[current_warp]),
     .instruction(decoded_alu_instruction[current_warp]),
 
-    .Result(scalar_alu_out),
-    .EQ() //unused
+    .Result(scalar_alu_out)
+    // .EQ() //unused
 );
 
 lsu warp_lsu_inst (
@@ -137,6 +137,7 @@ lsu warp_lsu_inst (
 );
 
 always @(posedge clk) begin
+    $display(start_execution);
     if (reset) begin
         $display("Resetting core %0d", block_id);
         start_execution <= 0;
@@ -155,10 +156,10 @@ always @(posedge clk) begin
             start_execution <= 1;
             current_warp <= 0;
             for (int i = 0; i < num_warps; i = i + 1) begin
-                warp_state[i] <= WARP_FETCH;
-                fetcher_state[i] <= FETCHER_IDLE;
-                pc[i] <= kernel_config.base_instructions_address;
-                next_pc[i] <= kernel_config.base_instructions_address;
+                warp_state[i] = WARP_FETCH;
+                fetcher_state[i] = FETCHER_IDLE;
+                pc[i] = kernel_config.base_instructions_address;
+                next_pc[i] = kernel_config.base_instructions_address;
             end
         end
     end else begin
@@ -166,7 +167,7 @@ always @(posedge clk) begin
         for (int i = 0; i < num_warps; i = i + 1) begin
             if (warp_state[i] == WARP_FETCH && fetcher_state[i] == FETCHER_DONE) begin
                 $display("Block: %0d: Warp %0d: Fetched instruction %h at address %h", block_id, i, fetched_instruction[i], pc[i]);
-                warp_state[i] <= WARP_DECODE;
+                warp_state[i] = WARP_DECODE;
             end
         end
 
@@ -419,8 +420,8 @@ generate
             .IMM(decoded_immediate[current_warp]),
             .instruction(decoded_alu_instruction[current_warp]),
 
-            .Result(alu_out[i]),
-            .EQ() // unused
+            .Result(alu_out[i])
+            // .EQ() // unused
         );
 
         lsu lsu_inst(

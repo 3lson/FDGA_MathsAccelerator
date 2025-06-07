@@ -31,9 +31,11 @@ module scalar_reg_file #(
     output  data_t                          rs2
 );
 
+/* verilator lint_off UNUSED */
 // Special-purpose register indices
 localparam int ZERO_REG = 0;
 localparam int EXECUTION_MASK_REG = 1;
+/* verilator lint_on UNUSED */
 
 assign warp_execution_mask = registers[EXECUTION_MASK_REG];
 
