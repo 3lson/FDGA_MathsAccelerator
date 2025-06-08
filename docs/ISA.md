@@ -30,11 +30,11 @@ All instr are 32 bit wide
 | `mul` | 0010 | rd = rs1 * rs2 |
 | `div` | 0011 | rd = rs1 / rs2 |
 | `slt` | 0100 | rd = (rs1 < rs2) ? 1 : 0 |
+| `sll` | 0101 | rd = rs1 << rs2 |
 | `seq` | 0110 | rd = (rs1 == rs2) ? 1 : 0 |
 | `snez` | 0111 | rd = (rs1 != 0) ? 1 : 0 (rs2 is don't cares here) |
 | `min` | 1000 | rd = min(rs1, rs2) |
 | `abs` | 1001 | absolute value |
-| 'sll' | 1010 | rd = rs1 << rs2 |
 
 ### I-type (Immediate Arith)
 `opcode = 001`

@@ -20,13 +20,12 @@ module decoder(
     output  reg [4:0]           decoded_rd_address,
     output  reg [4:0]           decoded_rs1_address,
     output  reg [4:0]           decoded_rs2_address,
+    output  reg                 decoded_scalar_instruction,
     output  alu_instruction_t   decoded_alu_instruction,
 
     output  reg                 decoded_halt
 );
     // Extract fields from instruction
-    wire         scalar     = instruction[6];
-    wire [5:0]   inst       = instruction[5:0];
     wire [2:0]   opcode     = instruction[31:29];
     wire [4:0]   rd         = instruction[4:0];
     wire [2:0]   funct3     = instruction[14:12];
@@ -44,6 +43,7 @@ module decoder(
     always @(posedge clk) begin
         if (reset) begin
             // Set outputs to default values
+            decoded_scalar_instruction <= 0
             decoded_reg_write_enable <= 0;
             decoded_mem_write_enable <= 0;
             decoded_mem_read_enable <= 0;
@@ -96,6 +96,7 @@ module decoder(
                         decoded_alu_instruction     <= JAL;
                         $display("Decoding instruction 0b%32b", instruction);
                         decoded_immediate           <= sign_extend_28(imm_j);
+                        decoded_scalar_instruction  <= 1;
                         
                     end
 
@@ -121,6 +122,7 @@ module decoder(
                         decoded_rs2_address         <= rs2;
                         decoded_reg_write_enable    <= 1;
                         decoded_reg_input_mux       <= ALU_OUT;
+                        decoded_scalar_instruction  <= instruction[28];
 
                         // Determine the ALU instruction
                         unique case (funct4)
@@ -129,6 +131,7 @@ module decoder(
                             4'b0010: decoded_alu_instruction <= MUL;
                             4'b0011: decoded_alu_instruction <= DIV;
                             4'b0100: decoded_alu_instruction <= SLT;
+                            4'b0101: decoded_alu_instruction <= SLT;
                             4'b0110: decoded_alu_instruction <= SEQ;
                             4'b0111: decoded_alu_instruction <= SNEZ;
                             4'b1000: decoded_alu_instruction <= MIN;
@@ -144,6 +147,7 @@ module decoder(
                         decoded_reg_write_enable <= 1;
                         decoded_reg_input_mux <= ALU_OUT;
                         decoded_immediate <= sign_extend_14(imm_i);
+                        decoded_scalar_instruction  <= instruction[28];
 
                         unique case (funct4)
                             4'b0000: decoded_alu_instruction <= ADDI;
@@ -160,6 +164,7 @@ module decoder(
                         decoded_rs1_address         <= rs1;
                         decoded_reg_write_enable    <= 1;
                         decoded_reg_input_mux       <= ALU_OUT;
+                        decoded_scalar_instruction  <= instruction[28];
 
                         unique case (funct4)
                             4'b0000: decoded_alu_instruction <= FADD;
@@ -178,8 +183,8 @@ module decoder(
                     end
 
                     `OPCODE_M: begin
-                        unique case (funct4) 
-                            4'b0000: begin
+                        unique case (funct3) 
+                            3'b000: begin
                                 // Load instructions (e.g., LW)
                                 decoded_rd_address          <= rd;
                                 decoded_rs1_address         <= rs1;
@@ -188,13 +193,15 @@ module decoder(
                                 decoded_immediate           <= sign_extend_15(imm_load);
                                 decoded_mem_read_enable     <= 1;
                                 decoded_alu_instruction     <= ADDI; // For computing effective address
+                                decoded_scalar_instruction  <= instruction[13];
                             end
-                            4'b0001: begin
+                            3'b001: begin
                                 decoded_rs1_address         <= rs1;
                                 decoded_rs2_address         <= rs2;
                                 decoded_immediate           <= sign_extend_15(imm_s);
                                 decoded_mem_write_enable    <= 1;
                                 decoded_alu_instruction     <= ADDI; // For computing effective address
+                                decoded_scalar_instruction  <= instruction[13];
                             end
                             default: $error("Invalid M-type instruction with funct4 %b", funct4);
                         endcase
@@ -205,6 +212,7 @@ module decoder(
                         decoded_immediate           <= {imm_u, 12'b0}; // Immediate value shifted left 12 bits
                         decoded_reg_write_enable    <= 1;
                         decoded_reg_input_mux       <= IMMEDIATE;
+                        decoded_scalar_instruction  <= instruction[5];
                     end
                     default: begin
                         // No operation or unrecognized opcode
