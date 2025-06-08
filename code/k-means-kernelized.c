@@ -106,7 +106,7 @@ int main(){
 
                 clusters_x[best_centroid_index[i]][i] = points_x[i];
                 clusters_y[best_centroid_index[i]][i] = points_y[i];
-                total[best_centroid_index[i]][i]  = 1;
+                total[best_centroid_index[i]][i]  = 1.0;
                 
                 //syncs all threads in the same block
                 sync;
