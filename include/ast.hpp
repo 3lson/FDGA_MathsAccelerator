@@ -65,6 +65,7 @@
 #include "ast_node.hpp"
 
 #include "custom/ast_builtin_function.hpp"
+#include "custom/ast_builtin_operand.hpp"
 
 #include "context/ast_context.hpp"
 

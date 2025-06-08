@@ -9,69 +9,69 @@ ContextRegister::ContextRegister(){
         {2, Register("sp", Type::_INT, false)},
         {3, Register("gp", Type::_INT, false)},
         {4, Register("tp", Type::_INT, false)},
-        {5, Register("t0", Type::_INT, true)},
-        {6, Register("t1", Type::_INT, true)},
-        {7, Register("t2", Type::_INT, true)},
-        {8, Register("s0", Type::_INT, false)},
-        {9, Register("s1", Type::_INT, true)},
-        {10, Register("a0", Type::_INT, false)},
-        {11, Register("a1", Type::_INT, true)},
-        {12, Register("a2", Type::_INT, true)},
-        {13, Register("a3", Type::_INT, true)},
-        {14, Register("a4", Type::_INT, true)},
-        {15, Register("a5", Type::_INT, true)},
-        {16, Register("a6", Type::_INT, true)},
-        {17, Register("a7", Type::_INT, true)},
-        {18, Register("s2", Type::_INT, true)},
-        {19, Register("s3", Type::_INT, true)},
-        {20, Register("s4", Type::_INT, true)},
-        {21, Register("s5", Type::_INT, true)},
-        {22, Register("s6", Type::_INT, true)},
-        {23, Register("s7", Type::_INT, true)},
-        {24, Register("s8", Type::_INT, true)},
-        {25, Register("s9", Type::_INT, true)},
-        {26, Register("s10", Type::_INT, true)},
-        {27, Register("s11", Type::_INT, true)},
+        {5, Register("s0", Type::_INT, false)},
+        {6, Register("s1", Type::_INT, true)},
+        {7, Register("s2", Type::_INT, true)},
+        {8, Register("s3", Type::_INT, false)},
+        {9, Register("s4", Type::_INT, true)},
+        {10, Register("s5", Type::_INT, true)},
+        {11, Register("s6", Type::_INT, true)},
+        {12, Register("s7", Type::_INT, true)},
+        {13, Register("s8", Type::_INT, true)},
+        {14, Register("s9", Type::_INT, true)},
+        {15, Register("s10", Type::_INT, true)},
+        {16, Register("s11", Type::_INT, true)},
+        {17, Register("s12", Type::_INT, true)},
+        {18, Register("s13", Type::_INT, true)},
+        {19, Register("s14", Type::_INT, true)},
+        {20, Register("s15", Type::_INT, true)},
+        {21, Register("s16", Type::_INT, true)},
+        {22, Register("s17", Type::_INT, true)},
+        {23, Register("s18", Type::_INT, true)},
+        {24, Register("s19", Type::_INT, true)},
+        {25, Register("s20", Type::_INT, true)},
+        {26, Register("s21", Type::_INT, true)},
+        {27, Register("s22", Type::_INT, true)},
 
-        {28, Register("t3", Type::_INT, false)}, // reserved for multi-threading
-        {29, Register("t4", Type::_INT, false)}, // reserved for multi-threading
-        {30, Register("t5", Type::_INT, false)}, // reserved for multi-threading
-        {31, Register("t6", Type::_INT, false)}, // reserved for multi-threading
+        {28, Register("s23", Type::_INT, true)}, // reserved for multi-threading
+        {29, Register("s24", Type::_INT, true)}, // reserved for multi-threading
+        {30, Register("s25", Type::_INT, true)}, // reserved for multi-threading
+        {31, Register("s26", Type::_INT, false)}, // reserved for multi-threading
 
-        {32, Register("ft0", Type::_FLOAT, false)}, // zero reg
-        {33, Register("ft1", Type::_FLOAT, true)},
-        {34, Register("ft2", Type::_FLOAT, true)},
+        {32, Register("fs0", Type::_FLOAT, true)}, // zero reg
+        {33, Register("fs1", Type::_FLOAT, true)},
+        {34, Register("fs2", Type::_FLOAT, true)},
 
-        {35, Register("ft3", Type::_FLOAT, false)}, // reserved for multi-threading
-        {36, Register("ft4", Type::_FLOAT, false)}, // reserved for multi-threading
-        {37, Register("ft5", Type::_FLOAT, false)}, // reserved for multi-threading
-        {38, Register("ft6", Type::_FLOAT, false)}, // reserved for multi-threading
+        {35, Register("fs3", Type::_FLOAT, true)}, // reserved for multi-threading
+        {36, Register("fs4", Type::_FLOAT, true)}, // reserved for multi-threading
+        {37, Register("fs5", Type::_FLOAT, true)}, // reserved for multi-threading
+        {38, Register("fs6", Type::_FLOAT, true)}, // reserved for multi-threading
 
-        {39, Register("ft7", Type::_FLOAT, true)},
-        {40, Register("fs0", Type::_FLOAT, false)},
-        {41, Register("fs1", Type::_FLOAT, false)},
-        {42, Register("fa0", Type::_FLOAT, false)},
-        {43, Register("fa1", Type::_FLOAT, false)},
-        {44, Register("fa2", Type::_FLOAT, true)},
-        {45, Register("fa3", Type::_FLOAT, true)},
-        {46, Register("fa4", Type::_FLOAT, true)},
-        {47, Register("fa5", Type::_FLOAT, true)},
-        {48, Register("fa6", Type::_FLOAT, true)},
-        {49, Register("fa7", Type::_FLOAT, true)},
-        {50, Register("fs2", Type::_FLOAT, true)},
-        {51, Register("fs3", Type::_FLOAT, true)},
-        {52, Register("fs4", Type::_FLOAT, true)},
-        {53, Register("fs5", Type::_FLOAT, true)},
-        {54, Register("fs6", Type::_FLOAT, true)},
-        {55, Register("fs7", Type::_FLOAT, true)},
-        {56, Register("fs8", Type::_FLOAT, true)},
-        {57, Register("fs9", Type::_FLOAT, true)},
-        {58, Register("fs10", Type::_FLOAT, true)},
-        {59, Register("fs11", Type::_FLOAT, true)},
-        {60, Register("ft8", Type::_FLOAT, true)},
-        {61, Register("ft9", Type::_FLOAT, true)},
-        {62, Register("ft10", Type::_FLOAT, true)},
-        {63, Register("ft11", Type::_FLOAT, true)}
+        {39, Register("fs7", Type::_FLOAT, true)},
+        {40, Register("fs8", Type::_FLOAT, true)},
+        {41, Register("fs9", Type::_FLOAT, true)},
+        {42, Register("fs10", Type::_FLOAT, true)},
+        {43, Register("fs11", Type::_FLOAT, true)},
+        {44, Register("fs12", Type::_FLOAT, true)},
+        {45, Register("fs13", Type::_FLOAT, true)},
+        {46, Register("fs14", Type::_FLOAT, true)},
+        {47, Register("fs15", Type::_FLOAT, true)},
+        {48, Register("fs16", Type::_FLOAT, true)},
+        {49, Register("fs17", Type::_FLOAT, true)},
+        {50, Register("fs18", Type::_FLOAT, true)},
+        {51, Register("fs19", Type::_FLOAT, true)},
+        {52, Register("fs20", Type::_FLOAT, true)},
+        {53, Register("fs21", Type::_FLOAT, true)},
+        {54, Register("fs22", Type::_FLOAT, true)},
+        {55, Register("fs23", Type::_FLOAT, true)},
+        {56, Register("fs24", Type::_FLOAT, true)},
+        {57, Register("fs25", Type::_FLOAT, true)},
+        {58, Register("fs26", Type::_FLOAT, true)},
+        {59, Register("fs27", Type::_FLOAT, true)},
+        {60, Register("fs28", Type::_FLOAT, true)},
+        {61, Register("fs29", Type::_FLOAT, true)},
+        {62, Register("fs30", Type::_FLOAT, true)},
+        {63, Register("fs31", Type::_FLOAT, false)}
     };
 
     // Mapping register to unique id reference for quick look-ups

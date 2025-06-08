@@ -12,6 +12,7 @@ private:
 
 public:
     BuiltInFunction(const std::string& func_name, NodePtr argument) : func_name_(func_name), argument_(std::move(argument)) {}
+        BuiltInFunction(const std::string& func_name) : func_name_(func_name) {}
 
     Type GetType(Context& context) const override;
     void EmitElsonV(std::ostream& stream, Context& context, std::string dest_reg) const override;

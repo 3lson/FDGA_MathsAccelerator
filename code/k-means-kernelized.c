@@ -82,14 +82,13 @@ int main(){
 
     -------------------------------------------------------------------------------------*/
 
-        KERNEL(1,blocksize,num_points,distances,centroids_x,centroids_y,points_x,
-            points_y,shortest_distance,best_centroid_index, clusters_x, clusters_y){
+        kernel(num_points){
             int i = blockId.x * blocksize + threadId.x;
 
             if(i < num_points){
-                distances[0][i] = fabs(centroids_x[0]-points_x[i]) + fabs(centroids_y[0]-points_y[i]);
-                distances[1][i] = fabs(centroids_x[1]-points_x[i]) + fabs(centroids_y[1]-points_y[i]);
-                distances[2][i] = fabs(centroids_x[2]-points_x[i]) + fabs(centroids_y[2]-points_y[i]);
+                distances[0][i] = fabsf(centroids_x[0]-points_x[i]) + fabsf(centroids_y[0]-points_y[i]);
+                distances[1][i] = fabsf(centroids_x[1]-points_x[i]) + fabsf(centroids_y[1]-points_y[i]);
+                distances[2][i] = fabsf(centroids_x[2]-points_x[i]) + fabsf(centroids_y[2]-points_y[i]);
 
                 if(distances[0][i] < distances[1][i]){
                     shortest_distance[i] = distances[0][i];
@@ -110,7 +109,7 @@ int main(){
                 total[best_centroid_index[i]][i]  = 1;
                 
                 //syncs all threads in the same block
-                SYNC;
+                sync;
                 
                 //h represents the number of times to half the 100 points in summing operations 
                 for(int h = 0; h < 7; h++){

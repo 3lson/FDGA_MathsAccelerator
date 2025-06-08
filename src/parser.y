@@ -34,7 +34,7 @@
 %token TYPE_NAME TYPEDEF EXTERN STATIC AUTO REGISTER SIZEOF
 %token CHAR SHORT INT LONG SIGNED UNSIGNED FLOAT DOUBLE CONST VOLATILE VOID
 %token STRUCT UNION ENUM ELLIPSIS
-%token CASE DEFAULT IF ELSE SWITCH WHILE DO FOR GOTO CONTINUE BREAK RETURN, FABSF
+%token CASE DEFAULT IF ELSE SWITCH WHILE DO FOR GOTO CONTINUE BREAK RETURN FABSF SYNC BLOCKIDX THREADIDX BLOCKSIZE
 
 %type <node> translation_unit external_declaration function_definition primary_expression postfix_expression argument_expression_list
 %type <node> unary_expression cast_expression multiplicative_expression additive_expression shift_expression relational_expression
@@ -275,6 +275,10 @@ primary_expression
 	| CHAR_LITERAL { $$ = new CharacterLiteral($1); }
 	| STRING_LITERAL { $$ = new StringLiteral($1); }
 	| FABSF '(' expression ')'  { $$ = new BuiltInFunction("fabsf", NodePtr($3)); }
+	| SYNC { $$ = new BuiltInFunction("sync");}
+	| BLOCKIDX    { $$ = new BuiltInOperand("blockId.x", 30); }
+    | THREADIDX   { $$ = new BuiltInOperand("threadId.x", 29); }
+    | BLOCKSIZE   { $$ = new BuiltInOperand("blocksize", 31); }
 	;
 
 expression_statement

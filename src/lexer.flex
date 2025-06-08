@@ -63,6 +63,10 @@ IS  (u|U|l|L)*
 "volatile"	    {return(VOLATILE);}
 "while"			{return(WHILE);}
 "fabsf"         {return(FABSF); }
+"sync"           {return(SYNC);}
+"blockId.x"    { return(BLOCKIDX); }
+"threadId.x"   { return(THREADIDX); }
+"blocksize"    { return(BLOCKSIZE); }
 
 {L}({L}|{D})*		{
   std::string *str = new std::string(yytext);
