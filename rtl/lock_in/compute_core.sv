@@ -74,7 +74,13 @@ logic [4:0] decoded_alu_instruction [WARPS_PER_CORE];
 logic decoded_halt [WARPS_PER_CORE];
 logic float_flag [WARPS_PER_CORE];
 logic floatingRead_flag [WARPS_PER_CORE];
-logic floatingWrtie_flag [WARPS_PER_CORE];
+logic floatingWrite_flag [WARPS_PER_CORE];
+logic decoded_sync [WARPS_PER_CORE];
+logic [WARPS_PER_CORE-1:0] sync_reached;  
+logic sync_active;                        
+instruction_memory_address_t sync_pc [WARPS_PER_CORE];
+
+assign sync_active = |sync_reached;
 
 // scalar registers
 warp_mask_t warp_execution_mask [WARPS_PER_CORE];
@@ -152,6 +158,11 @@ always @(posedge clk) begin
             next_pc[i] <= 0;
             current_warp <= 0;
         end
+        sync_reached <= 0;
+        for (int i = 0; i < WARPS_PER_CORE; i++) begin
+            sync_pc[i] <= '0;
+        end
+
     end else if (!start_execution) begin
         if (start) begin
             $display("Starting execution of block %d", block_id);
@@ -248,7 +259,18 @@ always @(posedge clk) begin
                 // $display("Mask: %32b", warp_execution_mask[current_warp]);
                 // $display("Block: %0d: Warp %0d: Executing instruction %h at address %h", block_id, current_warp, fetched_instruction[current_warp], pc[current_warp]);
                 // $display("Instruction opcode: %b", fetched_instruction[current_warp][6:0]);
-                if (decoded_scalar_instruction[current_warp]) begin
+                $display("Block: %0d: Warp %0d: Executing instruction %h", block_id, current_warp, fetched_instruction[current_warp]);
+                
+                if (decoded_sync[current_warp]) begin
+                    // Sync instruction detected
+                    $display("Block: %0d: Warp %0d: Sync barrier encountered at PC %h", block_id, current_warp, pc[current_warp]);
+                    
+                    sync_reached[current_warp] <= 1'b1;
+                    sync_pc[current_warp] <= pc[current_warp];
+                    next_pc[current_warp] <= pc[current_warp] + 1;
+                    warp_state[current_warp] <= WARP_SYNC_WAIT;
+                    
+                end else if (decoded_scalar_instruction[current_warp]) begin
                     if (decoded_branch[current_warp]) begin
                         // Branch instruction
                         if (scalar_alu_out == 1) begin
@@ -286,6 +308,35 @@ always @(posedge clk) begin
                 end
 
             end
+            WARP_SYNC_WAIT: begin
+                // Check if all active warps have reached the sync barrier
+                logic all_warps_synced = 1'b1;
+                
+                for (int i = 0; i < num_warps; i++) begin
+                    // Only consider warps that are not DONE or IDLE
+                    if ((warp_state[i] != WARP_DONE) && (warp_state[i] != WARP_IDLE)) begin
+                        if (!sync_barrier_reached[i]) begin
+                            all_warps_synced = 1'b0;
+                            break;
+                        end
+                    end
+                end
+                
+                if (all_warps_synced) begin
+                    $display("Block: %0d: All warps synchronized, releasing barrier", block_id);
+                    
+                    // Release all warps from sync barrier
+                    for (int i = 0; i < num_warps; i++) begin
+                        if (warp_state[i] == WARP_SYNC_WAIT) begin
+                            warp_state[i] <= WARP_UPDATE;
+                        end
+                    end
+                    
+                    // Clear sync barrier state
+                    sync_reached <= '0;
+                end
+            end
+
             WARP_UPDATE: begin
                 if (decoded_halt[current_warp]) begin
                     //$display("Block: %0d: Warp %0d: Finished executing instruction %h", block_id, current_warp, fetched_instruction[current_warp]);
@@ -345,7 +396,8 @@ for (genvar i = 0; i < WARPS_PER_CORE; i = i + 1) begin : g_warp
         .decoded_halt(decoded_halt[i]),
         .float_flag(float_flag[i]),
         .floatingRead(floatingRead_flag[i]),
-        .floatingWrite(floatingWrite_flag[i])
+        .floatingWrite(floatingWrite_flag[i]),
+        .decoded_sync(decoded_sync[i])
     );
 
     case(floatingRead_flag[i])

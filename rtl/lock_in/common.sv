@@ -88,7 +88,8 @@ typedef enum logic [4:0] {
     BEQZ, // 11001
 
     // jump instructions
-    JAL // 11010
+    JAL, // 11010
+    SYNC
 } alu_instruction_t;
 
 // warp state enum
@@ -100,6 +101,7 @@ typedef enum logic [2:0] {
     WARP_WAIT,
     WARP_EXECUTE,
     WARP_UPDATE,
+    WARP_SYNC_WAIT,
     WARP_DONE
 } warp_state_t;
 
