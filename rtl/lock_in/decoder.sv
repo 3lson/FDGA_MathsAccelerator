@@ -23,8 +23,10 @@ module decoder(
     output  alu_instruction_t   decoded_alu_instruction,
 
     output  reg                 decoded_halt,
-    output reg [1:0]            floatingRead,
-    output reg                  floatingWrite
+    output  reg                 float_flag,
+    output  reg [1:0]           floatingRead,
+    output  reg                 floatingWrite,
+    output  reg                 decoded_sync
 );
     // Extract fields from instruction
     wire [2:0]   opcode     = instruction[31:29];
@@ -113,6 +115,15 @@ module decoder(
                         decoded_immediate           <= sign_extend_18(imm_b);
                         decoded_branch              <= 1;
                         decoded_alu_instruction     <= BEQZ;
+                        decoded_scalar_instruction  <= 1;
+
+                    end
+
+                    3'b110: begin
+                        
+                        decoded_sync                <= 1
+                        decoded_alu_instruction     <= SYNC;
+                        decoded_scalar_instruction  <= 1;
 
                     end
 
