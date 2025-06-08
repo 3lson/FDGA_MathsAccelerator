@@ -72,6 +72,9 @@ logic [4:0] decoded_rs1_address [WARPS_PER_CORE];
 logic [4:0] decoded_rs2_address [WARPS_PER_CORE];
 logic [4:0] decoded_alu_instruction [WARPS_PER_CORE];
 logic decoded_halt [WARPS_PER_CORE];
+logic float_flag [WARPS_PER_CORE];
+logic floatingRead_flag [WARPS_PER_CORE];
+logic floatingWrtie_flag [WARPS_PER_CORE];
 
 // scalar registers
 warp_mask_t warp_execution_mask [WARPS_PER_CORE];
@@ -339,7 +342,44 @@ for (genvar i = 0; i < WARPS_PER_CORE; i = i + 1) begin : g_warp
         .decoded_rs2_address(decoded_rs2_address[i]),
         .decoded_alu_instruction(decoded_alu_instruction[i]),
 
-        .decoded_halt(decoded_halt[i])
+        .decoded_halt(decoded_halt[i]),
+        .float_flag(float_flag[i]),
+        .floatingRead(floatingRead_flag[i]),
+        .floatingWrite(floatingWrite_flag[i])
+    );
+
+    case(floatingRead_flag[i])
+        2'b00: {RD1D,RD2D} = {integerRD1,integerRD2};
+        2'b01: {RD1D,RD2D} = {floatingRD1,floatingRD2};
+        2'b10: {RD1D,RD2D} = {integerRD1,floatingRD2}; //FLOATING STORE 
+        default: {RD1D,RD2D} = {integerRD1,integerRD2};
+    endcase
+
+    scalar_reg_file #(
+        .DATA_WIDTH(32)
+    ) floating_scalar_reg_file_inst (
+        .clk(clk),
+        .reset(reset),
+        .enable((current_warp == i)), // Enable when current_warp matches and warp is active
+
+        .warp_execution_mask(warp_execution_mask[i]),
+
+        .warp_state(warp_state[i]),
+
+        .decoded_reg_write_enable(decoded_reg_write_enable[i] & (decoded_scalar_instruction[i] | decoded_reg_input_mux[current_warp] == VECTOR_TO_SCALAR)),
+        .decoded_reg_input_mux(decoded_reg_input_mux[i]),
+        .decoded_immediate(decoded_immediate[i]),
+        .decoded_rd_address(decoded_rd_address[i]),
+        .decoded_rs1_address(decoded_rs1_address[i]),
+        .decoded_rs2_address(decoded_rs2_address[i]),
+
+        .alu_out(scalar_alu_out),
+        .lsu_out(scalar_lsu_out),
+        .pc(pc[i]),
+        .vector_to_scalar_data(vector_to_scalar_data[i]),
+
+        .rs1(scalar_rs1),
+        .rs2(scalar_rs2)
     );
 
     scalar_reg_file #(
@@ -369,38 +409,77 @@ for (genvar i = 0; i < WARPS_PER_CORE; i = i + 1) begin : g_warp
         .rs2(scalar_rs2)
     );
 
-    reg_file #(
-            .THREADS_PER_WARP(THREADS_PER_WARP)
-        ) reg_file_inst (
-            .clk(clk),
-            .reset(reset),
-            .enable((current_warp == i)), // Enable when current_warp matches and warp is active
+    if(float_flag[i]) begin 
+        reg_file #(
+                .THREADS_PER_WARP(THREADS_PER_WARP)
+            ) floating_reg_file_inst (
+                .clk(clk),
+                .reset(reset),
+                .enable((current_warp == i)), // Enable when current_warp matches and warp is active
 
-            // Thread enable signals (execution mask)
-            .thread_enable(warp_execution_mask[i]),
+                // Thread enable signals (execution mask)
+                .thread_enable(warp_execution_mask[i]),
 
-            // Warp and block identifiers
-            .warp_id(i),
-            .block_id(block_id),
-            .block_size(kernel_config.num_warps_per_block * THREADS_PER_WARP),
-            .warp_state(warp_state[i]),
+                // Warp and block identifiers
+                .warp_id(i),
+                .block_id(block_id),
+                .block_size(kernel_config.num_warps_per_block * THREADS_PER_WARP),
+                .warp_state(warp_state[i]),
 
-            // Decoded instruction fields for this warp
-            .decoded_reg_write_enable(decoded_reg_write_enable[i] & !decoded_scalar_instruction[i]),
-            .decoded_reg_input_mux(decoded_reg_input_mux[i]),
-            .decoded_immediate(decoded_immediate[i]),
-            .decoded_rd_address(decoded_rd_address[i]),
-            .decoded_rs1_address(decoded_rs1_address[i]),
-            .decoded_rs2_address(decoded_rs2_address[i]),
+                // Decoded instruction fields for this warp
+                .decoded_reg_write_enable(decoded_reg_write_enable[i] & !decoded_scalar_instruction[i]),
+                .decoded_reg_input_mux(decoded_reg_input_mux[i]),
+                .decoded_immediate(decoded_immediate[i]),
+                .decoded_rd_address(decoded_rd_address[i]),
+                .decoded_rs1_address(decoded_rs1_address[i]),
+                .decoded_rs2_address(decoded_rs2_address[i]),
 
-            // Inputs from ALU and LSU per thread
-            .alu_out(alu_out), // ALU outputs for all threads
-            .lsu_out(lsu_out),
+                // Inputs from ALU and LSU per thread
+                .alu_out(alu_out), // ALU outputs for all threads
+                .lsu_out(lsu_out),
 
-            // Outputs per thread
-            .rs1(rs1),
-            .rs2(rs2)
-        );
+                // Outputs per thread
+                .rs1(rs1),
+                .rs2(rs2)
+            );
+
+    end
+    else begin
+        reg_file #(
+                .THREADS_PER_WARP(THREADS_PER_WARP)
+            ) reg_file_inst (
+                .clk(clk),
+                .reset(reset),
+                .enable((current_warp == i)), // Enable when current_warp matches and warp is active
+
+                // Thread enable signals (execution mask)
+                .thread_enable(warp_execution_mask[i]),
+
+                // Warp and block identifiers
+                .warp_id(i),
+                .block_id(block_id),
+                .block_size(kernel_config.num_warps_per_block * THREADS_PER_WARP),
+                .warp_state(warp_state[i]),
+
+                // Decoded instruction fields for this warp
+                .decoded_reg_write_enable(decoded_reg_write_enable[i] & !decoded_scalar_instruction[i]),
+                .decoded_reg_input_mux(decoded_reg_input_mux[i]),
+                .decoded_immediate(decoded_immediate[i]),
+                .decoded_rd_address(decoded_rd_address[i]),
+                .decoded_rs1_address(decoded_rs1_address[i]),
+                .decoded_rs2_address(decoded_rs2_address[i]),
+
+                // Inputs from ALU and LSU per thread
+                .alu_out(alu_out), // ALU outputs for all threads
+                .lsu_out(lsu_out),
+
+                // Outputs per thread
+                .rs1(rs1),
+                .rs2(rs2)
+            );
+    end
+
+    
 end
 endgenerate
 
@@ -409,20 +488,39 @@ endgenerate
 generate
     for (genvar i = 0; i < THREADS_PER_WARP; i = i + 1) begin : g_alus
         wire t_enable = current_warp_execution_mask[i] & !decoded_scalar_instruction[current_warp];
-        alu alu_inst(
-            .clk(clk),
-            .reset(reset),
-            .enable(t_enable),
 
-            .pc(pc[current_warp]),
-            .ALUop1(rs1[i]),
-            .ALUop2(rs2[i]),
-            .IMM(decoded_immediate[current_warp]),
-            .instruction(decoded_alu_instruction[current_warp]),
+        if(float_flag[current_warp]) begin
+            floating_alu floating_alu_inst(
+                .clk(clk),
+                .reset(reset),
+                .enable(t_enable),
 
-            .Result(alu_out[i])
-            // .EQ() // unused
-        );
+                .pc(pc[current_warp]),
+                .op1(rs1[i]),
+                .op2(rs2[i]),
+                .IMM(decoded_immediate[current_warp]),
+                .instruction(decoded_alu_instruction[current_warp]),
+
+                .result(alu_out[i])
+                // .EQ() // unused
+            );
+        end
+        else begin
+            alu alu_inst(
+                .clk(clk),
+                .reset(reset),
+                .enable(t_enable),
+
+                .pc(pc[current_warp]),
+                .ALUop1(rs1[i]),
+                .ALUop2(rs2[i]),
+                .IMM(decoded_immediate[current_warp]),
+                .instruction(decoded_alu_instruction[current_warp]),
+
+                .Result(alu_out[i])
+                // .EQ() // unused
+            );
+        end
 
         lsu lsu_inst(
             .clk(clk),
