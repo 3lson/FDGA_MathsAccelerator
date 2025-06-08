@@ -35,6 +35,7 @@ All instr are 32 bit wide
 | `snez` | 0111 | rd = (rs1 != 0) ? 1 : 0 (rs2 is don't cares here) |
 | `min` | 1000 | rd = min(rs1, rs2) |
 | `abs` | 1001 | absolute value |
+| 'sll' | 1010 | rd = rs1 << rs2 |
 
 ### I-type (Immediate Arith)
 `opcode = 001`

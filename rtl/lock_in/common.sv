@@ -64,6 +64,7 @@ typedef enum logic [4:0] {
     SNEZ, // 00111
     MIN, // 01000
     ABS, // 01001
+    SLL, // 01010
 
     ADDI, // 01010
     MULI, // 01011

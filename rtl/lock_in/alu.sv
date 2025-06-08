@@ -40,6 +40,8 @@ module alu (
                 end
                 MIN: Result <= (ALUop1 < ALUop2) ? ALUop1:ALUop2; //MINIMUM INSTRUCTION
 
+                SLL: Result <= ALUop1 << ALUop2; //SHIFT LEFT REGISTERS
+
                 // --- I-Type: Control Flow ---
                 ADDI: Result <= ALUop1 + IMM;
                 MULI: Result <= ALUop1 * IMM; // MULTIPLY
