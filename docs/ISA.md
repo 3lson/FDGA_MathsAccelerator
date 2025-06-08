@@ -21,7 +21,7 @@ All instr are 32 bit wide
 
 | [31:29] | [28] | [27:19] | [18:14] | [13:10] | [9:5] | [4:0]
 |--------|----|-----|------|-----|-----|----|
-|opcode| pred |  9(x) | RS2 | FUNCT4 | RS1 | RD |
+|opcode| scalar |  9(x) | RS2 | FUNCT4 | RS1 | RD |
 
 |Mnemonic|FUNCT4|Description|
 | -------| -----|-----------|
@@ -30,7 +30,6 @@ All instr are 32 bit wide
 | `mul` | 0010 | rd = rs1 * rs2 |
 | `div` | 0011 | rd = rs1 / rs2 |
 | `slt` | 0100 | rd = (rs1 < rs2) ? 1 : 0 |
-| `sgt` | 0101 | rd = (rs1 > rs2) ? 1 : 0 |
 | `seq` | 0110 | rd = (rs1 == rs2) ? 1 : 0 |
 | `snez` | 0111 | rd = (rs1 != 0) ? 1 : 0 (rs2 is don't cares here) |
 | `min` | 1000 | rd = min(rs1, rs2) |
@@ -42,7 +41,7 @@ All instr are 32 bit wide
 
 | [31:29] | [28] | [27:14] | [13:10] | [9:5] | [4:0]
 |--------|----|-----|---------|----|--|
-|opcode| pred | IMM [13:0] (14 bits) | FUNCT4 | RS1 | RD |
+|opcode| scalar | IMM [13:0] (14 bits) | FUNCT4 | RS1 | RD |
 
 |Mnemonic|FUNCT4|Description|
 | -------| -----|-----------|
@@ -58,27 +57,27 @@ All instr are 32 bit wide
 
 **LOAD** `lw rd, imm(rs1)`
 
-| [31:29] | [28:14] | [13:10] | [9:5] | [4:0]
-|--------|----|-------|--|-----|
-|opcode| IMM [14:0] (15 bits) | FUNCT4 = 0000 | RS1 | RD |
+| [31:29] | [28:14] | [13] | [12:10] | [9:5] | [4:0]
+|--------|----|---|-------|--|-----|
+|opcode| IMM [14:0] (15 bits) | scalar | FUNCT3 = 000 | RS1 | RD |
 
 **STORE** `sw rs2, imm(rs1)`
 
-| [31:29] | [28:19] | [18:14] | [13:10] | [9:5] | [4:0]|
-|--------|----|-----|------|---|-----|
-|opcode| IMM [14:5] | RS2|FUNCT4=0001 | RS1 | IMM [4:0] |
+| [31:29] | [28:19] | [18:14] | [13] | [12:10] | [9:5] | [4:0]|
+|--------|----|-----|---|------|---|-----|
+|opcode| IMM [14:5] | RS2| scalar |FUNCT3=001 | RS1 | IMM [4:0] |
 
 **FLOAT LOAD** `flw ft0, imm(t0)`
 
-| [31:29] | [28:14] | [13:10] | [9:5] | [4:0]
-|--------|----|-------|--|-----|
-|opcode| IMM [14:0] (15 bits) | FUNCT4 = 1000 | RS1 | RD |
+| [31:29] | [28:14] | [13] | [12:10] | [9:5] | [4:0]
+|--------|----|---|-------|--|-----|
+|opcode| IMM [14:0] (15 bits) | scalar | FUNCT3 = 010 | RS1 | RD |
 
 **FLOAT STORE** `fsw ft0, imm(t0)`
 
-| [31:29] | [28:19] | [18:14] | [13:10] | [9:5] | [4:0]|
-|--------|----|-----|------|---|-----|
-|opcode| IMM [14:5] | RS2|FUNCT4=1001 | RS1 | IMM [4:0] |
+| [31:29] | [28:19] | [18:14] | [13] | [12:10] | [9:5] | [4:0]|
+|--------|----|-----|------|---|---|-----|
+|opcode| IMM [14:5] | RS2| scalar | FUNCT3=011 | RS1 | IMM [4:0] |
 
 
 **Note:** `flw` and `fsw` will be treated the same as `lw` and `sw` respectively
@@ -135,9 +134,9 @@ This is a pseudo-instr that underlying would perform `addi t0, zero, 100`
 `lui rd upimm`
 
 
-| [31:29] | [28:9] | [8:5] | [4:0] |
-| -------| ---- | ------ | -------|
-| opcode | UpIMM[31:12] | 4(x) | RD |
+| [31:29] | [28:9] | [8:6] | [5] | [4:0] |
+| -------| ---- | ------ | ------ | -------|
+| opcode | UpIMM[31:12] | 3(x) | scalar | RD |
 
 **Note:** `upimm` gives 20-bit upper immediate IMM[31:12]
 
@@ -156,7 +155,7 @@ These are arithmetic instructions for FPU block
 
 | [31:29] | [28] | [27:19] | [18:14] | [13:10] | [9:5] | [4:0]
 |--------|----|-----|------|-----|-----|----|
-|opcode| pred |  9(x) | RS2 | FUNCT4 | RS1 | RD |
+|opcode| scalar |  9(x) | RS2 | FUNCT4 | RS1 | RD |
 
 |Mnemonic|FUNCT4|Description|
 | -------| -----|-----------|
@@ -175,7 +174,7 @@ These are arithmetic instructions for FPU block
 ## Register File Assignment
 We have chosen to stick with the RISCV Register layout with the addition of some extra special registers on our end for multithreading
 
-**Int Register File**
+**Int Scalar Register File**
 
 | Name | Register Number | Usage |
 | -----| ----------------| ------|
@@ -184,35 +183,40 @@ We have chosen to stick with the RISCV Register layout with the addition of some
 | sp | x2 | stack pointer |
 | gp | x3 | global pointer | 
 | tp | x4 | thread pointer |
-| t0-t2 | x5-7 | temporaries |
-| s0/fp | x8 | saved register / frame pointer | 
-| s1 | x9 | saved register | 
-| a0-a1 | x10-11 | Function arguments / return value |
-| a2-a7 | x12-x17 | Function arguments | 
-| s2-s11| x18-x27 | Saved registers | 
-| t3-t6 | x28-x31| Thread registers | 
+| s0 | x5 | protected |
+| s1-s25 | x6-x30 | saved registers | 
+| s26 | x31| reserved register | 
 
-The following are mapped as the thread registers
+**Float Scalar Register File**
+
+| Name | Register Number | Usage |
+| -----| ----------------| ------|
+| fs0-fs30 | x0-x30 | saved registers | 
+| fs31 | x31 | reserved register | 
+
+
+The following are mapped as the special registers
 
  | Register Number | Purpose | 
  | ---------------- |--------|
- | x28 | threadIdx | 
- | x29 | blockIdx |
- | x30 | blockDim | 
- | x31 | laneId |
+ | x29 | threadIdx | 
+ | x30 | blockIdx |
+ | x31 | block_size | 
 
-**Float Register File**
+**Int Vector Register File**
+
+| Name | Register Number | Usage |
+| -----| ----------------| ------|
+| zero | x0 | constant value 0 |
+| v1-v28 | x1-x28 | saved registers | 
+| v29-v31 | x29-x31 | special registers | 
+
+**Float Vector Register File**
 
 The design choice of our float registers are as follows. Note reg convention for floats are not applied to that of RISCV as it is not necessary for our algorithm
 
 | Name | Register Number | Usage |
 | -----| ----------------| ------|
-| zero/ft0 | x0 | constant value 0 |
-| ft1-ft2 | x1-x2 | temporaries | 
-| ft3-ft6 | x3x-x6 | Thread registers |
-| ft7 | x7 | temporaries | 
-| fs0-fs1 | x8-x9 | reserved for now (but potential extra regs if needed) |
-| fa0-fa1 | x10-x11| reserved for now (but potential extra regs if needed) |
-| fa2-fa7 | x12-x17 | temporaries | 
-| fs2-fs11 | x18-x27 | temporaries | 
-| ft8-ft11 | x28-x31 | temporaries|
+| zero | x0 | constant value 0 |
+| fv1-fv28 | x1-x28 | saved registers | 
+| fv29-fv31 | x29-x31 | special registers | 
