@@ -1,4 +1,4 @@
-# Elson-V ISA:
+# Elson-V ISA
 
 
 ## Overview  
@@ -10,9 +10,7 @@ All instr are 32 bit wide
 | Field | Bits | 
 | ------| -----|
 | opcode | [31:29]|
-| predicate | [28] |
-
-**Note:** If predicate is `1`, instruction executes only if pred condition holds
+| scalar | [28] |
 
 ## Instruction Types
 

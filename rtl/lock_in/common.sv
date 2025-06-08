@@ -59,12 +59,11 @@ typedef enum logic [4:0] {
     MUL, // 00010
     DIV, // 00011
     SLT, // 00100
-    SGT, // 00101
+    SLL, // 00101
     SEQ, // 00110
     SNEZ, // 00111
     MIN, // 01000
     ABS, // 01001
-    SLL, // 01010
 
     ADDI, // 01010
     MULI, // 01011
@@ -76,7 +75,7 @@ typedef enum logic [4:0] {
     FSUB, // 01111
     FMUL, // 10000
     FDIV, // 10001
-    FLT, // 10010
+    FSLT, // 10010
     FNEG, // 10011
     FEQ, // 10100
     FMIN, // 10101

@@ -20,18 +20,16 @@ module decoder(
     output  reg [4:0]           decoded_rd_address,
     output  reg [4:0]           decoded_rs1_address,
     output  reg [4:0]           decoded_rs2_address,
-    output  reg                 decoded_scalar_instruction,
     output  alu_instruction_t   decoded_alu_instruction,
 
     output  reg                 decoded_halt,
-    output  reg                 float_flag,
     output reg [1:0]            floatingRead,
     output reg                  floatingWrite
 );
     // Extract fields from instruction
     wire [2:0]   opcode     = instruction[31:29];
     wire [4:0]   rd         = instruction[4:0];
-    wire [2:0]   funct3     = instruction[14:12];
+    wire [2:0]   funct3     = instruction[12:10];
     wire [4:0]   rs1        = instruction[9:5];
     wire [3:0]   funct4     = instruction[13:10];
     wire [4:0]   rs2        = instruction[18:14];
@@ -46,7 +44,7 @@ module decoder(
     always @(posedge clk) begin
         if (reset) begin
             // Set outputs to default values
-            decoded_scalar_instruction <= 0
+            decoded_scalar_instruction <= 0;
             decoded_reg_write_enable <= 0;
             decoded_mem_write_enable <= 0;
             decoded_mem_read_enable <= 0;
@@ -59,9 +57,8 @@ module decoder(
             decoded_alu_instruction <= ADDI;
             decoded_halt <= 0;
             decoded_scalar_instruction <= 0;
-            float_flag <= 0;
-            floatingRead <= 0;
-            floatingWrite <= 0;
+            floatingRead <= 2'b00;
+            floatingWrite <= 1'b0;
         end else if (warp_state == WARP_DECODE) begin
             // Default assignments for new decode
             decoded_reg_write_enable <= 0;
@@ -76,9 +73,8 @@ module decoder(
             decoded_branch <= 0;
             decoded_halt <= 0;
             decoded_scalar_instruction <= 0;
-            float_flag <= 0;
-            floatingRead <= 0;
-            floatingWrite <= 0;
+            floatingRead <= 2'b00;
+            floatingWrite <= 1'b0;
 
             if (opcode == `OPCODE_HALT) begin
                 decoded_halt <= 1;
@@ -132,6 +128,8 @@ module decoder(
                         decoded_reg_write_enable    <= 1;
                         decoded_reg_input_mux       <= ALU_OUT;
                         decoded_scalar_instruction  <= instruction[28];
+                        floatingRead <= 2'b00;
+                        floatingWrite <= 1'b0;
 
                         // Determine the ALU instruction
                         unique case (funct4)
@@ -156,6 +154,8 @@ module decoder(
                         decoded_reg_input_mux <= ALU_OUT;
                         decoded_immediate <= sign_extend_14(imm_i);
                         decoded_scalar_instruction  <= instruction[28];
+                        floatingRead <= 2'b00;
+                        floatingWrite <= 1'b0;
 
                         unique case (funct4)
                             4'b0000: decoded_alu_instruction <= ADDI;
@@ -173,21 +173,20 @@ module decoder(
                         decoded_reg_write_enable    <= 1;
                         decoded_reg_input_mux       <= ALU_OUT;
                         decoded_scalar_instruction  <= instruction[28];
-                        float_flag                  <= 1;
 
                         unique case (funct4)
-                            4'b0000: decoded_alu_instruction <= FADD;
-                            4'b0001: decoded_alu_instruction <= FSUB;
-                            4'b0010: decoded_alu_instruction <= FMUL;
-                            4'b0011: decoded_alu_instruction <= FDIV;
-                            4'b0100: decoded_alu_instruction <= FLT;
-                            4'b0101: decoded_alu_instruction <= FNEG;
-                            4'b0110: decoded_alu_instruction <= FEQ;
-                            4'b0111: decoded_alu_instruction <= FMIN;
-                            4'b1000: decoded_alu_instruction <= FABS;
-                            4'b1001: decoded_alu_instruction <= FCVT_W_S;
-                            4'b1010: decoded_alu_instruction <= FCVT_S_W;
-                            default: $error("Invalid I-type instruction with funct4 %b", funct4);
+                            4'b0000: begin decoded_alu_instruction <= FADD; floatingRead <= 2'b11; floatingWrite <= 1'b1; end
+                            4'b0001: begin decoded_alu_instruction <= FSUB; floatingRead <= 2'b11; floatingWrite <= 1'b1; end 
+                            4'b0010: begin decoded_alu_instruction <= FMUL; floatingRead <= 2'b11; floatingWrite <= 1'b1; end
+                            4'b0011: begin decoded_alu_instruction <= FDIV; floatingRead <= 2'b11; floatingWrite <= 1'b1; end
+                            4'b0100: begin decoded_alu_instruction <= FSLT; floatingRead <= 2'b11; floatingWrite <= 1'b0; end // Write to int
+                            4'b0101: begin decoded_alu_instruction <= FNEG; floatingRead <= 2'b01; floatingWrite <= 1'b1; end
+                            4'b0110: begin decoded_alu_instruction <= FEQ; floatingRead <= 2'b11; floatingWrite <= 1'b0; end // Write to int
+                            4'b0111: begin decoded_alu_instruction <= FMIN; floatingRead <= 2'b11; floatingWrite <= 1'b1; end
+                            4'b1000: begin decoded_alu_instruction <= FABS; floatingRead <= 2'b01; floatingWrite <= 1'b1; end
+                            4'b1001: begin decoded_alu_instruction <= FCVT_W_S; floatingRead <= 2'b01; floatingWrite <= 1'b0; end// float to int
+                            4'b1010: begin decoded_alu_instruction <= FCVT_S_W; floatingRead <= 2'b01; floatingWrite <= 1'b1; end// int to floaat
+                            default: $error("Invalid F-type instruction with funct4 %b", funct4);
                         endcase
                     end
 
@@ -203,14 +202,19 @@ module decoder(
                                 decoded_mem_read_enable     <= 1;
                                 decoded_alu_instruction     <= ADDI; // For computing effective address
                                 decoded_scalar_instruction  <= instruction[13];
+                                floatingRead <= 2'b00;
+                                floatingWrite <= 1'b0;
                             end
-                            3'b001: begin
+                            3'b001: begin // SW
                                 decoded_rs1_address         <= rs1;
                                 decoded_rs2_address         <= rs2;
                                 decoded_immediate           <= sign_extend_15(imm_s);
                                 decoded_mem_write_enable    <= 1;
+                                decoded_reg_write_enable <= 1'b0;
                                 decoded_alu_instruction     <= ADDI; // For computing effective address
                                 decoded_scalar_instruction  <= instruction[13];
+                                floatingRead <= 2'b00;
+                                floatingWrite <= 1'b0;
                             end
                             3'b010: begin
                                 // Load instructions (e.g., FLW)
@@ -222,8 +226,8 @@ module decoder(
                                 decoded_mem_read_enable     <= 1;
                                 decoded_alu_instruction     <= ADDI; // For computing effective address
                                 decoded_scalar_instruction  <= instruction[13];
-                                floatingRead              <= 2'b00;
-                                floatingWrite               <= 1'b1;
+                                floatingRead              <= 2'b00; // Base address is INT
+                                floatingWrite              <= 1'b1; //Write to float RD
                                 
                             end
                             3'b011: begin 
@@ -232,10 +236,11 @@ module decoder(
                                 decoded_rs2_address         <= rs2;
                                 decoded_immediate           <= sign_extend_15(imm_s);
                                 decoded_mem_write_enable    <= 1;
+                                decoded_reg_write_enable <= 0;
                                 decoded_alu_instruction     <= ADDI; // For computing effective address
                                 decoded_scalar_instruction  <= instruction[13];
-                                floatingRead              <= 2'b10;
-                                floatingWrite               <= 1'b1;
+                                floatingRead              <= 2'b10; // Base is INT, data is FLOAT
+                                floatingWrite               <= 1'b0;
                             end
                             default: $error("Invalid M-type instruction with funct4 %b", funct4);
                         endcase
@@ -247,6 +252,8 @@ module decoder(
                         decoded_reg_write_enable    <= 1;
                         decoded_reg_input_mux       <= IMMEDIATE;
                         decoded_scalar_instruction  <= instruction[5];
+                        floatingRead <= 2'b00;
+                        floatingWrite <= 1'b0;
                     end
                     default: begin
                         // No operation or unrecognized opcode

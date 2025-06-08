@@ -1,3 +1,6 @@
+`default_nettype none
+`timescale 1ns/1ns
+
 `include "common.sv"
 // =================================================
 // A 32-bit Floating Point ALU
@@ -7,12 +10,11 @@ module floating_alu (
     input wire clk,
     input wire reset,
     input wire enable,
-    input instruction_memory_address_t pc,
     input data_t IMM,
     input   logic [31:0] op1,
     input   logic [31:0] op2,
     input   alu_instruction_t instruction,
-    output  logic [31:0] result,
+    output  logic [31:0] result
 );
 
 // 1 sign bit, 8 exponent bits and 23 mantissa bits
@@ -44,7 +46,7 @@ logic signed [8:0] shift;
 
 always_ff @(posedge clk) begin
     if (reset) begin
-        result = 32'b0;
+        result <= 32'b0;
     end else if (enable) begin
         op1_sign_bit = op1[31];
         
@@ -125,13 +127,13 @@ always_ff @(posedge clk) begin
                     if (round_up) begin
                         rounded_sum = sum[23:0] + 1;
                         if (rounded_sum[23]) begin
-                            result = {result_sign_bit, result_exp, rounded_sum[22:0]};
+                            result <= {result_sign_bit, result_exp, rounded_sum[22:0]};
                         end else begin
                             result_exp = result_exp + 1;
-                            result = {result_sign_bit, result_exp, rounded_sum[23:1]};
+                            result <= {result_sign_bit, result_exp, rounded_sum[23:1]};
                         end
                     end else begin
-                        result = {result_sign_bit, result_exp, sum[22:0]};
+                        result <= {result_sign_bit, result_exp, sum[22:0]};
                     end
 
                 end else begin
@@ -145,7 +147,7 @@ always_ff @(posedge clk) begin
                     end
 
                     if (sum == 0) begin
-                        result = 32'd0;
+                        result <= 32'd0;
                     end else begin
                         while (sum[23] == 0 && result_exp > 0) begin
                             sum = sum << 1;
@@ -159,13 +161,13 @@ always_ff @(posedge clk) begin
                         if (round_up) begin
                             rounded_sum = sum[23:0] + 1;
                             if (rounded_sum[23]) begin
-                                result = {result_sign_bit, result_exp, rounded_sum[22:0]};
+                                result <= {result_sign_bit, result_exp, rounded_sum[22:0]};
                             end else begin
                                 result_exp = result_exp + 1;
-                                result = {result_sign_bit, result_exp, rounded_sum[23:1]};
+                                result <= {result_sign_bit, result_exp, rounded_sum[23:1]};
                             end
                         end else begin
-                            result = {result_sign_bit, result_exp, sum[22:0]};
+                            result <= {result_sign_bit, result_exp, sum[22:0]};
                         end
                     end
                 end
@@ -191,13 +193,13 @@ always_ff @(posedge clk) begin
                 if (round_up) begin
                     rounded_sum = rounded_sum + 1;
                     if (rounded_sum[23]) begin
-                        result = {result_sign_bit, result_exp, rounded_sum[22:0]};
+                        result <= {result_sign_bit, result_exp, rounded_sum[22:0]};
                     end else begin
                         result_exp = result_exp + 1;
-                        result = {result_sign_bit, result_exp, rounded_sum[23:1]};
+                        result <= {result_sign_bit, result_exp, rounded_sum[23:1]};
                     end
                 end else begin
-                    result = {result_sign_bit, result_exp, rounded_sum[22:0]};
+                    result <= {result_sign_bit, result_exp, rounded_sum[22:0]};
                 end
             end
 
@@ -241,30 +243,74 @@ always_ff @(posedge clk) begin
                 if(norm_exponent <= 0) norm_exponent = 9'sd0;
                 else if(norm_exponent >= 255) norm_exponent = 9'sd255;
 
-                result = {result_sign_bit, norm_exponent[7:0], norm_mantissa};
+                result <= {result_sign_bit, norm_exponent[7:0], norm_mantissa};
 
             end
 
-            FNEG: result = {~op1[31], op1[30:0]}; //negate the sign bit
+            FNEG: result <= {~op1[31], op1[30:0]}; //negate the sign bit
             
-            FABS: result = {0'b0, op1[30:0]};
+            FABS: result <= {0'b0, op1[30:0]};
+
+            FSLT: begin
+                    // Compare two floating point numbers
+                    // Handle special cases first
+                    if (op1_biased_exponent == 8'hFF && op1[22:0] != 0) begin
+                        // op1 is NaN
+                        result <= 32'd0;
+                    end else if (op2_biased_exponent == 8'hFF && op2[22:0] != 0) begin
+                        // op2 is NaN  
+                        result <= 32'd0;
+                    end else if (op1_sign_bit != op2_sign_bit) begin
+                        // Different signs
+                        if (op1_sign_bit && !op2_sign_bit) begin
+                            // op1 negative, op2 positive -> op1 < op2
+                            result <= 32'd1;
+                        end else begin
+                            // op1 positive, op2 negative -> op1 >= op2
+                            result <= 32'd0;
+                        end
+                    end else begin
+                        // Same sign, compare magnitude
+                        if (!op1_sign_bit) begin
+                            // Both positive
+                            if (op1_biased_exponent < op2_biased_exponent) begin
+                                result <= 32'd1;
+                            end else if (op1_biased_exponent > op2_biased_exponent) begin
+                                result <= 32'd0;
+                            end else begin
+                                // Same exponent, compare mantissa
+                                result <= (op1[22:0] < op2[22:0]) ? 32'd1 : 32'd0;
+                            end
+                        end else begin
+                            // Both negative - comparison is reversed
+                            if (op1_biased_exponent > op2_biased_exponent) begin
+                                result <= 32'd1;
+                            end else if (op1_biased_exponent < op2_biased_exponent) begin
+                                result <= 32'd0;
+                            end else begin
+                                // Same exponent, compare mantissa (reversed for negative)
+                                result <= (op1[22:0] > op2[22:0]) ? 32'd1 : 32'd0;
+                            end
+                        end
+                    end
+                end
 
             FEQ: begin
-                result = (op1 == op2) ? 32'd1:32'd0;
+                result <= (op1 == op2) ? 32'd1:32'd0;
             end
 
             FCVT_W_S: begin // Float to int conversion (FCVT_WS)
                 if (op1_biased_exponent == 8'hFF) begin
-                    result = op1_sign_bit ? 32'h80000000 : 32'h7FFFFFFF;
+                    result <= op1_sign_bit ? 32'h80000000 : 32'h7FFFFFFF;
                 end else if (op1_biased_exponent == 0) begin
-                    result = 32'd0;
+                    result <= 32'd0;
                 end else begin
                     op1_unbiased_exponent = op1_biased_exponent - 127;
                     
                     if (op1_unbiased_exponent < 0 || op1_unbiased_exponent > 127) begin
-                        result = 32'd0;
+                        result <= 32'd0;
                     end else if (op1_unbiased_exponent > 30) begin
-                        result = op1_sign_bit ? 32'h80000000 : 32'h7FFFFFFF;
+                        result <= op1_sign_bit ? 32'h80000000 : 32'h7FFFFFFF;
                     end else begin
                         if (op1_unbiased_exponent >= 23) begin
                             op1_int = op1_significand << (op1_unbiased_exponent - 23);
@@ -272,14 +318,14 @@ always_ff @(posedge clk) begin
                             op1_int = op1_significand >> (23 - op1_unbiased_exponent);
                         end
                         
-                        result = op1_sign_bit ? -op1_int : op1_int;
+                        result <= op1_sign_bit ? -op1_int : op1_int;
                     end
                 end
             end
 
             FCVT_S_W: begin
                 if (op1 == 32'd0) begin
-                    result = 32'd0;
+                    result <= 32'd0;
                 end else begin
                     abs_op1 = op1[31] ? -op1 : op1;
                     significant_one = 31;
@@ -296,23 +342,12 @@ always_ff @(posedge clk) begin
                         op1_significand = abs_op1 << (23 - significant_one);
                     end
                     
-                    result = {op1[31], op1_biased_exponent, op1_significand[22:0]};
+                    result <= {op1[31], op1_biased_exponent, op1_significand[22:0]};
                 end
             end
 
-            // --- C-Type: Control Flow ---
-            BEQZ: begin
-                // The ALU's job is just to check the condition
-                result <= (op1 == 32'd0) ? 32'd1 : 32'd0;
-                // EQ     <= (ALUop1 == 32'd0);
-            end
-            JAL: begin
-                // The result is the target address: PC + offset
-                result <= pc + IMM;
-            end
-
             default: begin
-                result = 32'd0;
+                result <= 32'd0;
             end
         endcase
     end

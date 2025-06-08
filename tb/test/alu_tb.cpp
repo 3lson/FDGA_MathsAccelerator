@@ -8,7 +8,7 @@
 #define MUL         2
 #define DIV         3
 #define SLT         4
-#define SGT         5
+#define SLL         5
 #define SEQ         6
 #define SNEZ        7
 #define MIN         8
@@ -111,24 +111,22 @@ TEST_F(ALUTestbench, LessThanTestFalse) {
 }
 
 
-TEST_F(ALUTestbench, GreaterThanTestTrue) {
+TEST_F(ALUTestbench, SLLTest) {
     resetDUT();
-    run_operation(SGT, 8, 5);
-    EXPECT_EQ(top->Result, 1);
+    run_operation(SLL, 1, 2);
+    EXPECT_EQ(top->Result, 4);
 }
 
 TEST_F(ALUTestbench, EqualToTestTrue) {
     resetDUT();
     run_operation(SEQ, 5, 5);
     EXPECT_EQ(top->Result, 1);
-    EXPECT_EQ(top->EQ, 1); // Check EQ signal specifically
 }
 
 TEST_F(ALUTestbench, EqualToTestFalse) {
     resetDUT();
     run_operation(SEQ, 8, 5);
     EXPECT_EQ(top->Result, 0);
-    EXPECT_EQ(top->EQ, 0); // Check EQ signal specifically
 }
 
 TEST_F(ALUTestbench, MinTestOp1) {
@@ -178,7 +176,6 @@ TEST_F(ALUTestbench, BEQZ_ConditionTrue) {
     run_operation(BEQZ, op1_is_zero, 0);
 
     EXPECT_EQ(top->Result, 1) << "Result should be 1 when condition is true";
-    EXPECT_EQ(top->EQ, 1) << "EQ flag should be set when condition is true";
 }
 
 TEST_F(ALUTestbench, BEQZ_ConditionFalse) {
@@ -187,7 +184,6 @@ TEST_F(ALUTestbench, BEQZ_ConditionFalse) {
     run_operation(BEQZ, op1_not_zero, 0);
 
     EXPECT_EQ(top->Result, 0) << "Result should be 0 when condition is false";
-    EXPECT_EQ(top->EQ, 0) << "EQ flag should be clear when condition is false";
 }
 
 TEST_F(ALUTestbench, JumpTest) {

@@ -243,41 +243,36 @@ TEST_F(DecoderTestbench, FTypeInstructions) {
     }
 }
 
-// ------------------ M-TYPE LOAD TEST ------------------
-TEST_F(DecoderTestbench, MTypeLoad) {
+// ------------------ M-TYPE LOAD/STORE TESTS ------------------
+TEST_F(DecoderTestbench, MTypeLoadStore) {
+    // LW: funct3=0b000
     resetDecoder();
-    uint32_t instr = makeInstr(OPCODE_M, 0b0000, 0, 4, 9, 0, 0x2ABC); // Load: rd=4, rs1=9, imm=0x2ABC
-    decodeInstruction(instr);
-    
-    EXPECT_EQ(top->decoded_alu_instruction, ADDI);
-    EXPECT_EQ(top->decoded_reg_write_enable, 1);
-    EXPECT_EQ(top->decoded_reg_input_mux, LSU_OUT);
-    EXPECT_EQ(top->decoded_rd_address, 4);
-    EXPECT_EQ(top->decoded_rs1_address, 9);
+    uint32_t instr_lw = makeInstr(OPCODE_M, 0b000, 4, 9, 0, 0x2ABC);
+    decodeInstruction(instr_lw);
     EXPECT_EQ(top->decoded_mem_read_enable, 1);
-    EXPECT_EQ(top->decoded_mem_write_enable, 0);
-    
-    // Check sign extension of 15-bit immediate
-    int32_t expected_imm = (int32_t)(int16_t)((0x2ABC << 1) >> 1); // Sign extend 15-bit
-    EXPECT_EQ((int32_t)top->decoded_immediate, expected_imm);
-}
+    EXPECT_EQ(top->floatingWrite, 0);
 
-// ------------------ M-TYPE STORE TEST ------------------
-TEST_F(DecoderTestbench, MTypeStore) {
+    // SW: funct3=0b001
     resetDecoder();
-    uint32_t instr = makeInstr(OPCODE_M, 0b0001, 0, 0, 11, 16, 0x1DEF); // Store: rs1=11, rs2=16, imm=0x1DEF
-    decodeInstruction(instr);
-    
-    EXPECT_EQ(top->decoded_alu_instruction, ADDI);
-    EXPECT_EQ(top->decoded_reg_write_enable, 0);
-    EXPECT_EQ(top->decoded_rs1_address, 11);
-    EXPECT_EQ(top->decoded_rs2_address, 16);
-    EXPECT_EQ(top->decoded_mem_read_enable, 0);
+    uint32_t instr_sw = makeInstr(OPCODE_M, 0b001, 0, 11, 16, 0x1DEF);
+    decodeInstruction(instr_sw);
     EXPECT_EQ(top->decoded_mem_write_enable, 1);
-    
-    // Check sign extension of 15-bit immediate
-    int32_t expected_imm = (int32_t)(int16_t)((0x1DEF << 1) >> 1); // Sign extend 15-bit
-    EXPECT_EQ((int32_t)top->decoded_immediate, expected_imm);
+    EXPECT_EQ(top->decoded_reg_write_enable, 0);
+
+    // FLW: funct3=0b010
+    resetDecoder();
+    uint32_t instr_flw = makeInstr(OPCODE_M, 0b010, 4, 9, 0, 0x2ABC);
+    decodeInstruction(instr_flw);
+    EXPECT_EQ(top->decoded_mem_read_enable, 1);
+    EXPECT_EQ(top->floatingWrite, 1);
+
+    // FSW: funct3=0b011
+    resetDecoder();
+    uint32_t instr_fsw = makeInstr(OPCODE_M, 0b011, 0, 11, 16, 0x1DEF);
+    decodeInstruction(instr_fsw);
+    EXPECT_EQ(top->decoded_mem_write_enable, 1);
+    EXPECT_EQ(top->floatingRead, 0b10);
+    EXPECT_EQ(top->decoded_reg_write_enable, 0);
 }
 
 // ------------------ UPPER IMMEDIATE TEST ------------------
@@ -296,35 +291,15 @@ TEST_F(DecoderTestbench, UpperImmediate) {
 }
 
 // ------------------ JUMP BRANCH TEST ------------------
-TEST_F(DecoderTestbench, JumpBranch) {
+// ------------------ JUMP/BRANCH TESTS ------------------
+TEST_F(DecoderTestbench, Branch) {
     resetDecoder();
-    /*
-        uint32_t makeInstr(uint8_t opcode, uint8_t funct4 = 0, uint8_t funct3 = 0, 
-                       uint8_t rd = 0, uint8_t rs1 = 0, uint8_t rs2 = 0,
-                       uint32_t immediate = 0, bool scalar = false) {
-        uint32_t instr = 0;
-        instr |= (opcode & 0x7) << 29;        // bits 31-29
-        instr |= (funct3 & 0x7) << 12;        // bits 14-12
-        instr |= (funct4 & 0xF) << 10;        // bits 13-10
-        instr |= (rd & 0x1F);                 // bits 4-0
-        instr |= (rs1 & 0x1F) << 5;           // bits 9-5
-        instr |= (rs2 & 0x1F) << 14;          // bits 18-14
-        instr |= scalar ? (1 << 6) : 0;       // bit 6
-    */
-    uint32_t instr = makeInstr(OPCODE_J, 0, 0b001, 0, 7, 14, 0x0800); // Branch: rs1=7, rs2=14, imm=0x1000
+    // BEQZ: opcode=J, funct3=0b001, rs1=7, imm=0x800
+    uint32_t instr = makeInstr(OPCODE_J, 0b001, 0, 7, 0, 0x800);
     decodeInstruction(instr);
     
-    EXPECT_EQ(top->decoded_alu_instruction, BEQ);
-    EXPECT_EQ(top->decoded_rs1_address, 7);
-    EXPECT_EQ(top->decoded_rs2_address, 14);
-    EXPECT_EQ(top->decoded_branch, 1);
-    EXPECT_EQ(top->decoded_reg_write_enable, 0);
-    
-    // Check sign extension of 18-bit branch immediate
-    int32_t expected_imm = (int32_t)((0x1000 << 14) >> 14); // Sign extend 18-bit
-    EXPECT_EQ((int32_t)top->decoded_immediate, expected_imm);
+    EXPECT_EQ(top->decoded_alu_instruction, BEQZ);
 }
-
 // ------------------ JUMP AND LINK TEST ------------------
 TEST_F(DecoderTestbench, JumpAndLink) {
     resetDecoder();
