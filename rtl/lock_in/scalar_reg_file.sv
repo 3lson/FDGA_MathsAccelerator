@@ -42,6 +42,14 @@ assign warp_execution_mask = registers[EXECUTION_MASK_REG];
 // Register file: each warp has its own set of 32 registers
 data_t registers [32];
 
+// always_comb begin
+//     if (enable) begin
+//         $display("Asynchronous read: ", rs1, rs2);
+//         rs1 <= registers[decoded_rs1_address];
+//         rs2 <= registers[decoded_rs2_address];
+//     end
+// end
+
 always @(posedge clk) begin
     if (reset) begin
         registers[0] <= {DATA_WIDTH{1'b0}};
@@ -52,6 +60,7 @@ always @(posedge clk) begin
         registers[EXECUTION_MASK_REG] <= {DATA_WIDTH{1'b1}};
     end else if (enable) begin
         if (warp_state == WARP_REQUEST) begin
+            $display("Asynchronous read: ", rs1, rs2);
             rs1 <= registers[decoded_rs1_address];
             rs2 <= registers[decoded_rs2_address];
         end

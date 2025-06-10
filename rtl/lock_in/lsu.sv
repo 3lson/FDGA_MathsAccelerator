@@ -85,6 +85,7 @@ always @(posedge clk) begin
 
         // If memory write enable is triggered (STR instruction)
         if (decoded_mem_write_enable) begin 
+            $display("LSU State: ", lsu_state);
             case (lsu_state)
                 LSU_IDLE: begin
                     // Only read when warp_state = REQUEST
