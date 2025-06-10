@@ -68,7 +68,7 @@ always @(posedge clk) begin
                 end
                 LSU_WAITING: begin
                     if (mem_read_ready == 1) begin
-                        //$display("LSU: Reading %d from memory address %d", mem_read_data, rs1);
+                        $display("LSU: Reading %d from memory address %d", mem_read_data, rs1);
                         mem_read_valid <= 0;
                         lsu_out <= mem_read_data;
                         lsu_state <= LSU_DONE;

@@ -26,9 +26,6 @@ typedef struct packed {
 `define FUNCT3_WIDTH 3
 `define FUNCT4_WIDTH 4
 
-// Halt Instruction Opcode
-`define OPCODE_HALT     3'b110
-
 // Vector-Scalar Instruction Opcodes (SX_SLTI and SX_SLT)
 // SX_SLTI sets one bit of a scalar register based on thread's comparison result
 `define OPCODE_SX_SLT   7'b1111110        // SX_SLT rd, rs1, rs2 <=> rd[id] = rs1 < rs2 ? 1 : 0
@@ -92,7 +89,7 @@ typedef enum logic [4:0] {
 } alu_instruction_t;
 
 // warp state enum
-typedef enum logic [2:0] {
+typedef enum logic [3:0] {
     WARP_IDLE,
     WARP_FETCH,
     WARP_DECODE,

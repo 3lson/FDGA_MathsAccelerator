@@ -12,6 +12,16 @@ All instr are 32 bit wide
 | opcode | [31:29]|
 | scalar | [28] |
 
+**Note:** The scalar flag here will be set high for scalar operations (encodings handled by the assembler)
+
+The compiler will handle the differentiation between a scalar and vector operations as it will add prefixes of `s.` or `v.` in front of the operations.
+
+E.g.
+
+`v.fadd.s fv1, fv2, fv3` - vector operation
+`s.addi s1, s2, 3` - scalar operation
+`v.addi v1, v2, 3` - vector operation
+
 ## Instruction Types
 
 ### R-type (Register-Register Arith)
@@ -193,14 +203,6 @@ We have chosen to stick with the RISCV Register layout with the addition of some
 | fs31 | x31 | reserved register | 
 
 
-The following are mapped as the special registers
-
- | Register Number | Purpose | 
- | ---------------- |--------|
- | x29 | threadIdx | 
- | x30 | blockIdx |
- | x31 | block_size | 
-
 **Int Vector Register File**
 
 | Name | Register Number | Usage |
@@ -218,3 +220,14 @@ The design choice of our float registers are as follows. Note reg convention for
 | zero | x0 | constant value 0 |
 | fv1-fv28 | x1-x28 | saved registers | 
 | fv29-fv31 | x29-x31 | special registers | 
+
+
+The following are mapped as the special registers
+
+ | Register Number | Purpose | 
+ | ---------------- |--------|
+ | x29 | threadIdx | 
+ | x30 | blockIdx |
+ | x31 | block_size | 
+
+ 

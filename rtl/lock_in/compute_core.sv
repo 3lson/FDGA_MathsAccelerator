@@ -65,10 +65,14 @@ logic [4:0] decoded_rs1_address [WARPS_PER_CORE];
 logic [4:0] decoded_rs2_address [WARPS_PER_CORE];
 logic [4:0] decoded_alu_instruction [WARPS_PER_CORE];
 logic decoded_halt [WARPS_PER_CORE];
-logic floatingRead_flag [WARPS_PER_CORE];
+logic [1:0] floatingRead_flag [WARPS_PER_CORE];
 logic floatingWrite_flag [WARPS_PER_CORE];
-logic decoded_mem_read_enable [THREADS_PER_WARP];
-logic decoded_mem_write_enable [THREADS_PER_WARP];
+
+// Signals are per-warp control not pre-thread
+logic decoded_mem_read_enable_per_warp [WARPS_PER_CORE];
+logic decoded_mem_write_enable_per_warp [WARPS_PER_CORE];
+// logic decoded_mem_read_enable [THREADS_PER_WARP];
+// logic decoded_mem_write_enable [THREADS_PER_WARP];
 
 // Register File Outputs (per warp)
 data_t scalar_int_rs1, scalar_int_rs2;
@@ -85,6 +89,7 @@ instruction_memory_address_t sync_pc [WARPS_PER_CORE];
 
 assign sync_active = |sync_reached;
 
+logic all_warps_done = 1'b1;
 
 // ALU/LSU Operands and Results
 data_t final_op1 [THREADS_PER_WARP];
@@ -151,6 +156,7 @@ always @(posedge clk) begin
             pc[i] <= 0;
             next_pc[i] <= 0;
             current_warp <= 0;
+            fetched_instruction[i] <= 32'b0;
         end
         sync_reached <= 0;
         for (int i = 0; i < WARPS_PER_CORE; i++) begin
@@ -160,6 +166,11 @@ always @(posedge clk) begin
     end else if (!start_execution) begin
         if (start) begin
             $display("Starting execution of block %d", block_id);
+            $display("GPU: Kernel configuration (latched):");
+            $display("     - Base instruction address: %h", kernel_config.base_instructions_address);
+            $display("     - Base data address: %h", kernel_config.base_data_address);
+            $display("     - Num %d blocks", kernel_config.num_blocks);
+            $display("     - Number of warps per block: %d", kernel_config.num_warps_per_block);
             // Set all warps to fetch state on start
             start_execution <= 1;
             current_warp <= 0;
@@ -174,19 +185,19 @@ always @(posedge clk) begin
         // In parallel, check if fetchers are done, and if so, move to decode
         for (int i = 0; i < num_warps; i = i + 1) begin
             if (warp_state[i] == WARP_FETCH && fetcher_state[i] == FETCHER_DONE) begin
-                //$display("Block: %0d: Warp %0d: Fetched instruction %h at address %h", block_id, i, fetched_instruction[i], pc[i]);
+                $display("Block: %0d: Warp %0d: Fetched instruction %h at address %h", block_id, i, fetched_instruction[i], pc[i]);
                 warp_state[i] = WARP_DECODE;
             end
         end
-
+        all_warps_done = 1'b1;
         // If all warps are done, we are done
         for (int i = 0; i < num_warps; i = i + 1) begin
             if (warp_state[i] != WARP_DONE) begin
-                done <= 0;
+                all_warps_done = 1'b0;
                 break;
             end
-            done <= 1;
         end
+        done <= all_warps_done;
 
         // Choose a warp to execute
         // We don't choose warps that are in one of the following states:
@@ -197,7 +208,7 @@ always @(posedge clk) begin
         if (current_warp_state == WARP_UPDATE || current_warp_state == WARP_DONE) begin
             int next_warp = (current_warp + 1) % num_warps;
             int found_warp = -1;
-            //$display("Block: %0d: Choosing next warp", block_id);
+            $display("Block: %0d: Choosing next warp", block_id);
             for (int i = 0; i < WARPS_PER_CORE; i = i + 1) begin
                 int warp_index = (next_warp + i) % num_warps;
                 if ((warp_state[warp_index] != WARP_IDLE) && (warp_state[warp_index] != WARP_FETCH) && (warp_state[warp_index] != WARP_DONE)) begin
@@ -215,7 +226,7 @@ always @(posedge clk) begin
 
         case (current_warp_state)
             WARP_IDLE: begin
-                //$display("Block: %0d: Warp %0d: Idle", block_id, current_warp);
+                $display("Block: %0d: Warp %0d: Idle", block_id, current_warp);
             end
             WARP_FETCH: begin
                 // not possible to choose a warp that is fetching cause
@@ -253,10 +264,10 @@ always @(posedge clk) begin
                 // $display("Mask: %32b", warp_execution_mask[current_warp]);
                 // $display("Block: %0d: Warp %0d: Executing instruction %h at address %h", block_id, current_warp, fetched_instruction[current_warp], pc[current_warp]);
                 // $display("Instruction opcode: %b", fetched_instruction[current_warp][6:0]);
-                $display("Block: %0d: Warp %0d: Executing instruction %h", block_id, current_warp, fetched_instruction[current_warp]);
+                // $display("Block: %0d: Warp %0d: Executing instruction %h", block_id, current_warp, fetched_instruction[current_warp]);
                 
                 if (decoded_sync[current_warp]) begin
-                    // Sync instruction detected
+                    // SynBlock:c instruction detected
                     $display("Block: %0d: Warp %0d: Sync barrier encountered at PC %h", block_id, current_warp, pc[current_warp]);
                     
                     sync_reached[current_warp] <= 1'b1;
@@ -287,7 +298,7 @@ always @(posedge clk) begin
                     // Vector instruction
                     next_pc[current_warp] <= pc[current_warp] + 1;
                 end
-                //$display("===================================");
+                $display("===================================");
                 warp_state[current_warp] <= WARP_UPDATE;
 
                 if (decoded_reg_input_mux[current_warp] == VECTOR_TO_SCALAR) begin
@@ -309,7 +320,7 @@ always @(posedge clk) begin
                 for (int i = 0; i < num_warps; i++) begin
                     // Only consider warps that are not DONE or IDLE
                     if ((warp_state[i] != WARP_DONE) && (warp_state[i] != WARP_IDLE)) begin
-                        if (!sync_barrier_reached[i]) begin
+                        if (!sync_reached[i]) begin
                             all_warps_synced = 1'b0;
                             break;
                         end
@@ -333,7 +344,7 @@ always @(posedge clk) begin
 
             WARP_UPDATE: begin
                 if (decoded_halt[current_warp]) begin
-                    //$display("Block: %0d: Warp %0d: Finished executing instruction %h", block_id, current_warp, fetched_instruction[current_warp]);
+                    $display("Block: %0d: Warp %0d: Finished executing instruction %h", block_id, current_warp, fetched_instruction[current_warp]);
                     warp_state[current_warp] <= WARP_DONE;
                 end else begin
                     pc[current_warp] <= next_pc[current_warp];
@@ -376,8 +387,8 @@ for (genvar i = 0; i < WARPS_PER_CORE; i = i + 1) begin : g_warp
         .instruction(fetched_instruction[i]),
 
         .decoded_reg_write_enable(decoded_reg_write_enable[i]),
-        .decoded_mem_write_enable(decoded_mem_write_enable[i]),
-        .decoded_mem_read_enable(decoded_mem_read_enable[i]),
+        .decoded_mem_write_enable(decoded_mem_write_enable_per_warp[i]),
+        .decoded_mem_read_enable(decoded_mem_read_enable_per_warp[i]),
         .decoded_branch(decoded_branch[i]),
         .decoded_scalar_instruction(decoded_scalar_instruction[i]),
         .decoded_reg_input_mux(decoded_reg_input_mux[i]),
@@ -570,8 +581,8 @@ lsu scalar_lsu_inst(
 
     .warp_state(warp_state[current_warp]),
 
-    .decoded_mem_read_enable(decoded_mem_read_enable[current_warp]),
-    .decoded_mem_write_enable(decoded_mem_write_enable[current_warp]),
+    .decoded_mem_read_enable(decoded_mem_read_enable_per_warp[current_warp]),
+    .decoded_mem_write_enable(decoded_mem_write_enable_per_warp[current_warp]),
 
     .rs1(scalar_op1),
     .rs2(scalar_op2),
@@ -641,8 +652,8 @@ generate
 
             .warp_state(warp_state[current_warp]),
 
-            .decoded_mem_read_enable(decoded_mem_read_enable[current_warp]),
-            .decoded_mem_write_enable(decoded_mem_write_enable[current_warp]),
+            .decoded_mem_read_enable(decoded_mem_read_enable_per_warp[current_warp]),
+            .decoded_mem_write_enable(decoded_mem_write_enable_per_warp[current_warp]),
 
             .rs1(final_op1[i]),
             .rs2(final_op2[i]),

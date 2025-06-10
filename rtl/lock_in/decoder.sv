@@ -23,7 +23,6 @@ module decoder(
     output  alu_instruction_t   decoded_alu_instruction,
 
     output  reg                 decoded_halt,
-    output  reg                 float_flag,
     output  reg [1:0]           floatingRead,
     output  reg                 floatingWrite,
     output  reg                 decoded_sync
@@ -78,37 +77,16 @@ module decoder(
             floatingRead <= 2'b00;
             floatingWrite <= 1'b0;
 
-            if (opcode == `OPCODE_HALT) begin
-                decoded_halt <= 1;
-            // end else if (opcode == `OPCODE_SX_SLT) begin
-            //     decoded_scalar_instruction  <= 0; // This is a vector-scalar instruction
-            //     decoded_rd_address          <= rd;
-            //     decoded_rs1_address         <= rs1;
-            //     decoded_rs2_address         <= rs2;
-            //     decoded_reg_write_enable    <= 1;
-            //     decoded_reg_input_mux       <= VECTOR_TO_SCALAR;
-            //     decoded_alu_instruction     <= SLT;
-            // end else if (opcode == `OPCODE_SX_SLTI) begin
-            //     decoded_scalar_instruction  <= 0; // This is a vector-scalar instruction
-            //     decoded_rd_address          <= rd;
-            //     decoded_rs1_address         <= rs1;
-            //     decoded_immediate           <= sign_extend_14(imm_i);
-            //     decoded_reg_write_enable    <= 1;
-            //     decoded_reg_input_mux       <= VECTOR_TO_SCALAR;
-            //     decoded_alu_instruction     <= SLTI;                // not implemented yet
-            end else if (opcode == `OPCODE_J) begin
+            if (opcode == `OPCODE_J) begin
                 unique case (funct3) 
                     3'b000: begin
-                        
+                        // Jump instr
                         decoded_alu_instruction     <= JAL;
                         $display("Decoding instruction 0b%32b", instruction);
                         decoded_immediate           <= sign_extend_28(imm_j);
                         decoded_scalar_instruction  <= 1;
-                        
                     end
-
                     3'b001: begin
-                        
                         // Branch instructions (e.g., BEQ, BNE)
                         decoded_rs1_address         <= rs1;
                         decoded_rs2_address         <= rs2;
@@ -116,15 +94,17 @@ module decoder(
                         decoded_branch              <= 1;
                         decoded_alu_instruction     <= BEQZ;
                         decoded_scalar_instruction  <= 1;
-
                     end
-
                     3'b110: begin
-                        
-                        decoded_sync                <= 1
+                        // Sync instruction
+                        decoded_sync                <= 1;
                         decoded_alu_instruction     <= SYNC;
                         decoded_scalar_instruction  <= 1;
-
+                    end
+                    3'b111: begin
+                        // Exit instruction
+                        decoded_halt <=1;
+                        decoded_scalar_instruction <= 1;
                     end
 
                     default: $error("Invalid R-type instruction with funct3 %b", funct3);

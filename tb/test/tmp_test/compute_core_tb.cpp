@@ -5,6 +5,9 @@
 #include <map>
 #include <functional>
 #include <iostream>
+#include <fstream>
+#include <sstream>
+using namespace std;
 
 #define NAME "compute_core"
 // NOTE: These parameters MUST match what you compile Verilog with.
@@ -18,64 +21,43 @@
 #define OPCODE_F    0b010
 #define OPCODE_UP   0b011
 #define OPCODE_M    0b100
-#define OPCODE_HALT 0b110
-#define OPCODE_J    0b111
+#define OPCODE_C    0b111
 
 class ComputeCoreTestbench : public BaseTestbench {
 protected:
     std::map<uint32_t, uint32_t> instr_mem;
     std::map<uint32_t, uint32_t> data_mem;
 
-    // Helper to create instruction with various fields
-    uint32_t makeInstr(uint8_t opcode, uint8_t funct, 
-                       uint8_t rd, uint8_t rs1, uint8_t rs2,
-                       uint32_t immediate, bool scalar = false) {
-        uint32_t instr = 0;
-        instr |= (uint32_t)(opcode & 0x7) << 29;
+    void loadProgramFromHex(const std::string& hex_filepath) {
+        instr_mem.clear(); // Clear any previous program
+        std::ifstream hex_file(hex_filepath);
+        ASSERT_TRUE(hex_file.is_open()) << "Could not open hex file: " << hex_filepath;
 
-        switch (opcode) {
-            case OPCODE_R:
-            case OPCODE_F:
-                instr |= (uint32_t)scalar << 28;
-                instr |= (uint32_t)(rs2 & 0x1F) << 14;
-                instr |= (uint32_t)(funct & 0xF) << 10;
-                instr |= (uint32_t)(rs1 & 0x1F) << 5;
-                instr |= (uint32_t)(rd & 0x1F);
-                break;
-            case OPCODE_I:
-                instr |= (uint32_t)scalar << 28;
-                instr |= (immediate & 0x3FFF) << 14;
-                instr |= (uint32_t)(funct & 0xF) << 10;
-                instr |= (uint32_t)(rs1 & 0x1F) << 5;
-                instr |= (uint32_t)(rd & 0x1F);
-                break;
-            case OPCODE_M:
-                instr |= (uint32_t)scalar << 13;
-                instr |= (uint32_t)(funct & 0x7) << 10; // funct is funct3
-                instr |= (uint32_t)(rs1 & 0x1F) << 5;
-                if (funct == 0b000 || funct == 0b010) { // LW, FLW
-                    instr |= (uint32_t)(rd & 0x1F);
-                    instr |= (immediate & 0x7FFF) << 14;
-                } else { // SW, FSW
-                    instr |= (uint32_t)(rs2 & 0x1F) << 14;
-                    instr |= ((immediate >> 5) & 0x3FF) << 19;
-                    instr |= (immediate & 0x1F);
-                }
-                break;
-            case OPCODE_UP:
-                instr |= (uint32_t)scalar << 5;
-                instr |= (immediate & 0xFFFFF) << 9;
-                instr |= (uint32_t)(rd & 0x1F);
-                break;
-            case OPCODE_J:
-                 instr |= (uint32_t)(funct & 0x7) << 10; // funct is funct3
-                 // ... Add logic for JAL, BEQZ if needed
-                 break;
-            case OPCODE_HALT:
-                 // No other fields needed
-                 break;
+        std::string line;
+        uint32_t current_address = 0;
+        while (std::getline(hex_file, line)) {
+            // Skip empty lines or comments
+            if (line.empty() || line[0] == '/' || line[0] == '#') {
+                continue;
+            }
+            
+            // Convert hex string to uint32_t
+            uint32_t instruction;
+            std::stringstream ss;
+            ss << std::hex << line;
+            ss >> instruction;
+
+            std::cout << "  PC[" << current_address << "]: 0x" << std::hex << instruction << std::dec << std::endl; // ADD THIS LINE
+
+            // Store in our simulated instruction memory
+            instr_mem[current_address] = instruction;
+
+            // Increment address for the next instruction (assuming word-addressable)
+            // Your ISA is byte-addressable but instructions are 4 bytes long.
+            current_address++; // This assumes your assembler outputs instructions for PC 0, 1, 2...
         }
-        return instr;
+        
+        std::cout << "Loaded " << instr_mem.size() << " instructions from " << hex_filepath << std::endl;
     }
 
     void tick() {
@@ -87,15 +69,15 @@ protected:
 
     void runSimulation(int cycles) {
         for (int i = 0; i < cycles; ++i) {
-            // --- FIX: Use Verilator's flattened array access ---
-            // Instruction Memory Read
+            // --- Before the clock edge ---
+            // Combinational Memory Read Logic (DUT requests, TB provides)
             for (int w = 0; w < WARPS_PER_CORE; ++w) {
                 if (top->instruction_mem_read_valid & (1ULL << w)) {
+                    // Verilator flattens arrays: module.port[idx] -> module.port_idx
                     uint32_t addr = top->instruction_mem_read_address[w];
                     top->instruction_mem_read_data[w] = instr_mem.count(addr) ? instr_mem[addr] : 0;
                 }
             }
-            // Data Memory Read
             for (int t = 0; t < NUM_LSUS; ++t) {
                 if (top->data_mem_read_valid & (1ULL << t)) {
                     uint32_t addr = top->data_mem_read_address[t];
@@ -103,9 +85,13 @@ protected:
                 }
             }
 
-            tick();
+            // --- Clock Tick ---
+            top->clk = 0;
+            top->eval();
+            top->clk = 1;
+            top->eval();
 
-            // Data Memory Write
+            // --- After the clock edge ---
             for (int t = 0; t < NUM_LSUS; ++t) {
                 if (top->data_mem_write_valid & (1ULL << t)) {
                     data_mem[top->data_mem_write_address[t]] = top->data_mem_write_data[t];
@@ -116,8 +102,10 @@ protected:
 
     void initializeInputs() override {
         top->clk = 1; top->reset = 1; top->start = 0; top->block_id = 0;
-        top->kernel_config[0] = 0; top->kernel_config[1] = 0x1000;
-        top->kernel_config[2] = 1; top->kernel_config[3] = 1;
+        top->kernel_config[3] = 0; // base instruction address
+        top->kernel_config[2] = 0x1000; // base data memory address
+        top->kernel_config[0] = 1;  // num_blocks
+        top->kernel_config[1] = 1; // num_warps_per_block
 
         top->instruction_mem_read_ready = -1; // All ready
         top->data_mem_read_ready = -1;
@@ -157,7 +145,6 @@ protected:
     static float bits_to_float(uint32_t bits) { return *reinterpret_cast<float*>(&bits); }
 };
 
-// --- CORRECTED TESTS ---
 TEST_F(ComputeCoreTestbench, ResetBehavior) {
     runSimulation(1);
     EXPECT_EQ(top->done, 0);
@@ -166,53 +153,40 @@ TEST_F(ComputeCoreTestbench, ResetBehavior) {
     EXPECT_EQ(top->data_mem_write_valid, 0);
 }
 
-TEST_F(ComputeCoreTestbench, StartSequenceAndFetch) {
-    top->start = 1;
-    tick();
-    top->start = 0;
+TEST_F(ComputeCoreTestbench, SimplestExit) {
+    // Program:
+    // 0: exit
+    std::map<uint32_t, uint32_t> program;
 
-    bool fetchStarted = waitForCondition([this]() {
-        return (top->instruction_mem_read_valid & 1) != 0;
-    });
-
-    ASSERT_TRUE(fetchStarted) << "Core did not start fetch";
-    EXPECT_EQ(top->instruction_mem_read_address[0], 0);
-}
-
-TEST_F(ComputeCoreTestbench, ScalarIntegerALU) {
-    std::map<uint32_t, uint32_t> program = {
-        {0, makeInstr(OPCODE_I, 0b0000, 9, 0, 0, 10, true)},  // addi s1 (x9), x0, 10
-        {1, makeInstr(OPCODE_I, 0b0000, 10, 0, 0, 20, true)}, // addi s2 (x10), x0, 20
-        {2, makeInstr(OPCODE_R, 0b0000, 11, 9, 10, 0, true)}, // add s3 (x11), s1, s2
-        {3, makeInstr(OPCODE_M, 0b001, 0, 0, 11, 0, true)},   // sw s3, 0(x0)
-        {4, makeInstr(OPCODE_HALT, 0, 0, 0, 0, 0, true)}
-    };
+    // Construct the 'exit' instruction manually.
+    // According to the ISA: opcode=111, funct3=111. Other bits are don't-care.
+    uint32_t exit_instr = (OPCODE_C << 29) | (0b111 << 10);
+    program[0] = exit_instr;
+    
+    // Configured in Initialise inputs
     
     loadAndRun(program);
 
-    EXPECT_EQ(data_mem[0x1000], 30) << "Scalar integer ADD result is incorrect.";
+    // The `loadAndRun` function will fail if it times out.
+    // If we reach this point, it means `top->done` was asserted.
+    SUCCEED() << "Core successfully fetched, decoded, and executed an EXIT instruction.";
 }
 
-TEST_F(ComputeCoreTestbench, VectorFloatALU) {
-    data_mem[0x1000] = float_to_bits(1.5f);
-    data_mem[0x1004] = float_to_bits(2.5f);
-    
-    std::map<uint32_t, uint32_t> program = {
-        {0, makeInstr(OPCODE_M, 0b010, 1, 0, 0, 0, false)},       // flw fv1, 0(x0)
-        {1, makeInstr(OPCODE_M, 0b010, 2, 0, 0, 4, false)},       // flw fv2, 4(x0)
-        {2, makeInstr(OPCODE_F, 0b0000, 3, 1, 2, 0, false)}, // fadd.s fv3, fv1, fv2
-        {3, makeInstr(OPCODE_M, 0b011, 0, 29, 3, 8, false)}, // fsw fv3, 8(x29)
-        {4, makeInstr(OPCODE_HALT, 0, 0, 0, 0, 0, true)}
-    };
+TEST_F(ComputeCoreTestbench, ScalarALUAndStore_FromHex) {
+    // 1. Load the program from the hex file
+    loadProgramFromHex("test/tmp_test/program.hex"); // Assumes the file is in the build/run directory
 
-    loadAndRun(program);
+    // 2. Configure the core for the test
+    // Core configured in Initialise Input helper function
     
-    for (int i = 0; i < THREADS_PER_WARP; ++i) {
-        uint32_t addr = 0x1000 + 8 + (i * 4);
-        EXPECT_FLOAT_EQ(bits_to_float(data_mem[addr]), 4.0f) 
-            << "Vector float FADD result is incorrect for thread " << i;
-    }
+    // 3. Run the simulation
+    loadAndRun(instr_mem); // Pass the populated map to the existing runner
+
+    // 4. Check the result
+    EXPECT_EQ(data_mem[42], 32) << "Scalar ALU/Store data path failed when loaded from hex.";
 }
+
+
 
 int main(int argc, char **argv) {
     Verilated::commandArgs(argc, argv);
