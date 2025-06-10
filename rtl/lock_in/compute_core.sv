@@ -75,8 +75,11 @@ logic decoded_mem_write_enable_per_warp [WARPS_PER_CORE];
 // logic decoded_mem_write_enable [THREADS_PER_WARP];
 
 // Register File Outputs (per warp)
-data_t scalar_int_rs1, scalar_int_rs2;
-data_t scalar_float_rs1, scalar_float_rs2;
+data_t scalar_int_rs1 [WARPS_PER_CORE];
+data_t scalar_int_rs2 [WARPS_PER_CORE];
+data_t scalar_float_rs1 [WARPS_PER_CORE];
+data_t scalar_float_rs2 [WARPS_PER_CORE];
+
 data_t vector_int_rs1 [THREADS_PER_WARP];
 data_t vector_int_rs2 [THREADS_PER_WARP];
 data_t vector_float_rs1 [THREADS_PER_WARP];
@@ -110,12 +113,14 @@ data_t scalar_op2;
 
 // Combinational Mux for Scalar Operands
 always_comb begin
+    // $display("Scalar_int_rs1: ", scalar_int_rs1);
+    // $display("Scalar_int_rs2: ", scalar_int_rs2);
     case(floatingRead_flag[current_warp])
-    2'b00: {scalar_op1, scalar_op2} = {scalar_int_rs1, scalar_int_rs2}; // int, int (Every other instr)
-    2'b01: {scalar_op1, scalar_op2} = {scalar_float_rs1, scalar_int_rs2}; 
-    2'b10: {scalar_op1, scalar_op2} = {scalar_int_rs1, scalar_float_rs2}; // int, float (To handle flw, fsw)
-    2'b11: {scalar_op1, scalar_op2} = {scalar_float_rs1, scalar_float_rs2};
-    default: {scalar_op1, scalar_op2} = {scalar_int_rs1, scalar_int_rs2};
+        2'b00: {scalar_op1, scalar_op2} = {scalar_int_rs1[current_warp], scalar_int_rs2[current_warp]};
+        2'b01: {scalar_op1, scalar_op2} = {scalar_float_rs1[current_warp], scalar_int_rs2[current_warp]};
+        2'b10: {scalar_op1, scalar_op2} = {scalar_int_rs1[current_warp], scalar_float_rs2[current_warp]};
+        2'b11: {scalar_op1, scalar_op2} = {scalar_float_rs1[current_warp], scalar_float_rs2[current_warp]};
+        default: {scalar_op1, scalar_op2} = {scalar_int_rs1[current_warp], scalar_int_rs2[current_warp]};
     endcase
 end
 
@@ -333,7 +338,7 @@ always @(posedge clk) begin
                     // Release all warps from sync barrier
                     for (int i = 0; i < num_warps; i++) begin
                         if (warp_state[i] == WARP_SYNC_WAIT) begin
-                            warp_state[i] <= WARP_UPDATE;
+                            warp_state[i] = WARP_UPDATE;
                         end
                     end
                     
@@ -428,8 +433,8 @@ for (genvar i = 0; i < WARPS_PER_CORE; i = i + 1) begin : g_warp
         .pc(pc[i]),
         .vector_to_scalar_data(vector_to_scalar_data[i]),
 
-        .rs1(scalar_float_rs1),
-        .rs2(scalar_float_rs2)
+        .rs1(scalar_float_rs1[i]),
+        .rs2(scalar_float_rs2[i])
     );
 
     //Scalar integer register file
@@ -456,9 +461,20 @@ for (genvar i = 0; i < WARPS_PER_CORE; i = i + 1) begin : g_warp
         .pc(pc[i]),
         .vector_to_scalar_data(vector_to_scalar_data[i]),
 
-        .rs1(scalar_int_rs1),
-        .rs2(scalar_int_rs2)
+        .rs1(scalar_int_rs1[i]),
+        .rs2(scalar_int_rs2[i])
     );
+    always_comb begin
+        if (current_warp == i) begin
+            $display("Enable: ", current_warp == i);
+            $display("Warp State: ", warp_state[i]);
+            $display("Decoded_rs1: ", decoded_rs1_address[i]);
+            $display("Decoded_rs2: ", decoded_rs2_address[i]);
+            $display("Scalar_lsu: ", scalar_lsu_out);
+            $display("Scalar_int_rs1: ", scalar_int_rs1);
+            $display("Scalar_int_rs2: ", scalar_int_rs2);
+        end
+    end
 
     // Vector float register file
     reg_file #(
@@ -573,6 +589,19 @@ floating_alu scalar_fpu_inst(
 );
 
 assign scalar_alu_out = (decoded_alu_instruction[current_warp] >= FADD) ? scalar_float_alu_result : scalar_int_alu_result;
+
+always_comb begin
+    // $display("Scalar_op1: ", scalar_op1);
+    // $display("Scalar_op2: ", scalar_op2);
+    // for (int i =0; i<THREADS_PER_WARP; i++) begin 
+    //     $display("Decoded Scalar Flag: ", decoded_scalar_instruction[i]);
+    // end
+    // $display("Decoded Rs1 Address[2]: ", decoded_rs1_address[2]);
+    // $display("Decoded Rs1 Address[6]: ", decoded_rs1_address[6]);
+    // $display("Scalar LSU Out: ", scalar_lsu_out);
+    
+end
+
 
 lsu scalar_lsu_inst(
     .clk(clk),

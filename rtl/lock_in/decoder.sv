@@ -43,8 +43,8 @@ module decoder(
     wire [27:0]  imm_j      = {instruction[28:13], instruction[9:0], 2'b00};
 
     always @(posedge clk) begin
-        $display("Instruction: %h", instruction);
-        $display("Decode Rs1: ", rs1);
+        // $display("Instruction: %h", instruction);
+        // $display("Decode Rs1: ", rs1);
         if (reset) begin
             // Set outputs to default values
             decoded_scalar_instruction <= 0;
@@ -254,5 +254,6 @@ module decoder(
                 endcase
             end
         end
+        // $display("Mem Read Enable: ", decoded_mem_write_enable);
     end
 endmodule

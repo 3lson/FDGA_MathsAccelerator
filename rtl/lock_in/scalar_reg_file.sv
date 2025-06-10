@@ -51,6 +51,8 @@ data_t registers [32];
 // end
 
 always @(posedge clk) begin
+    // $display("Enable: ", warp_state == WARP_REQUEST);
+    // $display("Enable: ", warp_state == WARP_REQUEST);
     if (reset) begin
         registers[0] <= {DATA_WIDTH{1'b0}};
         registers[1] <= {DATA_WIDTH{1'b1}};
@@ -61,8 +63,11 @@ always @(posedge clk) begin
     end else if (enable) begin
         if (warp_state == WARP_REQUEST) begin
             $display("Asynchronous read: ", rs1, rs2);
-            rs1 <= registers[decoded_rs1_address];
-            rs2 <= registers[decoded_rs2_address];
+            rs1 = registers[decoded_rs1_address];
+            rs2 = registers[decoded_rs2_address];
+            $display("Rs1: ", rs1);
+            // $display("Register 2: ", registers[2]);
+            // $display("Register 6: ", registers[6]);
         end
 
         if (warp_state == WARP_UPDATE) begin

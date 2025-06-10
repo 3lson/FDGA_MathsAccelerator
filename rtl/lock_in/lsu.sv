@@ -43,6 +43,8 @@ data_t offset_address;
 assign offset_address = rs1 + imm;
 
 always @(posedge clk) begin
+    // $display("Write enable: ", decoded_mem_write_enable);
+    // $display("Write enable: ", decoded_mem_write_enable);
     if (reset) begin
         lsu_state <= LSU_IDLE;
         lsu_out <= 0;
@@ -54,6 +56,7 @@ always @(posedge clk) begin
     end else if (enable) begin
         // If memory read enable is triggered (LDR instruction)
         if (decoded_mem_read_enable) begin 
+            $display("LSU_State: ", lsu_state);
             case (lsu_state)
                 LSU_IDLE: begin
                     // Only read when warp_state = REQUEST
