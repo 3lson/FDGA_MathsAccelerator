@@ -464,17 +464,17 @@ for (genvar i = 0; i < WARPS_PER_CORE; i = i + 1) begin : g_warp
         .rs1(scalar_int_rs1[i]),
         .rs2(scalar_int_rs2[i])
     );
-    always_comb begin
-        if (current_warp == i) begin
-            $display("Enable: ", current_warp == i);
-            $display("Warp State: ", warp_state[i]);
-            $display("Decoded_rs1: ", decoded_rs1_address[i]);
-            $display("Decoded_rs2: ", decoded_rs2_address[i]);
-            $display("Scalar_lsu: ", scalar_lsu_out);
-            $display("Scalar_int_rs1: ", scalar_int_rs1);
-            $display("Scalar_int_rs2: ", scalar_int_rs2);
-        end
-    end
+    // always_comb begin
+    //     if (current_warp == i) begin
+    //         $display("Enable: ", current_warp == i);
+    //         $display("Warp State: ", warp_state[i]);
+    //         $display("Decoded_rs1: ", decoded_rs1_address[i]);
+    //         $display("Decoded_rs2: ", decoded_rs2_address[i]);
+    //         $display("Scalar_lsu: ", scalar_lsu_out);
+    //         $display("Scalar_int_rs1: ", scalar_int_rs1);
+    //         $display("Scalar_int_rs2: ", scalar_int_rs2);
+    //     end
+    // end
 
     // Vector float register file
     reg_file #(
@@ -510,6 +510,7 @@ for (genvar i = 0; i < WARPS_PER_CORE; i = i + 1) begin : g_warp
             .rs2(vector_float_rs2)
         );
 
+
     // Vector integer register file
     reg_file #(
             .THREADS_PER_WARP(THREADS_PER_WARP)
@@ -543,6 +544,19 @@ for (genvar i = 0; i < WARPS_PER_CORE; i = i + 1) begin : g_warp
             .rs1(vector_int_rs1),
             .rs2(vector_int_rs2)
         );
+
+    always_comb begin
+        if (current_warp == i) begin
+            $display("Enable: ", current_warp == i);
+            $display("Warp State: ", warp_state[i]);
+            $display("Decoded_rs1: ", decoded_rs1_address[i]);
+            $display("Decoded_rs2: ", decoded_rs2_address[i]);
+            $display("Vector_lsu: ", lsu_out);
+            $display("Vector_int_rs1: ", vector_int_rs1);
+            $display("Vector_int_rs2: ", vector_int_rs2);
+        end
+    end
+
 
     
 end

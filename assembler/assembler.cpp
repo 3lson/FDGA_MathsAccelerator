@@ -264,8 +264,22 @@ uint32_t encodeLoad(string op, const vector<string>& args, bool is_scalar) {
     int imm = resolveSymbol(immStr, labelMap) & 0x7FFF; // 15-bit imm for Loads
     
     // RS1 (base address register) is always an Integer Scalar register according to typical ISA practice and your M-type formats
-    int rs1 = int_scalar_registerMap.at(rs1Str);
-
+    int rs1;
+    if (is_scalar) {
+        // For s.lw / s.flw, the base register MUST be a scalar integer register.
+        if (int_scalar_registerMap.find(rs1Str) == int_scalar_registerMap.end()) {
+            cerr << "Error: Invalid base register for '" << op << "'. Must be a scalar int (e.g., sp, s0-s26). Found: '" << rs1Str << "'" << endl;
+            return 0;
+        }
+        rs1 = int_scalar_registerMap.at(rs1Str);
+    } else {
+        // For v.lw / v.flw, we now allow the base register to be a VECTOR integer register.
+        if (int_vector_registerMap.find(rs1Str) == int_vector_registerMap.end()) {
+            cerr << "Error: Invalid base register for '" << op << "'. Must be a vector int (e.g., v1-v31). Found: '" << rs1Str << "'" << endl;
+            return 0;
+        }
+        rs1 = int_vector_registerMap.at(rs1Str);
+    }
     return (opcode << 29) | (imm << 14) | (scalar_bit_pos13 << 13) | (funct3 << 10) | (rs1 << 5) | rd;
 }
 
@@ -301,7 +315,22 @@ uint32_t encodeStore(string op, const vector<string>& args, bool is_scalar) {
 
     int imm = resolveSymbol(immStr, labelMap);
     // RS1 (base address register) is always an Integer Scalar register
-    int rs1 = int_scalar_registerMap.at(rs1Str);
+    int rs1;
+    if (is_scalar) {
+        // For s.sw / s.fsw, the base register MUST be a scalar integer register.
+        if (int_scalar_registerMap.find(rs1Str) == int_scalar_registerMap.end()) {
+            cerr << "Error: Invalid base register for '" << op << "'. Must be a scalar int (e.g., sp, s0-s26). Found: '" << rs1Str << "'" << endl;
+            return 0;
+        }
+        rs1 = int_scalar_registerMap.at(rs1Str);
+    } else {
+        // For v.sw / v.fsw, we now allow the base register to be a VECTOR integer register.
+        if (int_vector_registerMap.find(rs1Str) == int_vector_registerMap.end()) {
+            cerr << "Error: Invalid base register for '" << op << "'. Must be a vector int (e.g., v1-v31). Found: '" << rs1Str << "'" << endl;
+            return 0;
+        }
+        rs1 = int_vector_registerMap.at(rs1Str);
+    }
 
     // Store immediate format is different: Imm[14:5] at [28:19], Imm[4:0] at [4:0]
     uint32_t imm14_5 = (static_cast<uint32_t>(imm) >> 5) & 0x3FF; // 10 bits
@@ -457,8 +486,8 @@ int main() {
     initregisterMap();
     //ifstream input("bin/output/algotests/for/for.s"); // Example test file
     ifstream input("assembler/program.asm");
-    ofstream instrOut("tb/test/tmp_test/rscalar.hex");
-    ofstream dataOut("tb/test/tmp_test/data_rscalar.hex");
+    ofstream instrOut("tb/test/tmp_test/program.hex");
+    ofstream dataOut("tb/test/tmp_test/data.hex");
     vector<pair<int, string>> instructions;
     vector<pair<int, uint32_t>> data;
     string line;

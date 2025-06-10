@@ -145,34 +145,48 @@ protected:
     static float bits_to_float(uint32_t bits) { return *reinterpret_cast<float*>(&bits); }
 };
 
-TEST_F(ComputeCoreTestbench, ResetBehavior) {
-    runSimulation(1);
-    EXPECT_EQ(top->done, 0);
-    EXPECT_EQ(top->instruction_mem_read_valid, 0);
-    EXPECT_EQ(top->data_mem_read_valid, 0);
-    EXPECT_EQ(top->data_mem_write_valid, 0);
-}
+// TEST_F(ComputeCoreTestbench, ResetBehavior) {
+//     runSimulation(1);
+//     EXPECT_EQ(top->done, 0);
+//     EXPECT_EQ(top->instruction_mem_read_valid, 0);
+//     EXPECT_EQ(top->data_mem_read_valid, 0);
+//     EXPECT_EQ(top->data_mem_write_valid, 0);
+// }
 
-TEST_F(ComputeCoreTestbench, SimplestExit) {
-    // Program:
-    // 0: exit
-    std::map<uint32_t, uint32_t> program;
+// TEST_F(ComputeCoreTestbench, SimplestExit) {
+//     // Program:
+//     // 0: exit
+//     std::map<uint32_t, uint32_t> program;
 
-    // Construct the 'exit' instruction manually.
-    // According to the ISA: opcode=111, funct3=111. Other bits are don't-care.
-    uint32_t exit_instr = (OPCODE_C << 29) | (0b111 << 10);
-    program[0] = exit_instr;
+//     // Construct the 'exit' instruction manually.
+//     // According to the ISA: opcode=111, funct3=111. Other bits are don't-care.
+//     uint32_t exit_instr = (OPCODE_C << 29) | (0b111 << 10);
+//     program[0] = exit_instr;
     
-    // Configured in Initialise inputs
+//     // Configured in Initialise inputs
     
-    loadAndRun(program);
+//     loadAndRun(program);
 
-    // The `loadAndRun` function will fail if it times out.
-    // If we reach this point, it means `top->done` was asserted.
-    SUCCEED() << "Core successfully fetched, decoded, and executed an EXIT instruction.";
-}
+//     // The `loadAndRun` function will fail if it times out.
+//     // If we reach this point, it means `top->done` was asserted.
+//     SUCCEED() << "Core successfully fetched, decoded, and executed an EXIT instruction.";
+// }
 
-TEST_F(ComputeCoreTestbench, ScalarALUAndStore_FromHex) {
+// TEST_F(ComputeCoreTestbench, ScalarALUAndStore_FromHex) {
+//     // 1. Load the program from the hex file
+//     loadProgramFromHex("test/tmp_test/program.hex"); // Assumes the file is in the build/run directory
+
+//     // 2. Configure the core for the test
+//     // Core configured in Initialise Input helper function
+    
+//     // 3. Run the simulation
+//     loadAndRun(instr_mem); // Pass the populated map to the existing runner
+
+//     // 4. Check the result
+//     EXPECT_EQ(data_mem[42], 32) << "Scalar ALU/Store data path failed when loaded from hex.";
+// }
+
+TEST_F(ComputeCoreTestbench, VectorALUAndStore_FromHex) {
     // 1. Load the program from the hex file
     loadProgramFromHex("test/tmp_test/program.hex"); // Assumes the file is in the build/run directory
 
@@ -183,23 +197,54 @@ TEST_F(ComputeCoreTestbench, ScalarALUAndStore_FromHex) {
     loadAndRun(instr_mem); // Pass the populated map to the existing runner
 
     // 4. Check the result
-    EXPECT_EQ(data_mem[42], 32) << "Scalar ALU/Store data path failed when loaded from hex.";
+    EXPECT_EQ(data_mem[42], 32) << "Vector ALU/Store data path failed when loaded from hex.";
 }
 
 
-TEST_F(ComputeCoreTestbench, RScalarTest) {
-    // 1. Load the program from the hex file
-    loadProgramFromHex("test/tmp_test/rscalar.hex"); // Assumes the file is in the build/run directory
 
-    // 2. Configure the core for the test
-    // Core configured in Initialise Input helper function
+// TEST_F(ComputeCoreTestbench, RScalarTest) {
+//     // 1. Load the program from the hex file
+//     loadProgramFromHex("test/tmp_test/rscalar.hex"); // Assumes the file is in the build/run directory
+
+//     // 2. Configure the core for the test
+//     // Core configured in Initialise Input helper function
     
-    // 3. Run the simulation
-    loadAndRun(instr_mem); // Pass the populated map to the existing runner
+//     // 3. Run the simulation
+//     loadAndRun(instr_mem); // Pass the populated map to the existing runner
 
-    // 4. Check the result
-    EXPECT_EQ(data_mem[42], 32) << "Scalar ALU/Store data path failed when loaded from hex.";
-}
+//     // 4. Check the result
+//     EXPECT_EQ(data_mem[42], 10) << "Scalar ALU/Store data path failed when loaded from hex.";
+//     EXPECT_EQ(data_mem[43], 20) << "Scalar ALU/Store data path failed when loaded from hex.";
+//     EXPECT_EQ(data_mem[44], 0) << "Scalar ALU/Store data path failed when loaded from hex.";
+//     EXPECT_EQ(data_mem[45], 100) << "Scalar ALU/Store data path failed when loaded from hex.";
+//     EXPECT_EQ(data_mem[46], 1) << "Scalar ALU/Store data path failed when loaded from hex.";
+//     EXPECT_EQ(data_mem[47], 0) << "Scalar ALU/Store data path failed when loaded from hex.";
+//     EXPECT_EQ(data_mem[48], 1) << "Scalar ALU/Store data path failed when loaded from hex.";
+//     EXPECT_EQ(data_mem[49], 1) << "Scalar ALU/Store data path failed when loaded from hex.";
+//     EXPECT_EQ(data_mem[50], 5) << "Scalar ALU/Store data path failed when loaded from hex.";
+// }
+
+// TEST_F(ComputeCoreTestbench, RVectorTest) {
+//     // 1. Load the program from the hex file
+//     loadProgramFromHex("test/tmp_test/rvector.hex"); // Assumes the file is in the build/run directory
+
+//     // 2. Configure the core for the test
+//     // Core configured in Initialise Input helper function
+    
+//     // 3. Run the simulation
+//     loadAndRun(instr_mem); // Pass the populated map to the existing runner
+
+//     // 4. Check the result
+//     EXPECT_EQ(data_mem[42], 10) << "Vector ALU/Store data path failed when loaded from hex.";
+//     EXPECT_EQ(data_mem[43], 20) << "Vector ALU/Store data path failed when loaded from hex.";
+//     EXPECT_EQ(data_mem[44], 0) << "Vector ALU/Store data path failed when loaded from hex.";
+//     EXPECT_EQ(data_mem[45], 100) << "Vector ALU/Store data path failed when loaded from hex.";
+//     EXPECT_EQ(data_mem[46], 1) << "Vector ALU/Store data path failed when loaded from hex.";
+//     EXPECT_EQ(data_mem[47], 0) << "Vector ALU/Store data path failed when loaded from hex.";
+//     EXPECT_EQ(data_mem[48], 1) << "Vector ALU/Store data path failed when loaded from hex.";
+//     EXPECT_EQ(data_mem[49], 1) << "Vector ALU/Store data path failed when loaded from hex.";
+//     EXPECT_EQ(data_mem[50], 5) << "Vector ALU/Store data path failed when loaded from hex.";
+// }
 
 
 

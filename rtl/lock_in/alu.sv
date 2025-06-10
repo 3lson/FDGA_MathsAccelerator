@@ -27,7 +27,7 @@ module alu (
                 SUB: Result <= ALUop1 - ALUop2; // SUB
                 MUL: Result <= ALUop1 * ALUop2; // MULTIPLY
                 DIV: Result <= ALUop1 / ALUop2; // DIVIDE
-                ABS: Result <= {1'b0,ALUop1[30:0]}; //ABSOLUTE (AS PER IEEE 754 SINGLE PRECISION FLOATING POINT NUMBERS)
+                ABS: Result <= (ALUop1[31]) ? -ALUop1 : ALUop1;
                 SLT: Result <= (ALUop1 < ALUop2) ? 1:0; //LESS THAN
                 SEQ: begin //EQUALS
                     Result <= (ALUop1 == ALUop2) ? 1:0; 
