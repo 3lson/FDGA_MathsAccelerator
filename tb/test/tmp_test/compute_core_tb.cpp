@@ -187,6 +187,22 @@ TEST_F(ComputeCoreTestbench, ScalarALUAndStore_FromHex) {
 }
 
 
+TEST_F(ComputeCoreTestbench, RScalarTest) {
+    // 1. Load the program from the hex file
+    loadProgramFromHex("test/tmp_test/rscalar.hex"); // Assumes the file is in the build/run directory
+
+    // 2. Configure the core for the test
+    // Core configured in Initialise Input helper function
+    
+    // 3. Run the simulation
+    loadAndRun(instr_mem); // Pass the populated map to the existing runner
+
+    // 4. Check the result
+    EXPECT_EQ(data_mem[42], 32) << "Scalar ALU/Store data path failed when loaded from hex.";
+}
+
+
+
 
 int main(int argc, char **argv) {
     Verilated::commandArgs(argc, argv);
