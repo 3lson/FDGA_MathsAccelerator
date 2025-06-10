@@ -457,8 +457,8 @@ int main() {
     initregisterMap();
     //ifstream input("bin/output/algotests/for/for.s"); // Example test file
     ifstream input("assembler/program.asm");
-    ofstream instrOut("tb/test/tmp_test/rscalar.hex");
-    ofstream dataOut("tb/test/tmp_test/data_rscalar.hex");
+    ofstream instrOut("tb/test/tmp_test/fscalar.hex");
+    ofstream dataOut("tb/test/tmp_test/data_fscalar.hex");
     vector<pair<int, string>> instructions;
     vector<pair<int, uint32_t>> data;
     string line;
