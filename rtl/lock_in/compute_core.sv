@@ -456,7 +456,7 @@ for (genvar i = 0; i < WARPS_PER_CORE; i = i + 1) begin : g_warp
             //$display("Warp State: ", warp_state[i]);
             //$display("Decoded_rs1: ", decoded_rs1_address[i]);
             //$display("Decoded_rs2: ", decoded_rs2_address[i]);
-            //$display("ALU out", scalar_alu_out);
+            $display("ALU out", scalar_alu_out);
             //$display("Scalar_lsu: ", scalar_lsu_out);
             //$display("Scalar_float_rs1: ", scalar_float_rs1[i]);
             //$display("Scalar_float_rs2: ", scalar_float_rs2[i]);
@@ -559,6 +559,20 @@ for (genvar i = 0; i < WARPS_PER_CORE; i = i + 1) begin : g_warp
             .rs1(vector_int_rs1[i]),
             .rs2(vector_int_rs2[i])
         );
+
+    always_comb begin
+        if (current_warp == i) begin
+            $display("Enable: ", current_warp == i);
+            $display("Warp State: ", warp_state[i]);
+            $display("Decoded_rs1: ", decoded_rs1_address[i]);
+            $display("Decoded_rs2: ", decoded_rs2_address[i]);
+            $display("Vector_lsu: ", lsu_out);
+            $display("Vector_int_rs1: ", vector_int_rs1[i]);
+            $display("Vector_int_rs2: ", vector_int_rs2[i]);
+        end
+    end
+
+
     
 end
 endgenerate
@@ -664,6 +678,7 @@ generate
             .Result(vector_int_alu_result)
             // .EQ() // unused
         );
+
         // Vector Floating ALU
         floating_alu vector_fpu_inst(
             .op1(final_op1[i]),
@@ -675,7 +690,6 @@ generate
         );
 
         assign alu_out[i] = (decoded_alu_instruction[current_warp] >= FADD) ? vector_float_alu_result : vector_int_alu_result;
-        
 
         // always_comb begin 
         //     $display("Final op1: ", final_op1[i]);
