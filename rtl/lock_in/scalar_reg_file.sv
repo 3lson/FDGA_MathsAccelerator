@@ -39,13 +39,19 @@ localparam int EXECUTION_MASK_REG = 31;
 
 data_t registers [32];
 
-assign rs1 = (decoded_rs1_address == ZERO_REG) ? {DATA_WIDTH{1'b0}} : registers[decoded_rs1_address];
-assign rs2 = (decoded_rs2_address == ZERO_REG) ? {DATA_WIDTH{1'b0}} : registers[decoded_rs2_address];
+always_comb begin
+    warp_execution_mask = registers[EXECUTION_MASK_REG];
+    if (reset) begin
+        rs1 = 32'b0;
+        rs2 = 32'b0;
+    end else begin
+        rs1 = (decoded_rs1_address == ZERO_REG) ? {DATA_WIDTH{1'b0}} : registers[decoded_rs1_address];
+        rs2 = (decoded_rs2_address == ZERO_REG) ? {DATA_WIDTH{1'b0}} : registers[decoded_rs2_address];
+    end
+end
 // always_comb begin
 //     $display("RS1, RS2 from scalar_reg ", rs1, rs2);
 // end
-
-assign warp_execution_mask = registers[EXECUTION_MASK_REG];
 
 // Register file: each warp has its own set of 32 registers
 

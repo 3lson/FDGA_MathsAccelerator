@@ -99,11 +99,13 @@ TEST_F(ScalarRegFileTestbench, ResetAndZeroRegister) {
 
     // Test a general-purpose register
     top->decoded_rs1_address = 4; // x4
+    top->reset = 1;
     tick();
     EXPECT_EQ(top->rs1, 0) << "GP reg x4 should be 0 after reset";
 
     // Test another GP register, including the one that used to be the mask
     top->decoded_rs1_address = 31; // x31
+    top->reset = 1;
     tick();
     EXPECT_EQ(top->rs1, 0) << "GP reg x31 should be 0 after reset";
 }

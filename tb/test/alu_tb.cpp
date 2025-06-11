@@ -25,18 +25,13 @@ class ALUTestbench : public BaseTestbench {
 protected:
     void clockCycle() {
         // Falling edge
-        top->clk = 0;
         top->eval();
         // Rising edge
-        top->clk = 1;
         top->eval();
     }
 
     // This method is called by the test fixture setup
     void initializeInputs() override {
-        top->clk = 0;
-        top->reset = 1; // Start in reset
-        top->enable = 0;
         top->instruction = 0;
         top->ALUop1 = 0;
         top->ALUop2 = 0;
@@ -45,9 +40,7 @@ protected:
 
     // Helper to reset the DUT
     void resetDUT() {
-        top->reset = 1;
         clockCycle(); // Hold reset for one cycle
-        top->reset = 0;
         top->eval();    // Let reset go low
     }
 
@@ -58,11 +51,7 @@ protected:
         top->ALUop1 = op1;
         top->ALUop2 = op2;
         top->IMM = imm;
-        top->enable = 1;
-
         clockCycle();
-
-        top->enable = 0;
     }
 };
 

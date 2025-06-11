@@ -5,7 +5,7 @@
 
 # Constants
 SCRIPT_DIR=$(dirname "$(realpath "$0")")
-TEST_FOLDER=$(realpath "$SCRIPT_DIR/test/tmp_test")
+TEST_FOLDER=$(realpath "$SCRIPT_DIR/test")
 RTL_FOLDER=$(realpath "$SCRIPT_DIR/../rtl/lock_in")
 GREEN=$(tput setaf 2)
 RED=$(tput setaf 1)
