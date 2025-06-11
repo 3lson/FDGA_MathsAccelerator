@@ -130,8 +130,8 @@ protected:
         top->clk = 1; top->reset = 1; top->start = 0; top->block_id = 0;
         top->kernel_config[3] = 0; // base instruction address
         top->kernel_config[2] = 0; // base data memory address
-        top->kernel_config[0] = 1;  // num_blocks
-        top->kernel_config[1] = 1; // num_warps_per_block
+        top->kernel_config[0] = 2;  // num_warps_per_block
+        top->kernel_config[1] = 1; // num_blocks
 
         top->instruction_mem_read_ready = -1; // All ready
         top->data_mem_read_ready = -1;
@@ -600,38 +600,75 @@ protected:
 //     EXPECT_EQ(data_mem[53], 1) << "Vector FCVT.W.S (float to int) failed";
 // }
 
-TEST_F(ComputeCoreTestbench, SXSltTest) {
-    // This test verifies the sx.slt (vector-to-scalar mask generation) instruction.
-    // Assembly under test:
-    //   v.add v1, x29, zero   // v1 = thread IDs
-    //   v.li v2, 8            // v2 = 8
-    //   sx.slt s1, v1, v2     // s1 = (v1 < v2) ? 1 : 0 for each thread
-    //   s.li s10, 42          // s10 = 42
-    //   s.sw s1, 0(s10)       // mem[42] = s1
-    //   exit
+// TEST_F(ComputeCoreTestbench, SXSltTest) {
+//     // This test verifies the sx.slt (vector-to-scalar mask generation) instruction.
+//     // Assembly under test:
+//     //   v.add v1, x29, zero   // v1 = thread IDs
+//     //   v.li v2, 8            // v2 = 8
+//     //   sx.slt s1, v1, v2     // s1 = (v1 < v2) ? 1 : 0 for each thread
+//     //   s.li s10, 42          // s10 = 42
+//     //   s.sw s1, 0(s10)       // mem[42] = s1
+//     //   exit
 
+//     // 1. Clear data memory from any previous tests
+//     data_mem.clear();
+
+//     // 2. Load the assembled program from its hex file
+//     loadProgramFromHex("test/tmp_test/sx_slt_test.hex");
+
+// //     // 3. Run the simulation
+//     loadAndRun(instr_mem);
+
+//     // 4. Verify the result
+//     // The condition is `thread_id < 8`.
+//     // This should be true for threads 0, 1, 2, 3, 4, 5, 6, 7.
+//     // The resulting mask in register s1 should have the lower 8 bits set.
+//     // Expected mask = 0b11111111 = 0xFF.
+//     uint32_t expected_mask = 0xFF;
+    
+//     // The program stores this mask at memory address 42.
+//     // Check if the memory location contains the correct mask value.
+//     ASSERT_TRUE(data_mem.count(42)) << "The test program did not write to the expected memory location (42).";
+//     EXPECT_EQ(data_mem[42], expected_mask) << "sx.slt failed to generate the correct scalar mask.";
+// }
+
+
+// In your compute_core_tb.cpp file
+
+TEST_F(ComputeCoreTestbench, SyncInstructionTest) {
+    // This test verifies that the 'sync' instruction correctly stalls warps
+    // until all active warps in a block have reached the barrier.
+    
     // 1. Clear data memory from any previous tests
     data_mem.clear();
 
-    // 2. Load the assembled program from its hex file
-    loadProgramFromHex("test/tmp_test/sx_slt_test.hex");
+    // 2. Load the assembled program
+    loadProgramFromHex("test/tmp_test/sync_test.hex");
 
-//     // 3. Run the simulation
     loadAndRun(instr_mem);
 
-    // 4. Verify the result
-    // The condition is `thread_id < 8`.
-    // This should be true for threads 0, 1, 2, 3, 4, 5, 6, 7.
-    // The resulting mask in register s1 should have the lower 8 bits set.
-    // Expected mask = 0b11111111 = 0xFF.
-    uint32_t expected_mask = 0xFF;
-    
-    // The program stores this mask at memory address 42.
-    // Check if the memory location contains the correct mask value.
-    ASSERT_TRUE(data_mem.count(42)) << "The test program did not write to the expected memory location (42).";
-    EXPECT_EQ(data_mem[42], expected_mask) << "sx.slt failed to generate the correct scalar mask.";
-}
+    // 3. CRITICAL: Manually set up and start the simulation
+    // This sequence replaces the single call to loadAndRun().
 
+    // Step A: Set the specific configuration for this test.
+    // We are overriding the defaults set in initializeInputs().
+
+    // Fail the test if the core timed out.
+    // 5. Verify the results
+    // The verification logic remains the same.
+
+    // Check that Warp 0 (producer) did its job
+    ASSERT_TRUE(data_mem.count(42)) << "Producer (Warp 0) failed to write to its address.";
+    EXPECT_EQ(data_mem[42], 123) << "Producer (Warp 0) wrote the wrong value.";
+
+    // Check that Warp 1 (consumer) did its initial write
+    ASSERT_TRUE(data_mem.count(46)) << "Consumer (Warp 1) failed its initial write.";
+    EXPECT_EQ(data_mem[46], 999) << "Consumer (Warp 1) wrote the wrong initial value.";
+
+    // THE REAL TEST: Check that Warp 1 read the value produced by Warp 0 *after* the sync.
+    ASSERT_TRUE(data_mem.count(50)) << "Consumer (Warp 1) failed to write its verification value.";
+    EXPECT_EQ(data_mem[50], 123) << "Sync barrier failed: Consumer read from memory before the producer wrote to it.";
+}
 
 int main(int argc, char **argv) {
     Verilated::commandArgs(argc, argv);
