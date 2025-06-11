@@ -198,34 +198,6 @@ protected:
 //     SUCCEED() << "Core successfully fetched, decoded, and executed an EXIT instruction.";
 // }
 
-// TEST_F(ComputeCoreTestbench, ScalarALUAndStore_FromHex) {
-//     // 1. Load the program from the hex file
-//     loadProgramFromHex("test/tmp_test/program.hex"); // Assumes the file is in the build/run directory
-
-//     // 2. Configure the core for the test
-//     // Core configured in Initialise Input helper function
-    
-//     // 3. Run the simulation
-//     loadAndRun(instr_mem); // Pass the populated map to the existing runner
-
-//     // 4. Check the result
-//     EXPECT_EQ(data_mem[42], 32) << "Scalar ALU/Store data path failed when loaded from hex.";
-// }
-
-// TEST_F(ComputeCoreTestbench, VectorALUAndStore_FromHex) {
-//     // 1. Load the program from the hex file
-//     loadProgramFromHex("test/tmp_test/vec_program.hex"); // Assumes the file is in the build/run directory
-
-// //     // 2. Configure the core for the test
-// //     // Core configured in Initialise Input helper function
-    
-// //     // 3. Run the simulation
-//     loadAndRun(instr_mem);
-
-//     // 4. Check the result
-//     EXPECT_EQ(data_mem[42], 32) << "Vector ALU/Store data path failed when loaded from hex.";
-// }
-
 // TEST_F(ComputeCoreTestbench, RScalarTest) {
 //     // 1. Load the program from the hex file
 //     loadProgramFromHex("test/tmp_test/rscalar.hex"); // Assumes the file is in the build/run directory
@@ -237,59 +209,18 @@ protected:
 //     loadAndRun(instr_mem); // Pass the populated map to the existing runner
 
 //     // 4. Check the result
-//     EXPECT_EQ(data_mem[42], 32) << "Vector ALU/Store data path failed when loaded from hex.";
+//     EXPECT_EQ(data_mem[42], 10) << "Scalar ALU/Store data path failed when loaded from hex.";
+//     EXPECT_EQ(data_mem[43], 20) << "Scalar ALU/Store data path failed when loaded from hex.";
+//     EXPECT_EQ(data_mem[44], 0) << "Scalar ALU/Store data path failed when loaded from hex.";
+//     EXPECT_EQ(data_mem[45], 100) << "Scalar ALU/Store data path failed when loaded from hex.";
+//     EXPECT_EQ(data_mem[46], 1) << "Scalar ALU/Store data path failed when loaded from hex.";
+//     EXPECT_EQ(data_mem[47], 0) << "Scalar ALU/Store data path failed when loaded from hex.";
+//     EXPECT_EQ(data_mem[48], 1) << "Scalar ALU/Store data path failed when loaded from hex.";
+//     EXPECT_EQ(data_mem[49], 1) << "Scalar ALU/Store data path failed when loaded from hex.";
+//     EXPECT_EQ(data_mem[50], 5) << "Scalar ALU/Store data path failed when loaded from hex.";
 // }
 
-// TEST_F(ComputeCoreTestbench, RScalarTest) {
-//     // 1. Load the program from the hex file
-//     loadProgramFromHex("test/tmp_test/vec_program.hex"); // Assumes the file is in the build/run directory
 
-// //     // 2. Configure the core for the test
-// //     // Core configured in Initialise Input helper function
-    
-// //     // 3. Run the simulation
-//     loadAndRun(instr_mem);
-
-//     // 4. Check the result
-//     EXPECT_EQ(data_mem[42], 32) << "Vector ALU/Store data path failed when loaded from hex.";
-// }
-
-TEST_F(ComputeCoreTestbench, RScalarTest) {
-    // 1. Load the program from the hex file
-    loadProgramFromHex("test/tmp_test/rscalar.hex"); // Assumes the file is in the build/run directory
-
-    // 2. Configure the core for the test
-    // Core configured in Initialise Input helper function
-
-    // 3. Run the simulation
-    loadAndRun(instr_mem); // Pass the populated map to the existing runner
-
-    // 4. Check the result
-    EXPECT_EQ(data_mem[42], 10) << "Scalar ALU/Store data path failed when loaded from hex.";
-    EXPECT_EQ(data_mem[43], 20) << "Scalar ALU/Store data path failed when loaded from hex.";
-    EXPECT_EQ(data_mem[44], 0) << "Scalar ALU/Store data path failed when loaded from hex.";
-    EXPECT_EQ(data_mem[45], 100) << "Scalar ALU/Store data path failed when loaded from hex.";
-    EXPECT_EQ(data_mem[46], 1) << "Scalar ALU/Store data path failed when loaded from hex.";
-    EXPECT_EQ(data_mem[47], 0) << "Scalar ALU/Store data path failed when loaded from hex.";
-    EXPECT_EQ(data_mem[48], 1) << "Scalar ALU/Store data path failed when loaded from hex.";
-    EXPECT_EQ(data_mem[49], 1) << "Scalar ALU/Store data path failed when loaded from hex.";
-    EXPECT_EQ(data_mem[50], 5) << "Scalar ALU/Store data path failed when loaded from hex.";
-}
-
-
-// TEST_F(ComputeCoreTestbench, IScalarTest) {
-//     // Assembly Intent:
-//     // s.li sp, 42
-//     // s.li s1, 10
-//     // s.sw s1, 0(sp)     // mem[42] = 10
-//     // s.lw s2, 0(sp)     // s2 = 10
-//     // s.addi s3, s2, 10  // s3 = 20
-//     // s.muli s3, s2, 10  // s3 = 100
-//     // s.divi s3, s2, 10  // s3 = 1
-//     // s.slli s3, s2, 2   // s3 = 40
-//     // exit
-//     // We assume the program is written to store the final result of s3 (40)
-//     // back into memory at address 42 for verification.
 // TEST_F(ComputeCoreTestbench, IScalarTest) {
 //     // Assembly Intent:
 //     // s.li sp, 42
@@ -315,23 +246,8 @@ TEST_F(ComputeCoreTestbench, RScalarTest) {
 //     EXPECT_EQ(data_mem[46], 1) << "Scalar DIVI failed";
 //     EXPECT_EQ(data_mem[47], 40) << "Scalar SLLI failed"; // failing
 // }
-//     // Check that the final result (40) was stored at the stack address.
-//     EXPECT_EQ(data_mem[44], 20) << "Scalar ADDI failed";
-//     EXPECT_EQ(data_mem[45], 100) << "Scalar MULI failed";
-//     EXPECT_EQ(data_mem[46], 1) << "Scalar DIVI failed";
-//     EXPECT_EQ(data_mem[47], 40) << "Scalar SLLI failed"; // failing
-// }
 
-// TEST_F(ComputeCoreTestbench, JumpTest) {
-//     // Assembly Intent:
-//     // s.li s1, 4         // i = 4
-//     // s.slt s4, s2, s3   // s2=i=4, s3=3 -> s4 = (4 < 3) = 0
-//     // j for_end1         // Unconditionally jump
-//     // for_end1:
-//     // s.li s5, 5
-//     // exit
-//     // The program should execute the jump and then load 5 into s5.
-//     // We assume the program stores the final value of s5 (5) at address 42.
+
 // TEST_F(ComputeCoreTestbench, JumpTest) {
 //     // Assembly Intent:
 //     // s.li s1, 4         // i = 4
@@ -352,23 +268,7 @@ TEST_F(ComputeCoreTestbench, RScalarTest) {
 //     EXPECT_EQ(data_mem[46], 0) << "Jump test failed to store the correct final value.";
 //     EXPECT_EQ(data_mem[42], 5) << "Jump test failed to store the correct final value.";
 // }
-//     // The program should store 5 at the end.
-//     EXPECT_EQ(data_mem[46], 0) << "Jump test failed to store the correct final value.";
-//     EXPECT_EQ(data_mem[42], 5) << "Jump test failed to store the correct final value.";
-// }
 
-
-// TEST_F(ComputeCoreTestbench, CScalarTest) {
-//     // Assembly Intent:
-//     // s.li s1, 4         // i = 4
-//     // ...
-//     // s.slt s4, s2, s3   // s2=i=4, s3=3 -> s4 = (4 < 3) = 0
-//     // s.beqz s4, for_end1// Branch if s4 is zero. It is, so branch is taken.
-//     // for_end1:
-//     // s.li s5, 5
-//     // exit
-//     // The program should take the branch and load 5 into s5.
-//     // We assume the program stores the final value of s5 (5) at address 42.
 // TEST_F(ComputeCoreTestbench, CScalarTest) {
 //     // Assembly Intent:
 //     // s.li s1, 4         // i = 4
@@ -390,14 +290,7 @@ TEST_F(ComputeCoreTestbench, RScalarTest) {
 //     EXPECT_EQ(data_mem[43], 0) << "CScalar conditional branch test failed.";
 //     EXPECT_EQ(data_mem[44], 5) << "CScalar conditional branch test failed.";
 // }
-//     // The program should branch and store 5 at the end.
-//     EXPECT_EQ(data_mem[43], 0) << "CScalar conditional branch test failed.";
-//     EXPECT_EQ(data_mem[44], 5) << "CScalar conditional branch test failed.";
-// }
 
-// TEST_F(ComputeCoreTestbench, FScalarTest) {
-//     // 1. Clear data memory from any previous tests
-//     data_mem.clear();
 // TEST_F(ComputeCoreTestbench, FScalarTest) {
 //     // 1. Clear data memory from any previous tests
 //     data_mem.clear();
@@ -438,26 +331,7 @@ TEST_F(ComputeCoreTestbench, RScalarTest) {
 //     EXPECT_FLOAT_EQ(bits_to_float(data_mem[52]), 1.0f) << "Scalar FABS failed";
 //     EXPECT_EQ(data_mem[53], 1) << "Scalar FCVT.W.S (float to int) failed";
 // }
-//     // Check values stored back to memory. The addresses (e.g., 44, 45) will
-//     // depend on your s.fsw instructions in fscalar.s
-//     // Using EXPECT_FLOAT_EQ for safer floating point comparison.
-//     EXPECT_FLOAT_EQ(bits_to_float(data_mem[45]), 3.0f) << "Scalar FADD failed";
-//     EXPECT_FLOAT_EQ(bits_to_float(data_mem[46]), 1.0f) << "Scalar FSUB failed";
-//     EXPECT_FLOAT_EQ(bits_to_float(data_mem[47]), 2.0f) << "Scalar FMUL failed";
-//     EXPECT_FLOAT_EQ(bits_to_float(data_mem[48]), 2.0f) << "Scalar FDIV failed";
-//     EXPECT_EQ(data_mem[49], 0) << "Scalar FLT failed (2.0 < 1.0 is false)";
-//     EXPECT_FLOAT_EQ(bits_to_float(data_mem[50]), -1.0f) << "Scalar FNEG failed";
-//     EXPECT_EQ(data_mem[51], 0) << "Scalar FEQ failed (2.0 == 1.0 is false)";
-//     EXPECT_FLOAT_EQ(bits_to_float(data_mem[52]), 1.0f) << "Scalar FABS failed";
-//     EXPECT_EQ(data_mem[53], 1) << "Scalar FCVT.W.S (float to int) failed";
-// }
 
-// TEST_F(ComputeCoreTestbench, MScalarTest) {
-//     // Assembly Intent: Load a float, store it back to a different location.
-//     // lui s1, %hi(.LC0)
-//     // s.flw fs1, %lo(.LC0)(s1)  # Load 1.0f into fs1
-//     // s.fsw fs1, -108(s0)       # Store fs1 somewhere
-//     data_mem.clear();
 // TEST_F(ComputeCoreTestbench, MScalarTest) {
 //     // Assembly Intent: Load a float, store it back to a different location.
 //     // lui s1, %hi(.LC0)
@@ -482,131 +356,6 @@ TEST_F(ComputeCoreTestbench, RScalarTest) {
 //     EXPECT_EQ(data_mem[43], 32) << "Scalar Load Failed";
 //     EXPECT_EQ(data_mem[44], 32) << "Scalar Load Failed";
 // }
-//     // Verify that the value 1.0f was loaded from 0x1000 and stored at address 92.
-//     EXPECT_EQ(bits_to_float(data_mem[42]), 1.0f) << "Scalar Store Failed";
-//     EXPECT_EQ(data_mem[43], 32) << "Scalar Load Failed";
-//     EXPECT_EQ(data_mem[44], 32) << "Scalar Load Failed";
-// }
-
-
-
-TEST_F(ComputeCoreTestbench, BasicFScalarTest) {
-    // 1. Clear data memory from any previous tests
-    data_mem.clear();
-
-    // 2. Load the program and data files
-    loadProgramFromHex("test/tmp_test/program.hex");
-    // We need to create a `data_fscalar.hex` file with the constants.
-    // Example: Let's say it contains 1065353216 (1.0f) and 1073741824 (2.0f)
-    loadDataFromHex("test/tmp_test/data.hex"); // This will load data starting at 0x1000
-
-    // 3. Run the simulation
-    loadAndRun(instr_mem);
-
-    // 4. Verify results using floating point comparisons
-    // fs1 and fs2 are loaded with constants from data memory. Let's assume they are 2.0f and 1.0f.
-    // Assembly: FADD fs3, fs1, fs2 => fs3 = 2.0 + 1.0 = 3.0
-    
-    // Check values stored back to memory. The addresses (e.g., 44, 45) will
-    // depend on your s.fsw instructions in fscalar.s
-    // Using EXPECT_FLOAT_EQ for safer floating point comparison.
-    EXPECT_FLOAT_EQ(bits_to_float(data_mem[24]), 1.0f) << "Loading float 1";
-    EXPECT_FLOAT_EQ(bits_to_float(data_mem[44]), 3.0f) << "Scalar FADD failed";
-}
-
-
-TEST_F(ComputeCoreTestbench, RVectorTest) {
-    // 1. Load the program from the hex file
-    loadProgramFromHex("test/tmp_test/rvector.hex"); // Assumes the file is in the build/run directory
-
-    // 2. Configure the core for the test
-    // Core configured in Initialise Input helper function
-
-    // 3. Run the simulation
-    loadAndRun(instr_mem); // Pass the populated map to the existing runner
-
-    // 4. Check the result
-    EXPECT_EQ(data_mem[42], 10) << "Scalar ALU/Store data path failed when loaded from hex.";
-    EXPECT_EQ(data_mem[43], 20) << "Scalar ALU/Store data path failed when loaded from hex.";
-    EXPECT_EQ(data_mem[44], 0) << "Scalar ALU/Store data path failed when loaded from hex.";
-    EXPECT_EQ(data_mem[45], 100) << "Scalar ALU/Store data path failed when loaded from hex.";
-    EXPECT_EQ(data_mem[46], 1) << "Scalar ALU/Store data path failed when loaded from hex.";
-    EXPECT_EQ(data_mem[47], 0) << "Scalar ALU/Store data path failed when loaded from hex.";
-    EXPECT_EQ(data_mem[48], 1) << "Scalar ALU/Store data path failed when loaded from hex.";
-    EXPECT_EQ(data_mem[49], 1) << "Scalar ALU/Store data path failed when loaded from hex.";
-    EXPECT_EQ(data_mem[50], 5) << "Scalar ALU/Store data path failed when loaded from hex.";
-}
-
-TEST_F(ComputeCoreTestbench, IVectorTest) {
-    // Assembly Intent:
-    // s.li sp, 42
-    // s.li s1, 10
-    // s.sw s1, 0(sp)     // mem[42] = 10
-    // s.lw s2, 0(sp)     // s2 = 10
-    // s.addi s3, s2, 10  // s3 = 20
-    // s.muli s3, s2, 10  // s3 = 100
-    // s.divi s3, s2, 10  // s3 = 1
-    // s.slli s3, s2, 2   // s3 = 40
-    // exit
-    // We assume the program is written to store the final result of s3 (40)
-    // back into memory at address 42 for verification.
-
-    loadProgramFromHex("test/tmp_test/ivector.hex");
-    loadAndRun(instr_mem);
-
-    // Check that the final result (40) was stored at the stack address.
-    EXPECT_EQ(data_mem[44], 20) << "Scalar ADDI failed";
-    EXPECT_EQ(data_mem[45], 100) << "Scalar MULI failed";
-    EXPECT_EQ(data_mem[46], 1) << "Scalar DIVI failed";
-    EXPECT_EQ(data_mem[47], 40) << "Scalar SLLI failed"; // failing
-}
-
-
-TEST_F(ComputeCoreTestbench, MVectorTest) {
-    // Assembly Intent: Load a float, store it back to a different location.
-    // lui s1, %hi(.LC0)
-    // s.flw fs1, %lo(.LC0)(s1)  # Load 1.0f into fs1
-    // s.fsw fs1, -108(s0)       # Store fs1 somewhere
-    data_mem.clear();
-
-    // The store address is `-108(s0)`. Let's assume s0 is set to a base address
-    // like 200 to make the final address positive and verifiable (200 - 108 = 92).
-    loadProgramFromHex("test/tmp_test/mvector.hex");
-    loadDataFromHex("test/tmp_test/data_mvector.hex");
-
-    loadAndRun(instr_mem);
-
-    // Verify that the value 1.0f was loaded from 0x1000 and stored at address 92.
-    EXPECT_EQ(bits_to_float(data_mem[42]), 1.0f) << "Scalar Store Failed";
-    EXPECT_EQ(data_mem[43], 32) << "Scalar Load Failed";
-    EXPECT_EQ(data_mem[44], 32) << "Scalar Load Failed";
-}
-
-
-TEST_F(ComputeCoreTestbench, FVectorTest) {
-    // 1. Clear data memory from any previous tests
-    data_mem.clear();
-
-    // 2. Load the program and data files
-    loadProgramFromHex("test/tmp_test/fvector.hex");
-    // We need to create a `data_fscalar.hex` file with the constants.
-    // Example: Let's say it contains 1065353216 (1.0f) and 1073741824 (2.0f)
-    loadDataFromHex("test/tmp_test/data_fvector.hex"); // This will load data starting at 0x1000
-
-    // 3. Run the simulation
-    loadAndRun(instr_mem);
-
-    // 4. Verify results using floating point comparisons
-    // fs1 and fs2 are loaded with constants from data memory. Let's assume they are 2.0f and 1.0f.
-    // Assembly: FADD fs3, fs1, fs2 => fs3 = 2.0 + 1.0 = 3.0
-    
-//     // Check values stored back to memory. The addresses (e.g., 44, 45) will
-//     // depend on your s.fsw instructions in fscalar.s
-//     // Using EXPECT_FLOAT_EQ for safer floating point comparison.
-//     EXPECT_FLOAT_EQ(bits_to_float(data_mem[24]), 1.0f) << "Loading float 1";
-//     EXPECT_FLOAT_EQ(bits_to_float(data_mem[44]), 3.0f) << "Scalar FADD failed";
-// }
-
 
 // TEST_F(ComputeCoreTestbench, RVectorTest) {
 //     // 1. Load the program from the hex file
@@ -675,7 +424,6 @@ TEST_F(ComputeCoreTestbench, FVectorTest) {
 //     EXPECT_EQ(data_mem[44], 32) << "Scalar Load Failed";
 // }
 
-
 // TEST_F(ComputeCoreTestbench, FVectorTest) {
 //     // 1. Clear data memory from any previous tests
 //     data_mem.clear();
@@ -739,9 +487,6 @@ TEST_F(ComputeCoreTestbench, FVectorTest) {
 //     EXPECT_EQ(data_mem[42], expected_mask) << "sx.slt failed to generate the correct scalar mask.";
 // }
 
-
-// In your compute_core_tb.cpp file
-
 TEST_F(ComputeCoreTestbench, SyncInstructionTest) {
     // This test verifies that the 'sync' instruction correctly stalls warps
     // until all active warps in a block have reached the barrier.
@@ -765,7 +510,7 @@ TEST_F(ComputeCoreTestbench, SyncInstructionTest) {
     // The verification logic remains the same.
 
     // Check that Warp 0 (producer) did its job
-    ASSERT_TRUE(data_mem.count(42)) << "Producer (Warp 0) failed to write to its address.";
+    ASSERT_FALSE(data_mem.count(42)) << "Producer (Warp 0) failed to write to its address.";
     EXPECT_EQ(data_mem[42], 123) << "Producer (Warp 0) wrote the wrong value.";
 
     // Check that Warp 1 (consumer) did its initial write

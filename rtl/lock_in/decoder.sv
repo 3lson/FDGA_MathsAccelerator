@@ -61,6 +61,7 @@ module decoder(
             decoded_scalar_instruction <= 0;
             floatingRead <= 2'b00;
             floatingWrite <= 1'b0;
+            decoded_sync    <= 0;
         end else if (warp_state == WARP_DECODE) begin
             // Default assignments for new decode
             decoded_reg_write_enable <= 0;
@@ -76,6 +77,7 @@ module decoder(
             decoded_scalar_instruction <= 0;
             floatingRead <= 2'b00;
             floatingWrite <= 1'b0;
+            decoded_sync <= 0;
 
             if (opcode == `OPCODE_J) begin
                 unique case (funct3) 

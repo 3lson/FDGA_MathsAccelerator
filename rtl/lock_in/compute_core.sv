@@ -179,7 +179,7 @@ always @(posedge clk) begin
         end
         sync_reached <= 0;
         for (int i = 0; i < WARPS_PER_CORE; i++) begin
-            sync_pc[i] <= '0;
+            sync_pc[i] <= 0;
         end
 
     end else if (!start_execution) begin
@@ -201,6 +201,34 @@ always @(posedge clk) begin
             end
         end
     end else begin
+        logic all_warps_synced = 1'b1;
+        // Only check for sync if at least one warp has reached the barrier
+        for (int i = 0; i < num_warps; i++) begin
+            // Only consider warps that are active and not done
+            if ((warp_state[i] != WARP_DONE) && (warp_state[i] != WARP_IDLE)) begin
+                // If any active warp has NOT reached the barrier, we wait.
+                if (!sync_reached[i]) begin
+                    all_warps_synced = 1'b0;
+                    break;
+                end
+            end
+        end
+
+        // If all active warps have synchronized, release them all AT ONCE.
+        if (all_warps_synced) begin
+            $display("Block: %0d: All warps synchronized, releasing barrier", block_id);
+            
+            // Release all warps from the sync barrier
+            for (int i = 0; i < num_warps; i++) begin
+                if (warp_state[i] == WARP_SYNC_WAIT) begin
+                    warp_state[i] <= WARP_UPDATE;
+                end
+            end
+            
+            // Clear the barrier state
+            sync_reached <= '0;
+        end
+
         // In parallel, check if fetchers are done, and if so, move to decode
         for (int i = 0; i < num_warps; i = i + 1) begin
             if (warp_state[i] == WARP_FETCH && fetcher_state[i] == FETCHER_DONE) begin
@@ -224,7 +252,8 @@ always @(posedge clk) begin
         // - WARP_DONE - that means that the warp has finished execution
         // - WARP_FETCH - that means that the warp is fetching instructions
         // For now we do not change state unless we are in WARP_UPDATE
-        if (current_warp_state == WARP_UPDATE || current_warp_state == WARP_DONE) begin
+        if (current_warp_state == WARP_UPDATE || current_warp_state == WARP_DONE 
+        || current_warp_state == WARP_WAIT || current_warp_state == WARP_SYNC_WAIT) begin
             int next_warp = (current_warp + 1) % num_warps;
             int found_warp = -1;
             $display("Block: %0d: Choosing next warp", block_id);
@@ -286,55 +315,60 @@ always @(posedge clk) begin
                 $display("Block: %0d: Warp %0d: Executing instruction %h", block_id, current_warp, fetched_instruction[current_warp]);
                 
                 if (decoded_sync[current_warp]) begin
-                    // SynBlock:c instruction detected
+                    // Sync instruction detected
                     $display("Block: %0d: Warp %0d: Sync barrier encountered at PC %h", block_id, current_warp, pc[current_warp]);
                     
                     sync_reached[current_warp] <= 1'b1;
                     sync_pc[current_warp] <= pc[current_warp];
+                    // The PC should not increment until after the sync is released.
+                    // The next_pc will be set in the SYNC_WAIT or UPDATE state.
+                    // We'll advance it when we release the barrier.
                     next_pc[current_warp] <= pc[current_warp] + 1;
                     warp_state[current_warp] <= WARP_SYNC_WAIT;
                     
-                end else if (decoded_scalar_instruction[current_warp]) begin
-                    if (decoded_branch[current_warp]) begin
-                        // Branch instruction
-                        if (scalar_alu_out == 1) begin
-                            // Branch taken
-                            next_pc[current_warp] <= pc[current_warp] + decoded_immediate[current_warp];
+                // This 'else' is the critical change
+                end else begin 
+                    if (decoded_scalar_instruction[current_warp]) begin
+                        if (decoded_branch[current_warp]) begin
+                            // Branch instruction
+                            if (scalar_alu_out == 1) begin
+                                // Branch taken
+                                next_pc[current_warp] <= pc[current_warp] + decoded_immediate[current_warp];
+                            end else begin
+                                // Branch not taken
+                                next_pc[current_warp] <= pc[current_warp] + 1;
+                            end
+                        end else if (decoded_alu_instruction[current_warp] == JAL) begin
+                            next_pc[current_warp] <= scalar_alu_out;
                         end else begin
-                            // Branch not taken
+                            // Other scalar instruction
                             next_pc[current_warp] <= pc[current_warp] + 1;
                         end
-                    end else if (decoded_alu_instruction[current_warp] == JAL) begin
-                        next_pc[current_warp] <= scalar_alu_out;
-                    end //else if (decoded_alu_instruction[current_warp] == JALR) begin
-                        //next_pc[current_warp] <= scalar_alu_out;
-                    //end 
-                    else begin
-                        // Other scalar instruction
+                    end else begin
+                        // Vector instruction
                         next_pc[current_warp] <= pc[current_warp] + 1;
                     end
-                end else begin
-                    // Vector instruction
-                    next_pc[current_warp] <= pc[current_warp] + 1;
-                end
-                $display("===================================");
-                warp_state[current_warp] <= WARP_UPDATE;
+                    
+                    $display("===================================");
+                    // The transition to UPDATE now only happens for non-sync instructions
+                    warp_state[current_warp] <= WARP_UPDATE;
 
-                if (decoded_reg_input_mux[current_warp] == VECTOR_TO_SCALAR) begin
-                    data_t scalar_write_value;
-                    scalar_write_value = {`DATA_WIDTH{1'b0}};
-                    for (int i = 0; i < THREADS_PER_WARP; i++) begin
-                        scalar_write_value[i] = alu_out[i][0];
+                    if (decoded_reg_input_mux[current_warp] == VECTOR_TO_SCALAR) begin
+                        data_t scalar_write_value;
+                        scalar_write_value = {`DATA_WIDTH{1'b0}};
+                        for (int i = 0; i < THREADS_PER_WARP; i++) begin
+                            scalar_write_value[i] = alu_out[i][0];
+                        end
+                        vector_to_scalar_data[current_warp] <= scalar_write_value;
+                    end else begin
+                        vector_to_scalar_data[current_warp] <= {`DATA_WIDTH{1'b0}};
                     end
-                    vector_to_scalar_data[current_warp] <= scalar_write_value;
-                end else begin
-                    vector_to_scalar_data[current_warp] <= {`DATA_WIDTH{1'b0}};
                 end
-
             end
             WARP_SYNC_WAIT: begin
                 // Check if all active warps have reached the sync barrier
                 logic all_warps_synced = 1'b1;
+                $display("Waiting for SYNC");
                 
                 for (int i = 0; i < num_warps; i++) begin
                     // Only consider warps that are not DONE or IDLE
@@ -352,6 +386,7 @@ always @(posedge clk) begin
                     // Release all warps from sync barrier
                     for (int i = 0; i < num_warps; i++) begin
                         if (warp_state[i] == WARP_SYNC_WAIT) begin
+                            // Use non-blocking assignment for state updates
                             warp_state[i] = WARP_UPDATE;
                         end
                     end

@@ -404,7 +404,7 @@ TEST_F(DecoderTestbench, SyncInstruction) {
 // ------------------ DEFAULT CASE TEST ------------------
 TEST_F(DecoderTestbench, DefaultCase) {
     resetDecoder();
-    uint32_t instr = (0b101 << 29); // Invalid opcode
+    uint32_t instr = (0b110 << 29); // Invalid opcode
     decodeInstruction(instr);
     
     // Should maintain default values set during WARP_DECODE
