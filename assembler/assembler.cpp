@@ -45,6 +45,11 @@ unordered_map<string, int> cTypeFunctMap = {
     {"ret", 0b011}, {"sync", 0b110}, {"exit", 0b111}
 };
 
+unordered_map<string, int> xTypeFunctMap = {
+    {"slt", 0b0000} // Our funct4 for sx.slt
+};
+
+
 map<string, int> labelMap;
 map<string, uint32_t> dataMap; 
 map<string, uint32_t> labelDataValues;
@@ -482,12 +487,56 @@ uint32_t encodePseudoLI(const vector<string>& args, bool is_scalar) {
     return encodeIType("addi", {args[1], "zero", args[2]}, is_scalar); // li rd, imm -> addi rd, zero, imm
 }
 
+
+// Add this new function with the other encode functions
+uint32_t encodeXType(string op, const vector<string>& args) {
+    int opcode = 0b101; // X-Type opcode
+
+    if (!xTypeFunctMap.count(op)) {
+        cerr << "Internal Error: Unknown X-type opcode '" << op << "'" << endl;
+        return 0;
+    }
+    int funct4 = xTypeFunctMap.at(op);
+
+    // sx.slt rd, rs1, rs2 requires 3 register arguments
+    if (args.size() != 3) {
+        cerr << "Error: Instruction 'sx." << op << "' expects 3 arguments (rd, rs1, rs2)." << endl;
+        return 0;
+    }
+
+    // Argument 1 (rd): The destination is a SCALAR INTEGER register
+    if (!int_scalar_registerMap.count(args[0])) {
+        cerr << "Error: Invalid destination register '" << args[0] << "' for sx." << op << ". Must be a scalar integer register (e.g., s1)." << endl;
+        return 0;
+    }
+    int rd = int_scalar_registerMap.at(args[0]);
+
+    // Argument 2 (rs1): The source is a VECTOR INTEGER register
+    if (!int_vector_registerMap.count(args[1])) {
+        cerr << "Error: Invalid source register '" << args[1] << "' for sx." << op << ". Must be a vector integer register (e.g., x5/v5)." << endl;
+        return 0;
+    }
+    int rs1 = int_vector_registerMap.at(args[1]);
+    
+    // Argument 3 (rs2): The source is a VECTOR INTEGER register
+    if (!int_vector_registerMap.count(args[2])) {
+        cerr << "Error: Invalid source register '" << args[2] << "' for sx." << op << ". Must be a vector integer register (e.g., x5/v5)." << endl;
+        return 0;
+    }
+    int rs2 = int_vector_registerMap.at(args[2]);
+
+
+    // | 31-29  | 28-19   | 18-14 | 13-10 | 9-5   | 4-0   |
+    // | OPCODE | 10(x)   | RS2   | Funct4| RS1   | RD    |
+    return (opcode << 29) | (rs2 << 14) | (funct4 << 10) | (rs1 << 5) | rd;
+}
+
 int main() {
     initregisterMap();
     //ifstream input("bin/output/algotests/for/for.s"); // Example test file
-    ifstream input("assembler/f_vector.asm");
-    ofstream instrOut("tb/test/tmp_test/fvector.hex");
-    ofstream dataOut("tb/test/tmp_test/data_fvector.hex");
+    ifstream input("assembler/program.asm");
+    ofstream instrOut("tb/test/tmp_test/sx_slt_test.hex");
+    ofstream dataOut("tb/test/tmp_test/data_sx_slt_test.hex");
     vector<pair<int, string>> instructions;
     vector<pair<int, uint32_t>> data;
     string line;
@@ -591,6 +640,22 @@ int main() {
         // NEW: Handle s. and v. prefixes
         bool is_scalar = true; // Default to scalar if no prefix? Or require prefix? Let's require prefix.
         string op;
+
+        cout << "PC 0x" << hex << pc_addr << ": " << line << " -> ";
+
+        if (op_with_prefix.rfind("sx.", 0) == 0) {
+            op = op_with_prefix.substr(3);
+            if (xTypeFunctMap.count(op)) {
+                instr = encodeXType(op, {tokens[1], tokens[2], tokens[3]});
+                // This instruction is fully handled. Print and continue to the next one.
+                cout << "0x" << hex << setw(8) << setfill('0') << instr << dec << endl;
+                instrOut << hex << setw(8) << setfill('0') << instr << endl;
+                continue; // <<< --- THE FIX
+            } else {
+                cerr << "Unknown instruction: " << op_with_prefix << endl;
+                continue;
+            }
+        }
 
         if (op_with_prefix.rfind("s.", 0) == 0) {
             is_scalar = true;

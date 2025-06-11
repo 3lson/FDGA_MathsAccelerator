@@ -476,7 +476,7 @@ for (genvar i = 0; i < WARPS_PER_CORE; i = i + 1) begin : g_warp
 
         .warp_state(warp_state[i]),
 
-        .decoded_reg_write_enable(decoded_reg_write_enable[i] && decoded_scalar_instruction[i] && !floatingWrite_flag[i]),
+        .decoded_reg_write_enable(decoded_reg_write_enable[i] && ((decoded_scalar_instruction[i] && !floatingWrite_flag[i]) ||(decoded_reg_input_mux[i] == VECTOR_TO_SCALAR))),
         .decoded_reg_input_mux(decoded_reg_input_mux[i]),
         .decoded_immediate(decoded_immediate[i]),
         .decoded_rd_address(decoded_rd_address[i]),

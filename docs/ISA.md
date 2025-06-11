@@ -10,7 +10,7 @@ All instr are 32 bit wide
 | Field | Bits | 
 | ------| -----|
 | opcode | [31:29]|
-| scalar | [28] |
+| scalar flag | [28] |
 
 **Note:** The scalar flag here will be set high for scalar operations (encodings handled by the assembler)
 
@@ -29,9 +29,9 @@ E.g.
 
 | [31:29] | [28] | [27:19] | [18:14] | [13:10] | [9:5] | [4:0]
 |--------|----|-----|------|-----|-----|----|
-|opcode| scalar |  9(x) | RS2 | FUNCT4 | RS1 | RD |
+|opcode| scalar |  9(x) | rs2 | funct4 | rs1 | rd |
 
-|Mnemonic|FUNCT4|Description|
+|Mnemonic|funct4|Description|
 | -------| -----|-----------|
 | `add` | 0000| rd = rs1 + rs2 |
 | `sub` | 0001 | rd = rs1 - rs2 |
@@ -40,16 +40,16 @@ E.g.
 | `slt` | 0100 | rd = (rs1 < rs2) ? 1 : 0 |
 | `sll` | 0101 | rd = rs1 << rs2 |
 | `seq` | 0110 | rd = (rs1 == rs2) ? 1 : 0 |
-| `snez` | 0111 | rd = (rs1 != 0) ? 1 : 0 (rs2 is don't cares here) |
+| `snez` | 0111 | rd = (rs1 != 0) ? 1 : 0 [rs2 is don't cares here] |
 | `min` | 1000 | rd = min(rs1, rs2) |
-| `abs` | 1001 | absolute value |
+| `abs` | 1001 | rd = abs(rs1) [rs2 is don't cares here] |
 
 ### I-type (Immediate Arith)
 `opcode = 001`
 
 | [31:29] | [28] | [27:14] | [13:10] | [9:5] | [4:0]
 |--------|----|-----|---------|----|--|
-|opcode| scalar | IMM [13:0] (14 bits) | FUNCT4 | RS1 | RD |
+|opcode| scalar | imm [13:0] (14 bits) | funct4 | rs1 | rd |
 
 |Mnemonic|FUNCT4|Description|
 | -------| -----|-----------|
@@ -67,28 +67,25 @@ E.g.
 
 | [31:29] | [28:14] | [13] | [12:10] | [9:5] | [4:0]
 |--------|----|---|-------|--|-----|
-|opcode| IMM [14:0] (15 bits) | scalar | FUNCT3 = 000 | RS1 | RD |
+|opcode| imm [14:0] (15 bits) | scalar | funct3 = 000 | rs1 | rd |
 
 **STORE** `sw rs2, imm(rs1)`
 
 | [31:29] | [28:19] | [18:14] | [13] | [12:10] | [9:5] | [4:0]|
 |--------|----|-----|---|------|---|-----|
-|opcode| IMM [14:5] | RS2| scalar |FUNCT3=001 | RS1 | IMM [4:0] |
+|opcode| imm [14:5] | rs2| scalar |funct3=001 | rs1 | imm [4:0] |
 
-**FLOAT LOAD** `flw ft0, imm(t0)`
+**FLOAT LOAD** `flw rd, imm(rs1)`
 
 | [31:29] | [28:14] | [13] | [12:10] | [9:5] | [4:0]
 |--------|----|---|-------|--|-----|
-|opcode| IMM [14:0] (15 bits) | scalar | FUNCT3 = 010 | RS1 | RD |
+|opcode| imm [14:0] (15 bits) | scalar | funct3 = 010 | rs1 | rd |
 
-**FLOAT STORE** `fsw ft0, imm(t0)`
+**FLOAT STORE** `fsw rs2, imm(rs1)`
 
 | [31:29] | [28:19] | [18:14] | [13] | [12:10] | [9:5] | [4:0]|
 |--------|----|-----|------|---|---|-----|
-|opcode| IMM [14:5] | RS2| scalar | FUNCT3=011 | RS1 | IMM [4:0] |
-
-
-**Note:** `flw` and `fsw` will be treated the same as `lw` and `sw` respectively
+|opcode| imm [14:5] | RS2| scalar | funct3=011 | rs1 | imm [4:0] |
 
 ### C-type  (Control Flow)
 `opcode = 111`
@@ -97,41 +94,39 @@ E.g.
 
 | [31:29] | [28:13] | [12:10] | [9:0] |
 | -------| -------- | ------- | ------ |
-| opcode | Imm[27:12] | FUNCT3 = 000 | Imm[11:2] |
+| opcode | imm[27:12] | funct3 = 000 | imm[11:2] |
 
 
-**branch** `beqz rd, label`
-**Note:** The label will be calculated in assembler to give the relative PC offset addressing
 **branch** `beqz rd, label`
 **Note:** The label will be calculated in assembler to give the relative PC offset addressing
 
 | [31:29] | [28:19] | [18:14] | [13] | [12:10] | [9:5] | [4:0] |
 | -------| -------- | ------ |---- |------- | ------ | ------- |
-| opcode | Imm[17:8] |RS2(x0)| Imm[7] | FUNCT3 = 001 | RS1 | Imm[6:2] |
+| opcode | imm[17:8] |rs2(x0)| imm[7] | funct3 = 001 | rs1 | imm[6:2] |
 
 **call** `call rd, imm(rs1)`
 
 | [31:29] | [28:13] | [12:10] | [9:5] | [4:0]
 | -------| -------- | ------- | ------ | ------ |
-| opcode | Imm[17:2] | FUNCT3 = 010 | RS1 | RD|
+| opcode | imm[17:2] | funct3 = 010 | rs1 | rd|
 
 **ret** `ret`
 
 | [31:29] | [28:13] | [12:10] | [9:5] | [4:0]
 | -------| -------- | ------- | ------ | ------ |
-| opcode | 16{1'b0} | FUNCT3 = 011 | 5'b00001 | 5(x)|
+| opcode | 16{1'b0} | funct3 = 011 | 5'b00001 | 5(x)|
 
 **sync** 
 
 | [31:29] | [28:13] | [12:10] | [9:0]
 | -------| -------- | ------- | ------ |
-| opcode | 16(x) | FUNCT3 = 110 | 10(x) |
+| opcode | 16(x) | funct3 = 110 | 10(x) |
 
 **exit** 
 
 | [31:29] | [28:13] | [12:10] | [9:0] |
 | -------| -------- | ------- | ------ | 
-| opcode | 16(x) | FUNCT3 = 111 | 10(x)|
+| opcode | 16(x) | funct3 = 111 | 10(x)|
 
 ### P-type (PseudoInstr)
 `opcode = 011`
@@ -144,7 +139,7 @@ This is a pseudo-instr that underlying would perform `addi t0, zero, 100`
 
 | [31:29] | [28:9] | [8:6] | [5] | [4:0] |
 | -------| ---- | ------ | ------ | -------|
-| opcode | UpIMM[31:12] | 3(x) | scalar | RD |
+| opcode | upimm[31:12] | 3(x) | scalar | rd |
 
 **Note:** `upimm` gives 20-bit upper immediate IMM[31:12]
 
@@ -152,10 +147,17 @@ This is a pseudo-instr that underlying would perform `addi t0, zero, 100`
 ### X-type 
 `opcode = 101`
 
+`sx.slt rd, rs1, rs2`
+
+- rd: The destination scalar mask register. This will be a 32-bit register where each bit i holds the comparison result for thread i.
+- rs1: The first source integer vector register.
+- rs2: The second source integer vector register.
+
 **Note:** This will be left empty but reversed for when we come to SIMD
 
-| [31:29] | [28:27] | [18:15] | [14:3] | [2:0]
-|--------|----|-----|----------|--|
+| [31:29] | [28:19] | [18:14] | [13:10] | [9:5] | [4:0]
+|--------|----|-----|----------|--|-------|
+| opcode | 10(x) | rs2 (vector) | funct4 (0000) | rs1 (vector)| rd (scalar)| 
 
 ### F-type 
 These are arithmetic instructions for FPU block
@@ -163,7 +165,7 @@ These are arithmetic instructions for FPU block
 
 | [31:29] | [28] | [27:19] | [18:14] | [13:10] | [9:5] | [4:0]
 |--------|----|-----|------|-----|-----|----|
-|opcode| scalar |  9(x) | RS2 | FUNCT4 | RS1 | RD |
+|opcode| scalar |  9(x) | rs2 | funct4 | rs1 | rd |
 
 |Mnemonic|FUNCT4|Description|
 | -------| -----|-----------|
@@ -172,15 +174,15 @@ These are arithmetic instructions for FPU block
 | `fmul.s` | 0010 | rd = rs1 * rs2 |
 | `fdiv.s` | 0011 | rd = rs1 / rs2 |
 | `flt.s` | 0100 | rd = (rs1 < rs2) ? 1 : 0 |
-| `fneg.s` | 0101 | Negate 32-bit floating point value in rs1 and store the result in rd (rs2 will be don't cares here) |
+| `fneg.s` | 0101 | rd = neg(rs1) [rs2 will be don't cares here] |
 | `feq.s` | 0110 | rd = (rs1 == rs2) ? 1 : 0 |
 | `fmin.s` | 0111 | rd = min(rs1, rs2) |
-| `fabs.s` | 1000 | absolute value |
+| `fabs.s` | 1000 | rd = abs(rs1) [rs2 will be don't cares here] |
 | `fcvt.w.s` | 1001 | Convert a floating-point number in floating-point register rs1 to a signed 32-bit in integer register rd. (rs2 will be don't cares here)|
 | `fcvt.s.w` | 1010 | Convert a signed 32-bit integer in integer register rs1 to a signed 32-bit in integer floating-point number in floating-point register rd . (rs2 will be don't cares here)|
 
 ## Register File Assignment
-We have chosen to stick with the RISCV Register layout with the addition of some extra special registers on our end for multithreading
+We have four different set of registers which handle scalar and vector handling both floats and ints.
 
 **Int Scalar Register File**
 
@@ -212,8 +214,6 @@ We have chosen to stick with the RISCV Register layout with the addition of some
 | v29-v31 | x29-x31 | special registers | 
 
 **Float Vector Register File**
-
-The design choice of our float registers are as follows. Note reg convention for floats are not applied to that of RISCV as it is not necessary for our algorithm
 
 | Name | Register Number | Usage |
 | -----| ----------------| ------|

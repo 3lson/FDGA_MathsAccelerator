@@ -28,8 +28,7 @@ typedef struct packed {
 
 // Vector-Scalar Instruction Opcodes (SX_SLTI and SX_SLT)
 // SX_SLTI sets one bit of a scalar register based on thread's comparison result
-`define OPCODE_SX_SLT   7'b1111110        // SX_SLT rd, rs1, rs2 <=> rd[id] = rs1 < rs2 ? 1 : 0
-`define OPCODE_SX_SLTI  7'b1111101        // SX_SLTI rd, rs1, imm <=> rd[id] = rs1 < imm ? 1 : 0
+`define OPCODE_SX_SLT   3'b101        // SX_SLT rd, rs1, rs2 <=> rd[id] = rs1 < rs2 ? 1 : 0
 
 // Instruction Opcodes
 // The entire opcode is 7 bits, the most significant bit decides whether the instruction is vector or scalar

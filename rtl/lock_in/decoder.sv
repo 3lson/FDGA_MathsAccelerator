@@ -247,6 +247,20 @@ module decoder(
                         floatingRead <= 2'b00;
                         floatingWrite <= 1'b0;
                     end
+                    `OPCODE_SX_SLT: begin
+                        decoded_rd_address          <= rd;
+                        decoded_rs1_address         <= rs1;
+                        decoded_rs2_address         <= rs2;
+                        decoded_reg_write_enable    <= 1;
+                        decoded_reg_input_mux       <= VECTOR_TO_SCALAR;
+                    
+                        decoded_scalar_instruction  <= 1'b0;
+
+                        unique case (funct4)
+                           4'b0000: decoded_alu_instruction <= SLT;
+                           default: $error("Invalid X-type instruction with funct4 %b", funct4);
+                        endcase
+                    end
                     default: begin
                         // No operation or unrecognized opcode
                     end
