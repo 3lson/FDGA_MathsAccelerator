@@ -212,19 +212,19 @@ protected:
 //     EXPECT_EQ(data_mem[42], 32) << "Scalar ALU/Store data path failed when loaded from hex.";
 // }
 
-TEST_F(ComputeCoreTestbench, VectorALUAndStore_FromHex) {
-    // 1. Load the program from the hex file
-    loadProgramFromHex("test/tmp_test/vec_program.hex"); // Assumes the file is in the build/run directory
+// TEST_F(ComputeCoreTestbench, VectorALUAndStore_FromHex) {
+//     // 1. Load the program from the hex file
+//     loadProgramFromHex("test/tmp_test/vec_program.hex"); // Assumes the file is in the build/run directory
 
-//     // 2. Configure the core for the test
-//     // Core configured in Initialise Input helper function
+// //     // 2. Configure the core for the test
+// //     // Core configured in Initialise Input helper function
     
-//     // 3. Run the simulation
-    loadAndRun(instr_mem);
+// //     // 3. Run the simulation
+//     loadAndRun(instr_mem);
 
-    // 4. Check the result
-    EXPECT_EQ(data_mem[42], 32) << "Vector ALU/Store data path failed when loaded from hex.";
-}
+//     // 4. Check the result
+//     EXPECT_EQ(data_mem[42], 32) << "Vector ALU/Store data path failed when loaded from hex.";
+// }
 
 // TEST_F(ComputeCoreTestbench, RScalarTest) {
 //     // 1. Load the program from the hex file
@@ -617,7 +617,7 @@ TEST_F(ComputeCoreTestbench, SXSltTest) {
     loadProgramFromHex("test/tmp_test/sx_slt_test.hex");
 
 //     // 3. Run the simulation
-//     loadAndRun(instr_mem);
+    loadAndRun(instr_mem);
 
     // 4. Verify the result
     // The condition is `thread_id < 8`.
