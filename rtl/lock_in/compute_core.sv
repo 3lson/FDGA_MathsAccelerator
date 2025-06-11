@@ -499,31 +499,31 @@ for (genvar i = 0; i < WARPS_PER_CORE; i = i + 1) begin : g_warp
             .reset(reset),
             .enable((current_warp == i)), // Enable when current_warp matches and warp is active
 
-    //         // Thread enable signals (execution mask)
-    //         .thread_enable(warp_execution_mask[i]),
+            // Thread enable signals (execution mask)
+            .thread_enable(warp_execution_mask[i]),
 
-    //         // Warp and block identifiers
-    //         .warp_id(i),
-    //         .block_id(block_id),
-    //         .block_size(kernel_config.num_warps_per_block * THREADS_PER_WARP),
-    //         .warp_state(warp_state[i]),
+            // Warp and block identifiers
+            .warp_id(i),
+            .block_id(block_id),
+            .block_size(kernel_config.num_warps_per_block * THREADS_PER_WARP),
+            .warp_state(warp_state[i]),
 
-    //         // Decoded instruction fields for this warp
-    //         .decoded_reg_write_enable(decoded_reg_write_enable[i] && !decoded_scalar_instruction[i] && floatingWrite_flag[i]),
-    //         .decoded_reg_input_mux(decoded_reg_input_mux[i]),
-    //         .decoded_immediate(decoded_immediate[i]),
-    //         .decoded_rd_address(decoded_rd_address[i]),
-    //         .decoded_rs1_address(decoded_rs1_address[i]),
-    //         .decoded_rs2_address(decoded_rs2_address[i]),
+            // Decoded instruction fields for this warp
+            .decoded_reg_write_enable(decoded_reg_write_enable[i] && !decoded_scalar_instruction[i] && floatingWrite_flag[i]),
+            .decoded_reg_input_mux(decoded_reg_input_mux[i]),
+            .decoded_immediate(decoded_immediate[i]),
+            .decoded_rd_address(decoded_rd_address[i]),
+            .decoded_rs1_address(decoded_rs1_address[i]),
+            .decoded_rs2_address(decoded_rs2_address[i]),
 
-    //         // Inputs from ALU and LSU per thread
-    //         .alu_out(alu_out), // ALU outputs for all threads
-    //         .lsu_out(lsu_out),
+            // Inputs from ALU and LSU per thread
+            .alu_out(alu_out), // ALU outputs for all threads
+            .lsu_out(lsu_out),
 
-    //         // Outputs per thread
-    //         .rs1(vector_float_rs1),
-    //         .rs2(vector_float_rs2)
-    //     );
+            // Outputs per thread
+            .rs1(vector_float_rs1),
+            .rs2(vector_float_rs2)
+        );
 
 
     // Vector integer register file
@@ -633,36 +633,36 @@ always_comb begin
     $display("scalar alu out: ", scalar_alu_out);
     $display("decoded alu instr: ", decoded_alu_instruction[current_warp]);
     
-// end
+end
 
 
-// lsu scalar_lsu_inst(
-//     .clk(clk),
-//     .reset(reset),
-//     .enable(decoded_scalar_instruction[current_warp]),
+lsu scalar_lsu_inst(
+    .clk(clk),
+    .reset(reset),
+    .enable(decoded_scalar_instruction[current_warp]),
 
-//     .warp_state(warp_state[current_warp]),
+    .warp_state(warp_state[current_warp]),
 
-//     .decoded_mem_read_enable(decoded_mem_read_enable_per_warp[current_warp]),
-//     .decoded_mem_write_enable(decoded_mem_write_enable_per_warp[current_warp]),
+    .decoded_mem_read_enable(decoded_mem_read_enable_per_warp[current_warp]),
+    .decoded_mem_write_enable(decoded_mem_write_enable_per_warp[current_warp]),
 
-//     .rs1(scalar_op1),
-//     .rs2(scalar_op2),
-//     .imm(decoded_immediate[current_warp]),
+    .rs1(scalar_op1),
+    .rs2(scalar_op2),
+    .imm(decoded_immediate[current_warp]),
 
-//     // Data Memory connections
-//     .mem_read_valid(data_mem_read_valid[THREADS_PER_WARP]),
-//     .mem_read_address(data_mem_read_address[THREADS_PER_WARP]),
-//     .mem_read_ready(data_mem_read_ready[THREADS_PER_WARP]),
-//     .mem_read_data(data_mem_read_data[THREADS_PER_WARP]),
-//     .mem_write_valid(data_mem_write_valid[THREADS_PER_WARP]),
-//     .mem_write_address(data_mem_write_address[THREADS_PER_WARP]),
-//     .mem_write_data(data_mem_write_data[THREADS_PER_WARP]),
-//     .mem_write_ready(data_mem_write_ready[THREADS_PER_WARP]),
+    // Data Memory connections
+    .mem_read_valid(data_mem_read_valid[THREADS_PER_WARP]),
+    .mem_read_address(data_mem_read_address[THREADS_PER_WARP]),
+    .mem_read_ready(data_mem_read_ready[THREADS_PER_WARP]),
+    .mem_read_data(data_mem_read_data[THREADS_PER_WARP]),
+    .mem_write_valid(data_mem_write_valid[THREADS_PER_WARP]),
+    .mem_write_address(data_mem_write_address[THREADS_PER_WARP]),
+    .mem_write_data(data_mem_write_data[THREADS_PER_WARP]),
+    .mem_write_ready(data_mem_write_ready[THREADS_PER_WARP]),
 
-//     .lsu_state(scalar_lsu_state),
-//     .lsu_out(scalar_lsu_out)
-// );
+    .lsu_state(scalar_lsu_state),
+    .lsu_out(scalar_lsu_out)
+);
 
 //Vecotr functional units
 generate
