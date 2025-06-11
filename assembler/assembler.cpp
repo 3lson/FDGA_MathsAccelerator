@@ -485,9 +485,9 @@ uint32_t encodePseudoLI(const vector<string>& args, bool is_scalar) {
 int main() {
     initregisterMap();
     //ifstream input("bin/output/algotests/for/for.s"); // Example test file
-    ifstream input("assembler/f_scalar.asm");
-    ofstream instrOut("tb/test/tmp_test/fscalar.hex");
-    ofstream dataOut("tb/test/tmp_test/data_fscalar.hex");
+    ifstream input("assembler/jump.asm");
+    ofstream instrOut("tb/test/tmp_test/jump.hex");
+    ofstream dataOut("tb/test/tmp_test/data_jump.hex");
     vector<pair<int, string>> instructions;
     vector<pair<int, uint32_t>> data;
     string line;

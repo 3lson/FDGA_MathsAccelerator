@@ -145,25 +145,25 @@ function automatic data_t sign_extend_15(logic[14:0] imm15);
     return signed_imm15;
 endfunction
 
-function automatic data_t sign_extend_18(logic[17:0] imm18);
-    data_t signed_imm18;
-    if (imm18[17]) begin
-        signed_imm18 = {{14{1'b1}}, imm18};
+function automatic data_t sign_extend_16(logic[15:0] imm16);
+    data_t signed_imm16;
+    if (imm16[15]) begin
+        signed_imm16 = {{14{1'b1}}, imm16};
     end else begin
-        signed_imm18 = {{14{1'b0}}, imm18};
+        signed_imm16 = {{14{1'b0}}, imm16};
     end
-    return signed_imm18;
+    return signed_imm16;
 endfunction
 
 // sign extend function for 21-bit immediate values
-function automatic data_t sign_extend_28(logic[27:0] imm28);
-    data_t signed_imm28;
-    if (imm28[27]) begin
-        signed_imm28 = {{4{1'b1}}, imm28};
+function automatic data_t sign_extend_26(logic[25:0] imm26);
+    data_t signed_imm26;
+    if (imm26[25]) begin
+        signed_imm26 = {{6{1'b1}}, imm26};
     end else begin
-        signed_imm28 = {{4{1'b0}}, imm28};
+        signed_imm26 = {{6{1'b0}}, imm26};
     end
-    return signed_imm28;
+    return signed_imm26;
 endfunction
 
 `endif // COMMON_SV

@@ -171,32 +171,32 @@ protected:
     static float bits_to_float(uint32_t bits) { return *reinterpret_cast<float*>(&bits); }
 };
 
-// TEST_F(ComputeCoreTestbench, ResetBehavior) {
-//     runSimulation(1);
-//     EXPECT_EQ(top->done, 0);
-//     EXPECT_EQ(top->instruction_mem_read_valid, 0);
-//     EXPECT_EQ(top->data_mem_read_valid, 0);
-//     EXPECT_EQ(top->data_mem_write_valid, 0);
-// }
+TEST_F(ComputeCoreTestbench, ResetBehavior) {
+    runSimulation(1);
+    EXPECT_EQ(top->done, 0);
+    EXPECT_EQ(top->instruction_mem_read_valid, 0);
+    EXPECT_EQ(top->data_mem_read_valid, 0);
+    EXPECT_EQ(top->data_mem_write_valid, 0);
+}
 
-// TEST_F(ComputeCoreTestbench, SimplestExit) {
-//     // Program:
-//     // 0: exit
-//     std::map<uint32_t, uint32_t> program;
+TEST_F(ComputeCoreTestbench, SimplestExit) {
+    // Program:
+    // 0: exit
+    std::map<uint32_t, uint32_t> program;
 
-//     // Construct the 'exit' instruction manually.
-//     // According to the ISA: opcode=111, funct3=111. Other bits are don't-care.
-//     uint32_t exit_instr = (OPCODE_C << 29) | (0b111 << 10);
-//     program[0] = exit_instr;
+    // Construct the 'exit' instruction manually.
+    // According to the ISA: opcode=111, funct3=111. Other bits are don't-care.
+    uint32_t exit_instr = (OPCODE_C << 29) | (0b111 << 10);
+    program[0] = exit_instr;
     
-//     // Configured in Initialise inputs
+    // Configured in Initialise inputs
     
-//     loadAndRun(program);
+    loadAndRun(program);
 
-//     // The `loadAndRun` function will fail if it times out.
-//     // If we reach this point, it means `top->done` was asserted.
-//     SUCCEED() << "Core successfully fetched, decoded, and executed an EXIT instruction.";
-// }
+    // The `loadAndRun` function will fail if it times out.
+    // If we reach this point, it means `top->done` was asserted.
+    SUCCEED() << "Core successfully fetched, decoded, and executed an EXIT instruction.";
+}
 
 // TEST_F(ComputeCoreTestbench, ScalarALUAndStore_FromHex) {
 //     // 1. Load the program from the hex file
@@ -273,43 +273,45 @@ TEST_F(ComputeCoreTestbench, IScalarTest) {
     EXPECT_EQ(data_mem[47], 40) << "Scalar SLLI failed"; // failing
 }
 
-// TEST_F(ComputeCoreTestbench, JumpTest) {
-//     // Assembly Intent:
-//     // s.li s1, 4         // i = 4
-//     // s.slt s4, s2, s3   // s2=i=4, s3=3 -> s4 = (4 < 3) = 0
-//     // j for_end1         // Unconditionally jump
-//     // for_end1:
-//     // s.li s5, 5
-//     // exit
-//     // The program should execute the jump and then load 5 into s5.
-//     // We assume the program stores the final value of s5 (5) at address 42.
+TEST_F(ComputeCoreTestbench, JumpTest) {
+    // Assembly Intent:
+    // s.li s1, 4         // i = 4
+    // s.slt s4, s2, s3   // s2=i=4, s3=3 -> s4 = (4 < 3) = 0
+    // j for_end1         // Unconditionally jump
+    // for_end1:
+    // s.li s5, 5
+    // exit
+    // The program should execute the jump and then load 5 into s5.
+    // We assume the program stores the final value of s5 (5) at address 42.
 
-//     loadProgramFromHex("test/tmp_test/jump.hex");
-//     loadAndRun(instr_mem);
+    loadProgramFromHex("test/tmp_test/jump.hex");
+    loadAndRun(instr_mem);
 
-//     // The program should store 5 at the end.
-//     EXPECT_EQ(data_mem[42], 5) << "Jump test failed to store the correct final value.";
-// }
+    // The program should store 5 at the end.
+    EXPECT_EQ(data_mem[46], 0) << "Jump test failed to store the correct final value.";
+    EXPECT_EQ(data_mem[42], 5) << "Jump test failed to store the correct final value.";
+}
 
 
-// TEST_F(ComputeCoreTestbench, CScalarTest) {
-//     // Assembly Intent:
-//     // s.li s1, 4         // i = 4
-//     // ...
-//     // s.slt s4, s2, s3   // s2=i=4, s3=3 -> s4 = (4 < 3) = 0
-//     // s.beqz s4, for_end1// Branch if s4 is zero. It is, so branch is taken.
-//     // for_end1:
-//     // s.li s5, 5
-//     // exit
-//     // The program should take the branch and load 5 into s5.
-//     // We assume the program stores the final value of s5 (5) at address 42.
+TEST_F(ComputeCoreTestbench, CScalarTest) {
+    // Assembly Intent:
+    // s.li s1, 4         // i = 4
+    // ...
+    // s.slt s4, s2, s3   // s2=i=4, s3=3 -> s4 = (4 < 3) = 0
+    // s.beqz s4, for_end1// Branch if s4 is zero. It is, so branch is taken.
+    // for_end1:
+    // s.li s5, 5
+    // exit
+    // The program should take the branch and load 5 into s5.
+    // We assume the program stores the final value of s5 (5) at address 42.
 
-//     loadProgramFromHex("test/tmp_test/cscalar.hex");
-//     loadAndRun(instr_mem);
+    loadProgramFromHex("test/tmp_test/cscalar.hex");
+    loadAndRun(instr_mem);
 
-//     // The program should branch and store 5 at the end.
-//     EXPECT_EQ(data_mem[43], 0) << "CScalar conditional branch test failed.";
-// }
+    // The program should branch and store 5 at the end.
+    EXPECT_EQ(data_mem[43], 0) << "CScalar conditional branch test failed.";
+    EXPECT_EQ(data_mem[44], 5) << "CScalar conditional branch test failed.";
+}
 
 TEST_F(ComputeCoreTestbench, FScalarTest) {
     // 1. Clear data memory from any previous tests
@@ -342,23 +344,25 @@ TEST_F(ComputeCoreTestbench, FScalarTest) {
     EXPECT_EQ(data_mem[53], 1) << "Scalar FCVT.W.S (float to int) failed";
 }
 
-// // NOTE: mscalar.hex seems incomplete. Assuming it's meant to test memory ops.
-// // Here is a hypothetical test based on the provided snippet.
-// TEST_F(ComputeCoreTestbench, MScalarTest) {
-//     // Assembly Intent: Load a float, store it back to a different location.
-//     // lui s1, %hi(.LC0)
-//     // s.flw fs1, %lo(.LC0)(s1)  # Load 1.0f into fs1
-//     // s.fsw fs1, -108(s0)       # Store fs1 somewhere
+TEST_F(ComputeCoreTestbench, MScalarTest) {
+    // Assembly Intent: Load a float, store it back to a different location.
+    // lui s1, %hi(.LC0)
+    // s.flw fs1, %lo(.LC0)(s1)  # Load 1.0f into fs1
+    // s.fsw fs1, -108(s0)       # Store fs1 somewhere
+    data_mem.clear();
 
-//     // The store address is `-108(s0)`. Let's assume s0 is set to a base address
-//     // like 200 to make the final address positive and verifiable (200 - 108 = 92).
-//     loadProgramFromHex("test/tmp_test/mscalar.hex");
-//     loadAndRun(instr_mem);
+    // The store address is `-108(s0)`. Let's assume s0 is set to a base address
+    // like 200 to make the final address positive and verifiable (200 - 108 = 92).
+    loadProgramFromHex("test/tmp_test/mscalar.hex");
+    loadDataFromHex("test/tmp_test/data_mscalar.hex");
 
-//     // Verify that the value 1.0f was loaded from 0x1000 and stored at address 92.
-//     EXPECT_EQ(data_mem[42], 10) << "Scalar Store Failed";
-//     EXPECT_EQ(data_mem[43], 1.0) << "Scalar Load Failed";
-// }
+    loadAndRun(instr_mem);
+
+    // Verify that the value 1.0f was loaded from 0x1000 and stored at address 92.
+    EXPECT_EQ(bits_to_float(data_mem[42]), 1.0f) << "Scalar Store Failed";
+    EXPECT_EQ(data_mem[43], 32) << "Scalar Load Failed";
+    EXPECT_EQ(data_mem[44], 32) << "Scalar Load Failed";
+}
 
 
 

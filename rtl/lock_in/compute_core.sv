@@ -116,7 +116,7 @@ always_comb begin
     // $display("FloatingRead ", floatingRead_flag[current_warp]);
     // $display("Scalar_op1 ", scalar_op1);
     // $display("Scalar_op2 ", scalar_op2);
-    // $display("Scalar_float1 ", scalar_float_rs1[current_warp]);
+    // $display("Scalar_int1 ", scalar_int_rs1[current_warp]);
     // $display("Scalar_float2 ", scalar_float_rs2[current_warp]);
     case(floatingRead_flag[current_warp])
         2'b00: {scalar_op1, scalar_op2} = {scalar_int_rs1[current_warp], scalar_int_rs2[current_warp]};
@@ -284,6 +284,8 @@ always @(posedge clk) begin
                     warp_state[current_warp] <= WARP_SYNC_WAIT;
                     
                 end else if (decoded_scalar_instruction[current_warp]) begin
+                    $display("Branch", decoded_branch[current_warp]);
+                    $display("Immediate", decoded_immediate[current_warp]);
                     if (decoded_branch[current_warp]) begin
                         // Branch instruction
                         if (scalar_alu_out == 1) begin
@@ -412,6 +414,10 @@ for (genvar i = 0; i < WARPS_PER_CORE; i = i + 1) begin : g_warp
         .decoded_sync(decoded_sync[i])
     );
 
+    always_comb begin
+        $display("Decoded alu instr: ", decoded_alu_instruction[i]);
+    end
+
     // Scalar float register file
     scalar_reg_file #(
         .DATA_WIDTH(32)
@@ -440,19 +446,19 @@ for (genvar i = 0; i < WARPS_PER_CORE; i = i + 1) begin : g_warp
         .rs2(scalar_float_rs2[i])
     );
 
-    // always_comb begin
-    //     if (current_warp == i) begin
-    //         $display("Enable: ", current_warp == i);
-    //         $display("Warp State: ", warp_state[i]);
-    //         $display("Decoded_rs1: ", decoded_rs1_address[i]);
-    //         $display("Decoded_rs2: ", decoded_rs2_address[i]);
-    //         $display("ALU out", scalar_alu_out);
-    //         $display("Scalar_lsu: ", scalar_lsu_out);
-    //         $display("Scalar_float_rs1: ", scalar_float_rs1[i]);
-    //         $display("Scalar_float_rs2: ", scalar_float_rs2[i]);
-    //         $display("Floating Write Flag", floatingWrite_flag[i]);
-    //     end
-    // end
+    always_comb begin
+        if (current_warp == i) begin
+            //$display("Enable: ", current_warp == i);
+            //$display("Warp State: ", warp_state[i]);
+            //$display("Decoded_rs1: ", decoded_rs1_address[i]);
+            //$display("Decoded_rs2: ", decoded_rs2_address[i]);
+            $display("ALU out", scalar_alu_out);
+            //$display("Scalar_lsu: ", scalar_lsu_out);
+            //$display("Scalar_float_rs1: ", scalar_float_rs1[i]);
+            //$display("Scalar_float_rs2: ", scalar_float_rs2[i]);
+            //$display("Floating Write Flag", floatingWrite_flag[i]);
+        end
+    end
 
     //Scalar integer register file
     scalar_reg_file #(
@@ -577,10 +583,6 @@ wire is_scalar_int_op  = decoded_scalar_instruction[current_warp] && (decoded_al
 
 // Scalar ALU
 alu scalar_alu_inst(
-    .clk(clk),
-    .reset(reset),
-    .enable(is_scalar_int_op),
-
     .pc(pc[current_warp]),
     .ALUop1(scalar_op1),
     .ALUop2(scalar_op2),
@@ -601,16 +603,19 @@ floating_alu scalar_fpu_inst(
     // .EQ() // unused
 );
 
-always_ff
+always_comb begin
+    // $display("Scalar float flag: ", is_scalar_float_op && (current_warp_state==WARP_EXECUTE));
+    $display("Scalar op1: ", scalar_op1);
+    $display("Scalar op2: ", scalar_op2);
+    $display("Scalar result: ", scalar_int_alu_result);
+end
+logic more_fadd;
+assign more_fadd = (decoded_alu_instruction[current_warp] >= FADD);
+logic less_beqz;
+assign less_beqz = (decoded_alu_instruction[current_warp] < BEQZ);
 
-// always_comb begin
-//     // $display("Scalar float flag: ", is_scalar_float_op && (current_warp_state==WARP_EXECUTE));
-//     $display("Scalar op1: ", scalar_op1);
-//     $display("Scalar op2: ", scalar_op2);
-//     $display("Scalar result: ", scalar_float_alu_result);
-// end
-
-assign scalar_alu_out = (decoded_alu_instruction[current_warp] >= FADD) ? scalar_float_alu_result : scalar_int_alu_result;
+assign scalar_alu_out = (more_fadd & less_beqz) ? scalar_float_alu_result : scalar_int_alu_result;
+// assign scalar_alu_out = is_scalar_float_op ? scalar_float_alu_result : scalar_int_alu_result;
 
 always_comb begin
     // $display("Scalar_op1: ", scalar_op1);
@@ -621,6 +626,8 @@ always_comb begin
     // $display("Decoded Rs1 Address[2]: ", decoded_rs1_address[2]);
     // $display("Decoded Rs1 Address[6]: ", decoded_rs1_address[6]);
     // $display("Scalar LSU Out: ", scalar_lsu_out);
+    $display("scalar alu out: ", scalar_alu_out);
+    $display("decoded alu instr: ", decoded_alu_instruction[current_warp]);
     
 end
 
@@ -664,10 +671,6 @@ generate
 
         // Vector ALU
         alu vector_alu_inst(
-            .clk(clk),
-            .reset(reset),
-            .enable(is_vector_int_op),
-
             .pc(pc[current_warp]),
             .ALUop1(final_op1[i]),
             .ALUop2(final_op2[i]),

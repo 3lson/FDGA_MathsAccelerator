@@ -140,7 +140,7 @@ TEST_F(ALUTestbench, AbsTest) {
     // For -8 (0xFFFFFFF8), it will result in 0x7FFFFFF8.
     // Let's test based on the actual Verilog implementation.
     run_operation(ABS, 0xFFFFFFF8, 0); // op1 = -8
-    EXPECT_EQ(top->Result, 0x7FFFFFF8);
+    EXPECT_EQ(top->Result, 8);
 }
 
 TEST_F(ALUTestbench, AddImmediateTest) {
