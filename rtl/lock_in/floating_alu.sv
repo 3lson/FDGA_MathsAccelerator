@@ -7,10 +7,6 @@
 // with ADD, SUB, MUL, DIV, EQ, NEQ, ABS and SLT
 // =================================================
 module floating_alu (
-    input wire clk,
-    input wire reset,
-    input wire enable,
-    input data_t IMM,
     input   logic [31:0] op1,
     input   logic [31:0] op2,
     input   alu_instruction_t instruction,
@@ -44,312 +40,266 @@ logic        [22:0] norm_mantissa;
 logic        [8:0] intermediary_exponent;
 logic signed [8:0] shift;
 
-always_ff @(posedge clk) begin
-    if (reset) begin
-        result <= 32'b0;
-    end else if (enable) begin
-        op1_sign_bit <= op1[31];
-        
-        // ADD instead
-        op2_sign_bit <= op2[31];
-        op1_biased_exponent <= op1[30:23];
-        op2_biased_exponent <= op2[30:23];
-        // do we need a denormal check???
-        op1_significand <= {1'b1, op1[22:0]};
-        op2_significand <= {1'b1, op2[22:0]};
+always_comb begin
+    result = 32'd0;
 
-        exp_diff <= 0;
-        mantissa_shift_op1 <= 0;
-        mantissa_shift_op2 <= 0;
-        sum <= 0;
-        round_up <= 0;
-        rounded_sum <= 0;
-        product <= 0;
-        quotient <= 0;
-        result_exp <= 0;
-        result_sign_bit <= 0;
-        guard_bit <= 0;
-        round_bit <= 0;
-        shift_count <= 0;
-        numerator <= 0;
-        denominator <= 0;
-        sticky_bit <= 0;
-        shift_count <= 0;
-        op1_int <= 0;
-        op1_unbiased_exponent <= 0;
-        abs_op1 <= 0;
-        significant_one <= 0;
+    op1_sign_bit = op1[31];
+    
+    // ADD instead
+    op2_sign_bit = op2[31];
+    op1_biased_exponent = op1[30:23];
+    op2_biased_exponent = op2[30:23];
+    // do we need a denormal check???
+    op1_significand = {1'b1, op1[22:0]};
+    op2_significand = {1'b1, op2[22:0]};
 
-        //Fdiv internal reg sets to 0
-        norm_exponent <= 0;
-        norm_mantissa <= 0;
-        intermediary_exponent <= 0;
-        shift <= 0;
+    exp_diff = 0;
+    mantissa_shift_op1 = 0;
+    mantissa_shift_op2 = 0;
+    sum = 0;
+    round_up = 0;
+    rounded_sum = 0;
+    product = 0;
+    quotient = 0;
+    result_exp = 0;
+    result_sign_bit = 0;
+    guard_bit = 0;
+    round_bit = 0;
+    shift_count = 0;
+    numerator = 0;
+    denominator = 0;
+    sticky_bit = 0;
+    shift_count = 0;
+    op1_int = 0;
+    op1_unbiased_exponent = 0;
+    abs_op1 = 0;
+    significant_one = 0;
 
-        case (instruction)
-            FADD, FSUB: begin
-                if(instruction == FSUB) op2_sign_bit <= ~op2_sign_bit;
+    //Fdiv internal reg sets to 0
+    norm_exponent = 0;
+    norm_mantissa = 0;
+    intermediary_exponent = 0;
+    shift = 0;
 
-                if (op1_biased_exponent > op2_biased_exponent) begin
-                    exp_diff <= op1_biased_exponent - op2_biased_exponent;
-                    // add 1'b0 to align mantissas after right shift
-                    mantissa_shift_op1 <= {1'b0, op1_significand};
-                    mantissa_shift_op2 <= {1'b0, op2_significand} >> exp_diff;
-                    result_exp <= op1_biased_exponent;
-                    result_sign_bit <= op1_sign_bit;
+    case (instruction)
+        FADD, FSUB: begin
+            if(instruction == FSUB) op2_sign_bit = ~op2_sign_bit;
+
+            if (op1_biased_exponent > op2_biased_exponent) begin
+                exp_diff = op1_biased_exponent - op2_biased_exponent;
+                // add 1'b0 to align mantissas after right shift
+                mantissa_shift_op1 = {1'b0, op1_significand};
+                mantissa_shift_op2 = {1'b0, op2_significand} >> exp_diff;
+                result_exp = op1_biased_exponent;
+                result_sign_bit = op1_sign_bit;
+            end else begin
+                exp_diff = op2_biased_exponent - op1_biased_exponent;
+                mantissa_shift_op1 = {1'b0, op1_significand} >> exp_diff;
+                mantissa_shift_op2 = {1'b0, op2_significand};
+                result_exp = op2_biased_exponent;
+                result_sign_bit = op2_sign_bit;
+            end
+
+            if (op1_sign_bit == op2_sign_bit) begin
+                // Addition part
+                sum = mantissa_shift_op1 + mantissa_shift_op2;
+
+                if (sum[24]) begin
+                    sum = sum >> 1;
+                    result_exp = result_exp + 1;
                 end else begin
-                    exp_diff <= op2_biased_exponent - op1_biased_exponent;
-                    mantissa_shift_op1 <= {1'b0, op1_significand} >> exp_diff;
-                    mantissa_shift_op2 <= {1'b0, op2_significand};
-                    result_exp <= op2_biased_exponent;
-                    result_sign_bit <= op2_sign_bit;
+                    while (sum[23] == 0 && result_exp > 0) begin
+                        sum = sum << 1;
+                        result_exp = result_exp - 1;
+                    end
                 end
 
-                if (op1_sign_bit == op2_sign_bit) begin
-                    // Addition part
-                    sum <= mantissa_shift_op1 + mantissa_shift_op2;
+                // Rounding
+                guard_bit = sum[1];
+                round_bit = sum[0];
+                round_up = guard_bit & (round_bit | sum[2]);
 
-                    if (sum[24]) begin
-                        sum <= sum >> 1;
-                        result_exp <= result_exp + 1;
+                if (round_up) begin
+                    rounded_sum = sum[23:0] + 1;
+                    if (rounded_sum[23]) begin
+                        result = {result_sign_bit, result_exp, rounded_sum[22:0]};
                     end else begin
-                        while (sum[23] == 0 && result_exp > 0) begin
-                            sum <= sum << 1;
-                            result_exp <= result_exp - 1;
-                        end
+                        result_exp = result_exp + 1;
+                        result = {result_sign_bit, result_exp, rounded_sum[23:1]};
+                    end
+                end else begin
+                    result = {result_sign_bit, result_exp, sum[22:0]};
+                end
+
+            end else begin
+                // Subtraction part
+                if (mantissa_shift_op1 >= mantissa_shift_op2) begin
+                    sum = mantissa_shift_op1 - mantissa_shift_op2;
+                    result_sign_bit = op1_sign_bit;
+                end else begin
+                    sum = mantissa_shift_op2 - mantissa_shift_op1;
+                    result_sign_bit = op2_sign_bit;
+                end
+
+                if (sum == 0) begin
+                    result = 32'd0;
+                end else begin
+                    while (sum[23] == 0 && result_exp > 0) begin
+                        sum = sum << 1;
+                        result_exp = result_exp - 1;
                     end
 
-                    // Rounding
-                    guard_bit <= sum[1];
-                    round_bit <= sum[0];
-                    round_up <= guard_bit & (round_bit | sum[2]);
+                    guard_bit = sum[1];
+                    round_bit = sum[0];
+                    round_up = guard_bit & (round_bit | sum[2]);
 
                     if (round_up) begin
-                        rounded_sum <= sum[23:0] + 1;
+                        rounded_sum = sum[23:0] + 1;
                         if (rounded_sum[23]) begin
-                            result <= {result_sign_bit, result_exp, rounded_sum[22:0]};
+                            result = {result_sign_bit, result_exp, rounded_sum[22:0]};
                         end else begin
-                            result_exp <= result_exp + 1;
-                            result <= {result_sign_bit, result_exp, rounded_sum[23:1]};
+                            result_exp = result_exp + 1;
+                            result = {result_sign_bit, result_exp, rounded_sum[23:1]};
                         end
                     end else begin
-                        result <= {result_sign_bit, result_exp, sum[22:0]};
-                    end
-
-                end else begin
-                    // Subtraction part
-                    if (mantissa_shift_op1 >= mantissa_shift_op2) begin
-                        sum <= mantissa_shift_op1 - mantissa_shift_op2;
-                        result_sign_bit <= op1_sign_bit;
-                    end else begin
-                        sum <= mantissa_shift_op2 - mantissa_shift_op1;
-                        result_sign_bit <= op2_sign_bit;
-                    end
-
-                    if (sum == 0) begin
-                        result <= 32'd0;
-                    end else begin
-                        while (sum[23] == 0 && result_exp > 0) begin
-                            sum <= sum << 1;
-                            result_exp <= result_exp - 1;
-                        end
-
-                        guard_bit <= sum[1];
-                        round_bit <= sum[0];
-                        round_up <= guard_bit & (round_bit | sum[2]);
-
-                        if (round_up) begin
-                            rounded_sum <= sum[23:0] + 1;
-                            if (rounded_sum[23]) begin
-                                result <= {result_sign_bit, result_exp, rounded_sum[22:0]};
-                            end else begin
-                                result_exp <= result_exp + 1;
-                                result <= {result_sign_bit, result_exp, rounded_sum[23:1]};
-                            end
-                        end else begin
-                            result <= {result_sign_bit, result_exp, sum[22:0]};
-                        end
+                        result = {result_sign_bit, result_exp, sum[22:0]};
                     end
                 end
             end
+        end
 
-            FMUL: begin
-                product <= op1_significand * op2_significand;
-                if (product[47]) begin
-                    result_exp <= op1_biased_exponent + op2_biased_exponent - 127 + 1;
-                    rounded_sum <= product[47:24];
-                    guard_bit <= product[23];
-                    round_bit <= product[22];
-                    round_up <= guard_bit & (round_bit | product[21]);
-                end else begin
-                    result_exp <= op1_biased_exponent + op2_biased_exponent - 127;
-                    rounded_sum <= product[46:23];
-                    guard_bit <= product[22];
-                    round_bit <= product[21];
-                    round_up <= guard_bit & (round_bit | product[20]);
-                end
-
-                result_sign_bit <= op1_sign_bit ^ op2_sign_bit;
-                if (round_up) begin
-                    rounded_sum <= rounded_sum + 1;
-                    if (rounded_sum[23]) begin
-                        result <= {result_sign_bit, result_exp, rounded_sum[22:0]};
-                    end else begin
-                        result_exp <= result_exp + 1;
-                        result <= {result_sign_bit, result_exp, rounded_sum[23:1]};
-                    end
-                end else begin
-                    result <= {result_sign_bit, result_exp, rounded_sum[22:0]};
-                end
+        FMUL: begin
+            product = op1_significand * op2_significand;
+            if (product[47]) begin
+                result_exp = op1_biased_exponent + op2_biased_exponent - 127 + 1;
+                rounded_sum = product[47:24];
+                guard_bit = product[23];
+                round_bit = product[22];
+                round_up = guard_bit & (round_bit | product[21]);
+            end else begin
+                result_exp = op1_biased_exponent + op2_biased_exponent - 127;
+                rounded_sum = product[46:23];
+                guard_bit = product[22];
+                round_bit = product[21];
+                round_up = guard_bit & (round_bit | product[20]);
             end
 
-            FDIV: begin
-                numerator <= {op1_significand, 24'd0};
-                denominator <= {24'd0, op2_significand};
-                quotient <= numerator / denominator;
-                intermediary_exponent  <= {1'b0, op1_biased_exponent} - {1'b0, op2_biased_exponent} + 9'sd127; //to accomodate for overflow
-                result_sign_bit <= op1_sign_bit ^ op2_sign_bit;
-
-                /*
-                NORMALIZATION
-                */
-
-                
-                if(quotient[25])begin
-                    quotient <= quotient >> 1;
-                    norm_exponent <= intermediary_exponent + 9'sd1;
-                    norm_mantissa <= quotient[23:1]; //implicit one removed 
+            result_sign_bit = op1_sign_bit ^ op2_sign_bit;
+            if (round_up) begin
+                rounded_sum = rounded_sum + 1;
+                if (rounded_sum[23]) begin
+                    result = {result_sign_bit, result_exp, rounded_sum[22:0]};
+                end else begin
+                    result_exp = result_exp + 1;
+                    result = {result_sign_bit, result_exp, rounded_sum[23:1]};
                 end
-                else if(!quotient[24])begin
-                    shift <= 9'sd0;
-                    for(int i = 24; i >= 0; i-- )begin
-                        if(quotient[i])begin
-                        break;
-                        end
-                        shift <= shift + 9'sd1;
-                    end
-
-                    quotient <= quotient << shift;
-                    
-                    norm_exponent <= intermediary_exponent - shift;
-                    norm_mantissa <= quotient[23:1];
-                end
-                else begin
-                    norm_exponent <= intermediary_exponent;
-                    norm_mantissa <= quotient[23:1];
-                end
-                
-                //clamping
-                if(norm_exponent <= 0) norm_exponent <= 9'sd0;
-                else if(norm_exponent >= 255) norm_exponent <= 9'sd255;
-
-                result <= {result_sign_bit, norm_exponent[7:0], norm_mantissa};
-
+            end else begin
+                result = {result_sign_bit, result_exp, rounded_sum[22:0]};
             end
+        end
 
-            FNEG: result <= {~op1[31], op1[30:0]}; //negate the sign bit
+        FDIV: begin
+            numerator = {op1_significand, 24'd0};
+            denominator = {24'd0, op2_significand};
+            quotient = numerator / denominator;
+            intermediary_exponent  = {1'b0, op1_biased_exponent} - {1'b0, op2_biased_exponent} + 9'sd127; //to accomodate for overflow
+            result_sign_bit = op1_sign_bit ^ op2_sign_bit;
+
+            /*
+            NORMALIZATION
+            */
+
             
-            FABS: result <= {0'b0, op1[30:0]};
-
-            FSLT: begin
-                    // Compare two floating point numbers
-                    // Handle special cases first
-                    if (op1_biased_exponent == 8'hFF && op1[22:0] != 0) begin
-                        // op1 is NaN
-                        result <= 32'd0;
-                    end else if (op2_biased_exponent == 8'hFF && op2[22:0] != 0) begin
-                        // op2 is NaN  
-                        result <= 32'd0;
-                    end else if (op1_sign_bit != op2_sign_bit) begin
-                        // Different signs
-                        if (op1_sign_bit && !op2_sign_bit) begin
-                            // op1 negative, op2 positive -> op1 < op2
-                            result <= 32'd1;
-                        end else begin
-                            // op1 positive, op2 negative -> op1 >= op2
-                            result <= 32'd0;
-                        end
-                    end else begin
-                        // Same sign, compare magnitude
-                        if (!op1_sign_bit) begin
-                            // Both positive
-                            if (op1_biased_exponent < op2_biased_exponent) begin
-                                result <= 32'd1;
-                            end else if (op1_biased_exponent > op2_biased_exponent) begin
-                                result <= 32'd0;
-                            end else begin
-                                // Same exponent, compare mantissa
-                                result <= (op1[22:0] < op2[22:0]) ? 32'd1 : 32'd0;
-                            end
-                        end else begin
-                            // Both negative - comparison is reversed
-                            if (op1_biased_exponent > op2_biased_exponent) begin
-                                result <= 32'd1;
-                            end else if (op1_biased_exponent < op2_biased_exponent) begin
-                                result <= 32'd0;
-                            end else begin
-                                // Same exponent, compare mantissa (reversed for negative)
-                                result <= (op1[22:0] > op2[22:0]) ? 32'd1 : 32'd0;
-                            end
-                        end
+            if(quotient[25])begin
+                quotient = quotient >> 1;
+                norm_exponent = intermediary_exponent + 9'sd1;
+                norm_mantissa = quotient[23:1]; //implicit one removed 
+            end
+            else if(!quotient[24])begin
+                shift = 9'sd0;
+                for(int i = 24; i >= 0; i-- )begin
+                    if(quotient[i])begin
+                       break;
                     end
+                    shift = shift + 9'sd1;
                 end
 
-            FEQ: begin
-                result <= (op1 == op2) ? 32'd1:32'd0;
+                quotient = quotient << shift;
+                
+                norm_exponent = intermediary_exponent - shift;
+                norm_mantissa = quotient[23:1];
             end
+            else begin
+                norm_exponent = intermediary_exponent;
+                norm_mantissa = quotient[23:1];
+            end
+            
+            //clamping
+            if(norm_exponent <= 0) norm_exponent = 9'sd0;
+            else if(norm_exponent >= 255) norm_exponent = 9'sd255;
 
-            FCVT_W_S: begin // Float to int conversion (FCVT_WS)
-                if (op1_biased_exponent == 8'hFF) begin
-                    result <= op1_sign_bit ? 32'h80000000 : 32'h7FFFFFFF;
-                end else if (op1_biased_exponent == 0) begin
-                    result <= 32'd0;
+            result = {result_sign_bit, norm_exponent[7:0], norm_mantissa};
+
+        end
+
+        FNEG: result = {~op1[31], op1[30:0]}; //negate the sign bit
+        
+        FABS: result = {0'b0, op1[30:0]};
+
+        FEQ: begin
+            result = (op1 == op2) ? 32'd1:32'd0;
+        end
+
+        FCVT_W_S: begin // Float to int conversion (FCVT_WS)
+            if (op1_biased_exponent == 8'hFF) begin
+                result = op1_sign_bit ? 32'h80000000 : 32'h7FFFFFFF;
+            end else if (op1_biased_exponent == 0) begin
+                result = 32'd0;
+            end else begin
+                op1_unbiased_exponent = op1_biased_exponent - 127;
+                
+                if (op1_unbiased_exponent < 0 || op1_unbiased_exponent > 127) begin
+                    result = 32'd0;
+                end else if (op1_unbiased_exponent > 30) begin
+                    result = op1_sign_bit ? 32'h80000000 : 32'h7FFFFFFF;
                 end else begin
-                    op1_unbiased_exponent <= op1_biased_exponent - 127;
-                    
-                    if (op1_unbiased_exponent < 0 || op1_unbiased_exponent > 127) begin
-                        result <= 32'd0;
-                    end else if (op1_unbiased_exponent > 30) begin
-                        result <= op1_sign_bit ? 32'h80000000 : 32'h7FFFFFFF;
+                    if (op1_unbiased_exponent >= 23) begin
+                        op1_int = op1_significand << (op1_unbiased_exponent - 23);
                     end else begin
-                        if (op1_unbiased_exponent >= 23) begin
-                            op1_int <= op1_significand << (op1_unbiased_exponent - 23);
-                        end else begin
-                            op1_int <= op1_significand >> (23 - op1_unbiased_exponent);
-                        end
-                        
-                        result <= op1_sign_bit ? -op1_int : op1_int;
+                        op1_int = op1_significand >> (23 - op1_unbiased_exponent);
                     end
+                    
+                    result = op1_sign_bit ? -op1_int : op1_int;
                 end
             end
+        end
 
-            FCVT_S_W: begin
-                if (op1 == 32'd0) begin
-                    result <= 32'd0;
+        FCVT_S_W: begin
+            if (op1 == 32'd0) begin
+                result = 32'd0;
+            end else begin
+                abs_op1 = op1[31] ? -op1 : op1;
+                significant_one = 31;
+                
+                while (significant_one > 0 && !abs_op1[significant_one]) begin
+                    significant_one = significant_one - 1;
+                end
+                
+                op1_biased_exponent = 127 + significant_one;
+                
+                if (significant_one >= 23) begin
+                    op1_significand = abs_op1 >> (significant_one - 23);
                 end else begin
-                    abs_op1 <= op1[31] ? -op1 : op1;
-                    significant_one <= 31;
-                    
-                    while (significant_one > 0 && !abs_op1[significant_one]) begin
-                        significant_one <= significant_one - 1;
-                    end
-                    
-                    op1_biased_exponent <= 127 + significant_one;
-                    
-                    if (significant_one >= 23) begin
-                        op1_significand <= abs_op1 >> (significant_one - 23);
-                    end else begin
-                        op1_significand <= abs_op1 << (23 - significant_one);
-                    end
-                    
-                    result <= {op1[31], op1_biased_exponent, op1_significand[22:0]};
+                    op1_significand = abs_op1 << (23 - significant_one);
                 end
+                
+                result = {op1[31], op1_biased_exponent, op1_significand[22:0]};
             end
+        end
 
-            default: begin
-                result <= 32'd0;
-            end
-        endcase
-    end
+        default: begin
+            result = 32'd0;
+        end
+    endcase
 end
 endmodule

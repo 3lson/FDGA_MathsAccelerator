@@ -60,6 +60,32 @@ protected:
         std::cout << "Loaded " << instr_mem.size() << " instructions from " << hex_filepath << std::endl;
     }
 
+    void loadDataFromHex(const std::string& hex_filepath, uint32_t base_address = 0) {
+        // We do NOT clear data_mem here, to allow multiple loads if needed.
+        // It will be cleared explicitly in tests.
+        std::ifstream hex_file(hex_filepath);
+        ASSERT_TRUE(hex_file.is_open()) << "Could not open data hex file: " << hex_filepath;
+
+        std::string line;
+        uint32_t current_offset = 0;
+        while (std::getline(hex_file, line)) {
+            if (line.empty() || line[0] == '/' || line[0] == '#') continue;
+
+            uint32_t data_word;
+            std::stringstream ss;
+            ss << std::hex << line;
+            ss >> data_word;
+
+            uint32_t address = base_address + current_offset;
+            data_mem[address] = data_word;
+            std::cout << "  DATA[0x" << std::hex << address << "]: 0x" << data_word << std::dec << std::endl;
+            
+            // Increment address by 4 for the next word (byte-addressable memory)
+            current_offset += 4;
+        }
+        std::cout << "Loaded " << data_mem.size() << " data words from " << hex_filepath << std::endl;
+    }
+
     void tick() {
         top->clk = 0;
         top->eval();
@@ -103,7 +129,7 @@ protected:
     void initializeInputs() override {
         top->clk = 1; top->reset = 1; top->start = 0; top->block_id = 0;
         top->kernel_config[3] = 0; // base instruction address
-        top->kernel_config[2] = 0x1000; // base data memory address
+        top->kernel_config[2] = 0; // base data memory address
         top->kernel_config[0] = 1;  // num_blocks
         top->kernel_config[1] = 1; // num_warps_per_block
 
@@ -117,7 +143,7 @@ protected:
 
     void loadAndRun(const std::map<uint32_t, uint32_t>& program) {
         instr_mem = program;
-        data_mem.clear();
+        //data_mem.clear();
         top->start = 1;
         tick();
         top->start = 0;
@@ -186,18 +212,40 @@ protected:
 //     EXPECT_EQ(data_mem[42], 32) << "Scalar ALU/Store data path failed when loaded from hex.";
 // }
 
-TEST_F(ComputeCoreTestbench, VectorALUAndStore_FromHex) {
-    // 1. Load the program from the hex file
-    loadProgramFromHex("test/tmp_test/program.hex"); // Assumes the file is in the build/run directory
+// TEST_F(ComputeCoreTestbench, VectorALUAndStore_FromHex) {
+//     // 1. Load the program from the hex file
+//     loadProgramFromHex("test/tmp_test/program.hex"); // Assumes the file is in the build/run directory
 
-//     // 2. Configure the core for the test
-//     // Core configured in Initialise Input helper function
+// //     // 2. Configure the core for the test
+// //     // Core configured in Initialise Input helper function
     
-//     // 3. Run the simulation
-//     loadAndRun(instr_mem); // Pass the populated map to the existing runner
+// //     // 3. Run the simulation
+// //     loadAndRun(instr_mem); // Pass the populated map to the existing runner
+
+//     // 4. Check the result
+//     EXPECT_EQ(data_mem[42], 32) << "Vector ALU/Store data path failed when loaded from hex.";
+// }
+
+TEST_F(ComputeCoreTestbench, RScalarTest) {
+    // 1. Load the program from the hex file
+    loadProgramFromHex("test/tmp_test/rscalar.hex"); // Assumes the file is in the build/run directory
+
+    // 2. Configure the core for the test
+    // Core configured in Initialise Input helper function
+
+    // 3. Run the simulation
+    loadAndRun(instr_mem); // Pass the populated map to the existing runner
 
     // 4. Check the result
-    EXPECT_EQ(data_mem[42], 32) << "Vector ALU/Store data path failed when loaded from hex.";
+    EXPECT_EQ(data_mem[42], 10) << "Scalar ALU/Store data path failed when loaded from hex.";
+    EXPECT_EQ(data_mem[43], 20) << "Scalar ALU/Store data path failed when loaded from hex.";
+    EXPECT_EQ(data_mem[44], 0) << "Scalar ALU/Store data path failed when loaded from hex.";
+    EXPECT_EQ(data_mem[45], 100) << "Scalar ALU/Store data path failed when loaded from hex.";
+    EXPECT_EQ(data_mem[46], 1) << "Scalar ALU/Store data path failed when loaded from hex.";
+    EXPECT_EQ(data_mem[47], 0) << "Scalar ALU/Store data path failed when loaded from hex.";
+    EXPECT_EQ(data_mem[48], 1) << "Scalar ALU/Store data path failed when loaded from hex.";
+    EXPECT_EQ(data_mem[49], 1) << "Scalar ALU/Store data path failed when loaded from hex.";
+    EXPECT_EQ(data_mem[50], 5) << "Scalar ALU/Store data path failed when loaded from hex.";
 }
 
 
@@ -264,29 +312,34 @@ TEST_F(ComputeCoreTestbench, IScalarTest) {
 // }
 
 TEST_F(ComputeCoreTestbench, FScalarTest) {
-    // Assembly Intent: Test various floating point operations.
-    // The program needs to load float constants (1.0f) from a data section.
-    // The testbench sets the base data memory address to 0x1000. We will assume
-    // the linker places the constants there.
-    // .LC0: .word 1065353216 (1.0f) at address 0x1000
-    // .LC1: .word 1065353216 (1.0f) at address 0x1004
+    // 1. Clear data memory from any previous tests
+    data_mem.clear();
 
+    // 2. Load the program and data files
     loadProgramFromHex("test/tmp_test/fscalar.hex");
+    // We need to create a `data_fscalar.hex` file with the constants.
+    // Example: Let's say it contains 1065353216 (1.0f) and 1073741824 (2.0f)
+    loadDataFromHex("test/tmp_test/data_fscalar.hex"); // This will load data starting at 0x1000
+
+    // 3. Run the simulation
     loadAndRun(instr_mem);
 
-    // Verify results based on the sequence of operations in the assembly snippet.
-    // Note: Addresses are calculated as `base_addr + offset`.
-    // fs1 and fs2 are both loaded with 1.0f.
+    // 4. Verify results using floating point comparisons
+    // fs1 and fs2 are loaded with constants from data memory. Let's assume they are 2.0f and 1.0f.
+    // Assembly: FADD fs3, fs1, fs2 => fs3 = 2.0 + 1.0 = 3.0
     
-    EXPECT_EQ(data_mem[44], 2.0) << "Scalar Floating ADD failed";
-    EXPECT_EQ(data_mem[45], 0.0) << "Scalar Floating SUB failed";
-    EXPECT_EQ(data_mem[46], 1.0) << "Scalar Floating MUL failed";
-    EXPECT_EQ(data_mem[47], 1.0) << "Scalar Floating DIV failed";
-    EXPECT_EQ(data_mem[48], 0) << "Scalar Floating FLT failed";
-    EXPECT_EQ(data_mem[49], -1.0) << "Scalar Floating FNEG failed";
-    EXPECT_EQ(data_mem[50], 1) << "Scalar Floating FEQ failed";
-    EXPECT_EQ(data_mem[51], 1.0) << "Scalar Floating FABS failed";
-    EXPECT_EQ(data_mem[52], 1) << "Scalar Floating FCVT.W.S failed";
+    // Check values stored back to memory. The addresses (e.g., 44, 45) will
+    // depend on your s.fsw instructions in fscalar.s
+    // Using EXPECT_FLOAT_EQ for safer floating point comparison.
+    EXPECT_FLOAT_EQ(bits_to_float(data_mem[45]), 3.0f) << "Scalar FADD failed";
+    EXPECT_FLOAT_EQ(bits_to_float(data_mem[46]), 1.0f) << "Scalar FSUB failed";
+    EXPECT_FLOAT_EQ(bits_to_float(data_mem[47]), 2.0f) << "Scalar FMUL failed";
+    EXPECT_FLOAT_EQ(bits_to_float(data_mem[48]), 2.0f) << "Scalar FDIV failed";
+    EXPECT_EQ(data_mem[49], 0) << "Scalar FLT failed (2.0 < 1.0 is false)";
+    EXPECT_FLOAT_EQ(bits_to_float(data_mem[50]), -1.0f) << "Scalar FNEG failed";
+    EXPECT_EQ(data_mem[51], 0) << "Scalar FEQ failed (2.0 == 1.0 is false)";
+    EXPECT_FLOAT_EQ(bits_to_float(data_mem[52]), 1.0f) << "Scalar FABS failed";
+    EXPECT_EQ(data_mem[53], 1) << "Scalar FCVT.W.S (float to int) failed";
 }
 
 // // NOTE: mscalar.hex seems incomplete. Assuming it's meant to test memory ops.
@@ -307,6 +360,31 @@ TEST_F(ComputeCoreTestbench, FScalarTest) {
 //     EXPECT_EQ(data_mem[43], 1.0) << "Scalar Load Failed";
 // }
 
+
+
+TEST_F(ComputeCoreTestbench, BasicFScalarTest) {
+    // 1. Clear data memory from any previous tests
+    data_mem.clear();
+
+    // 2. Load the program and data files
+    loadProgramFromHex("test/tmp_test/program.hex");
+    // We need to create a `data_fscalar.hex` file with the constants.
+    // Example: Let's say it contains 1065353216 (1.0f) and 1073741824 (2.0f)
+    loadDataFromHex("test/tmp_test/data.hex"); // This will load data starting at 0x1000
+
+    // 3. Run the simulation
+    loadAndRun(instr_mem);
+
+    // 4. Verify results using floating point comparisons
+    // fs1 and fs2 are loaded with constants from data memory. Let's assume they are 2.0f and 1.0f.
+    // Assembly: FADD fs3, fs1, fs2 => fs3 = 2.0 + 1.0 = 3.0
+    
+    // Check values stored back to memory. The addresses (e.g., 44, 45) will
+    // depend on your s.fsw instructions in fscalar.s
+    // Using EXPECT_FLOAT_EQ for safer floating point comparison.
+    EXPECT_FLOAT_EQ(bits_to_float(data_mem[24]), 1.0f) << "Loading float 1";
+    EXPECT_FLOAT_EQ(bits_to_float(data_mem[44]), 3.0f) << "Scalar FADD failed";
+}
 
 
 int main(int argc, char **argv) {

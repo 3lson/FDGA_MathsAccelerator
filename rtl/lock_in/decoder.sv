@@ -163,6 +163,7 @@ module decoder(
                         // Vector I-type instructions
                         decoded_rd_address          <= rd;
                         decoded_rs1_address         <= rs1;
+                        decoded_rs2_address         <= rs2;
                         decoded_reg_write_enable    <= 1;
                         decoded_reg_input_mux       <= ALU_OUT;
                         decoded_scalar_instruction  <= instruction[28];

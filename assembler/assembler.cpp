@@ -485,7 +485,7 @@ uint32_t encodePseudoLI(const vector<string>& args, bool is_scalar) {
 int main() {
     initregisterMap();
     //ifstream input("bin/output/algotests/for/for.s"); // Example test file
-    ifstream input("assembler/program.asm");
+    ifstream input("assembler/f_scalar.asm");
     ofstream instrOut("tb/test/tmp_test/fscalar.hex");
     ofstream dataOut("tb/test/tmp_test/data_fscalar.hex");
     vector<pair<int, string>> instructions;
@@ -665,11 +665,8 @@ int main() {
     // Output data section
     cout << "\nData section:" << endl;
     for (auto& [addr, value] : data) {
-        // cout << "0x" << hex << addr << ": 0x" << value << dec << endl;
-        dataOut << hex << setw(2) << setfill('0') << (value & 0xFF) << endl;
-        dataOut << hex << setw(2) << setfill('0') << ((value >> 8) & 0xFF) << endl;
-        dataOut << hex << setw(2) << setfill('0') << ((value >> 16) & 0xFF) << endl;
-        dataOut << hex << setw(2) << setfill('0') << ((value >> 24) & 0xFF) << endl;
+        cout << "0x" << hex << setw(8) << setfill('0') << value << dec << endl;
+        dataOut << hex << setw(8) << setfill('0') << value << endl;
     }
 
 

@@ -78,8 +78,8 @@ always @(posedge clk) begin
                 if (warp_state == WARP_REQUEST) begin
                     rs1[i] <= registers[i][decoded_rs1_address];
                     rs2[i] <= registers[i][decoded_rs2_address];
-                    $display("rs1[i]:", rs1[i]);
-                    $display("rs2[i]:", rs2[i]);
+                    // $display("rs1[i]:", rs1[i]);
+                    // $display("rs2[i]:", rs2[i]);
                 end
 
                 if (warp_state == WARP_UPDATE) begin
