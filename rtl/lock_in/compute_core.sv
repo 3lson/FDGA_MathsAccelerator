@@ -150,6 +150,9 @@ for (genvar i = 0; i < THREADS_PER_WARP; i++) begin: g_operand_mux
             2'b11: {vector_op1, vector_op2} = {vector_float_rs1[current_warp][i], vector_float_rs2[current_warp][i]};
             default: {vector_op1, vector_op2} = {vector_int_rs1[current_warp][i], vector_int_rs2[current_warp][i]};
         endcase
+        // $display("Scalar flag: ", decoded_scalar_instruction[current_warp]);
+        // $display("Vector int rs1: ", vector_int_rs1[i]);
+        // $display("Vector op2: ", vector_op2);
     end
 
     // This part was correct. It selects between scalar and vector operands.
@@ -160,7 +163,8 @@ endgenerate
 
 //State machine and Scheduler Logic
 always @(posedge clk) begin
-    //$display(start_execution);
+    // $display("Start execution: ", start_execution);
+    // $display("Reset: ", reset);
     if (reset) begin
         //$display("Resetting core %0d", block_id);
         start_execution <= 0;
@@ -686,6 +690,10 @@ generate
         );
 
         assign alu_out[i] = (decoded_alu_instruction[current_warp] >= FADD) ? vector_float_alu_result : vector_int_alu_result;
+
+        // always_comb begin 
+        //     $display("Final op1: ", final_op1[i]);
+        // end
 
         lsu lsu_inst(
             .clk(clk),

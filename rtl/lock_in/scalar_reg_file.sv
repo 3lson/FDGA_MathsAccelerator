@@ -59,7 +59,7 @@ assign warp_execution_mask = registers[EXECUTION_MASK_REG];
 
 always @(posedge clk) begin
     // $display("Enable: ", warp_state == WARP_REQUEST);
-    // $display("Enable: ", warp_state == WARP_REQUEST);
+    // $display("Reset: ", reset);
     if (reset) begin
         registers[0] <= {DATA_WIDTH{1'b0}};
         registers[1] <= {DATA_WIDTH{1'b1}};
