@@ -37,9 +37,10 @@ module compute_core#(
 
 typedef logic [THREADS_PER_WARP-1:0] warp_mask_t;
 localparam int NUM_LSUS = THREADS_PER_WARP + 1;
+localparam int WARP_INDEX_WIDTH = (WARPS_PER_CORE > 1) ? $clog2(WARPS_PER_CORE) : 1;
 
 // Warp State and Control
-int current_warp;
+logic [WARP_INDEX_WIDTH-1:0] current_warp;
 warp_state_t warp_state [WARPS_PER_CORE];
 fetcher_state_t fetcher_state [WARPS_PER_CORE];
 warp_state_t current_warp_state;
@@ -80,10 +81,11 @@ data_t scalar_int_rs2 [WARPS_PER_CORE];
 data_t scalar_float_rs1 [WARPS_PER_CORE];
 data_t scalar_float_rs2 [WARPS_PER_CORE];
 
-data_t vector_int_rs1 [THREADS_PER_WARP];
-data_t vector_int_rs2 [THREADS_PER_WARP];
-data_t vector_float_rs1 [THREADS_PER_WARP];
-data_t vector_float_rs2 [THREADS_PER_WARP];
+data_t vector_int_rs1 [WARPS_PER_CORE][THREADS_PER_WARP];
+data_t vector_int_rs2 [WARPS_PER_CORE][THREADS_PER_WARP];
+data_t vector_float_rs1 [WARPS_PER_CORE][THREADS_PER_WARP];
+data_t vector_float_rs2 [WARPS_PER_CORE][THREADS_PER_WARP];
+
 warp_mask_t warp_execution_mask [WARPS_PER_CORE];
 logic decoded_sync [WARPS_PER_CORE];
 logic [WARPS_PER_CORE-1:0] sync_reached;  
@@ -128,34 +130,39 @@ always_comb begin
 end
 
 //Generate Muxing logic for each of the Vector SIMT lanes
+// DELETE the entire old `g_operand_mux` generate block.
+
+// REPLACE it with this:
+
+//Generate Muxing logic for each of the Vector SIMT lanes
 generate
-for (genvar i =0; i<THREADS_PER_WARP; i++) begin: g_operand_mux
+for (genvar i = 0; i < THREADS_PER_WARP; i++) begin: g_operand_mux
     logic [31:0] vector_op1;
     logic [31:0] vector_op2;
 
-    //Combinational Mux for Vector Operand for thread 'i'
+    // Combinational Mux for Vector Operand for thread 'i'
+    // This block now correctly selects from the 2D register file output arrays.
     always_comb begin
         case(floatingRead_flag[current_warp])
-        2'b00: {vector_op1, vector_op2} = {vector_int_rs1[i], vector_int_rs2[i]}; // int, int (Every other instr)
-        2'b01: {vector_op1, vector_op2} = {vector_float_rs1[i], vector_int_rs2[i]}; // float, int
-        2'b10: {vector_op1, vector_op2} = {vector_int_rs1[i], vector_float_rs2[i]}; // int, float (To handle flw, fsw)
-        2'b11: {vector_op1, vector_op2} = {vector_float_rs1[i], vector_float_rs2[i]};
-        default: {vector_op1, vector_op2} = {vector_int_rs1[i], vector_int_rs2[i]};
+            2'b00: {vector_op1, vector_op2} = {vector_int_rs1[current_warp][i],   vector_int_rs2[current_warp][i]};
+            2'b01: {vector_op1, vector_op2} = {vector_float_rs1[current_warp][i], vector_int_rs2[current_warp][i]};
+            2'b10: {vector_op1, vector_op2} = {vector_int_rs1[current_warp][i],   vector_float_rs2[current_warp][i]};
+            2'b11: {vector_op1, vector_op2} = {vector_float_rs1[current_warp][i], vector_float_rs2[current_warp][i]};
+            default: {vector_op1, vector_op2} = {vector_int_rs1[current_warp][i], vector_int_rs2[current_warp][i]};
         endcase
     end
 
-    //Final selection btw a scalar source(broadcast to all threads) or a vector source
+    // This part was correct. It selects between scalar and vector operands.
     assign final_op1[i] = decoded_scalar_instruction[current_warp] ? scalar_op1 : vector_op1;
     assign final_op2[i] = decoded_scalar_instruction[current_warp] ? scalar_op2 : vector_op2;
 end
-
 endgenerate
 
 //State machine and Scheduler Logic
 always @(posedge clk) begin
     //$display(start_execution);
     if (reset) begin
-        $display("Resetting core %0d", block_id);
+        //$display("Resetting core %0d", block_id);
         start_execution <= 0;
         done <= 0;
         for (int i = 0; i < WARPS_PER_CORE; i = i + 1) begin
@@ -284,8 +291,6 @@ always @(posedge clk) begin
                     warp_state[current_warp] <= WARP_SYNC_WAIT;
                     
                 end else if (decoded_scalar_instruction[current_warp]) begin
-                    $display("Branch", decoded_branch[current_warp]);
-                    $display("Immediate", decoded_immediate[current_warp]);
                     if (decoded_branch[current_warp]) begin
                         // Branch instruction
                         if (scalar_alu_out == 1) begin
@@ -413,11 +418,6 @@ for (genvar i = 0; i < WARPS_PER_CORE; i = i + 1) begin : g_warp
         .floatingWrite(floatingWrite_flag[i]),
         .decoded_sync(decoded_sync[i])
     );
-
-    always_comb begin
-        $display("Decoded alu instr: ", decoded_alu_instruction[i]);
-    end
-
     // Scalar float register file
     scalar_reg_file #(
         .DATA_WIDTH(32)
@@ -517,8 +517,8 @@ for (genvar i = 0; i < WARPS_PER_CORE; i = i + 1) begin : g_warp
             .lsu_out(lsu_out),
 
             // Outputs per thread
-            .rs1(vector_float_rs1),
-            .rs2(vector_float_rs2)
+            .rs1(vector_float_rs1[i]),
+            .rs2(vector_float_rs2[i])
         );
 
 
@@ -552,19 +552,19 @@ for (genvar i = 0; i < WARPS_PER_CORE; i = i + 1) begin : g_warp
             .lsu_out(lsu_out),
 
             // Outputs per thread
-            .rs1(vector_int_rs1),
-            .rs2(vector_int_rs2)
+            .rs1(vector_int_rs1[i]),
+            .rs2(vector_int_rs2[i])
         );
 
     always_comb begin
         if (current_warp == i) begin
-            // $display("Enable: ", current_warp == i);
-            // $display("Warp State: ", warp_state[i]);
-            // $display("Decoded_rs1: ", decoded_rs1_address[i]);
-            // $display("Decoded_rs2: ", decoded_rs2_address[i]);
-            // $display("Vector_lsu: ", lsu_out);
-            // $display("Vector_int_rs1: ", vector_int_rs1);
-            // $display("Vector_int_rs2: ", vector_int_rs2);
+            $display("Enable: ", current_warp == i);
+            $display("Warp State: ", warp_state[i]);
+            $display("Decoded_rs1: ", decoded_rs1_address[i]);
+            $display("Decoded_rs2: ", decoded_rs2_address[i]);
+            $display("Vector_lsu: ", lsu_out);
+            $display("Vector_int_rs1: ", vector_int_rs1[i]);
+            $display("Vector_int_rs2: ", vector_int_rs2[i]);
         end
     end
 
@@ -603,12 +603,6 @@ floating_alu scalar_fpu_inst(
     // .EQ() // unused
 );
 
-always_comb begin
-    // $display("Scalar float flag: ", is_scalar_float_op && (current_warp_state==WARP_EXECUTE));
-    $display("Scalar op1: ", scalar_op1);
-    $display("Scalar op2: ", scalar_op2);
-    $display("Scalar result: ", scalar_int_alu_result);
-end
 logic more_fadd;
 assign more_fadd = (decoded_alu_instruction[current_warp] >= FADD);
 logic less_beqz;
@@ -626,8 +620,8 @@ always_comb begin
     // $display("Decoded Rs1 Address[2]: ", decoded_rs1_address[2]);
     // $display("Decoded Rs1 Address[6]: ", decoded_rs1_address[6]);
     // $display("Scalar LSU Out: ", scalar_lsu_out);
-    $display("scalar alu out: ", scalar_alu_out);
-    $display("decoded alu instr: ", decoded_alu_instruction[current_warp]);
+    //$display("scalar alu out: ", scalar_alu_out);
+    //$display("decoded alu instr: ", decoded_alu_instruction[current_warp]);
     
 end
 
