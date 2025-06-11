@@ -42,6 +42,16 @@ module decoder(
     wire [31:12] imm_u      = instruction[28:9];
     wire [25:0]  imm_j      = {instruction[28:13], instruction[9:0]};
 
+    always_comb begin 
+        // $display("Decoded RD: ", decoded_rd_address);
+        // $display("Decoded Rs1: ", decoded_rs1_address);
+        // $display("Decoded Write Enable: ", decoded_reg_write_enable);
+        // $display("Decoded Input Mux: ", decoded_reg_input_mux);
+        // $display("Decoded IMM: ", decoded_immediate);
+        // $display("Decoded Scalar Flag: ", decoded_scalar_instruction);  
+        // $display("Instruction: ", instruction);
+    end
+
     always @(posedge clk) begin
         // $display("Instruction: %h", instruction);
         // $display("Decode Rs1: ", rs1);

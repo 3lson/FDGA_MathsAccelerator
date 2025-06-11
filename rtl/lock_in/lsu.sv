@@ -42,6 +42,13 @@ module lsu (
 data_t offset_address;
 assign offset_address = rs1 + imm;
 
+// always_comb begin 
+//     // $display("Enable: ", enable);
+//     // $display("Mem read enable: ", decoded_mem_read_enable);
+//     // $display("Mem write enable: ", decoded_mem_write_enable);
+//     // $display("Rs1: ", rs1);
+// end
+
 always @(posedge clk) begin
     // $display("Write enable: ", decoded_mem_write_enable);
     // $display("Write enable: ", decoded_mem_write_enable);

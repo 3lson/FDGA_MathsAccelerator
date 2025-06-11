@@ -53,8 +53,20 @@ always_comb begin
     end
 end
 
+// always_comb begin
+//     for (int i = 0; i < THREADS_PER_WARP; i++) begin
+//             if (thread_enable[i]) begin
+//                     rs1[i] <= registers[i][decoded_rs1_address];
+//                     rs2[i] <= registers[i][decoded_rs2_address];
+//                     // $display("rs1[i]:", rs1[i]);
+//                     // $display("rs2[i]:", rs2[i]);
+//             end
+//     end
+// end
+
 // Initialize registers during reset and handle writes
 always @(posedge clk) begin
+    // $display("reset: ", reset);
     if (reset) begin
         for (int i = 0; i < THREADS_PER_WARP; i++) begin
             registers[i][ZERO_REG]      <= {DATA_WIDTH{1'b0}};
