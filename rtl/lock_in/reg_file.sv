@@ -114,10 +114,5 @@ always @(posedge clk) begin
             end
         end
     end
-    // for (int i = 0; i < THREADS_PER_WARP; i = i+1) begin 
-    //     $display("rs1[i]:", rs1[i]);
-    //     $display("rs2[i]:", rs2[i]);
-    //     $display("Iteration: ", i);
-    // end
 end
 endmodule
