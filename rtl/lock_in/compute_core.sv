@@ -491,7 +491,7 @@ for (genvar i = 0; i < WARPS_PER_CORE; i = i + 1) begin : g_warp
         .rs1(scalar_int_rs1[i]),
         .rs2(scalar_int_rs2[i])
     );
-    // Vector float register file
+    // // Vector float register file
     reg_file #(
             .THREADS_PER_WARP(THREADS_PER_WARP)
         ) floating_reg_file_inst (
@@ -613,7 +613,7 @@ always_comb begin
     //$display("scalar alu out: ", scalar_alu_out);
     //$display("decoded alu instr: ", decoded_alu_instruction[current_warp]);
     
-end
+// end
 
 
 lsu scalar_lsu_inst(
@@ -644,7 +644,7 @@ lsu scalar_lsu_inst(
     .lsu_out(scalar_lsu_out)
 );
 
-//Vecotr functional units
+//Vector functional units
 generate
     for (genvar i = 0; i < THREADS_PER_WARP; i = i + 1) begin : g_vector_units
         wire t_enable = current_warp_execution_mask[i] && !decoded_scalar_instruction[current_warp];
@@ -678,7 +678,7 @@ generate
         
 
         // always_comb begin 
-        //     $display("Final op1: ", final_op1[i]);
+        //     $display("AluOut: ", alu_out[i]);
         // end
 
         lsu lsu_inst(

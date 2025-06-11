@@ -38,9 +38,9 @@ module decoder(
     wire [13:0]  imm_i      = instruction[27:14];
     wire [14:0]  imm_load   = instruction[28:14];
     wire [14:0]  imm_s      = {instruction[28:19], instruction[4:0]};
-    wire [15:0]  imm_b      = {instruction[28:19], instruction[13], instruction[4:0]};
+    wire [17:0]  imm_b      = {instruction[28:19], instruction[13], instruction[4:0], 2'b00};
     wire [31:12] imm_u      = instruction[28:9];
-    wire [25:0]  imm_j      = {instruction[28:13], instruction[9:0]};
+    wire [27:0]  imm_j      = {instruction[28:13], instruction[9:0], 2'b00};
 
     always @(posedge clk) begin
         // $display("Instruction: %h", instruction);
@@ -57,6 +57,7 @@ module decoder(
             decoded_rd_address <= 5'b0;
             decoded_rs1_address <= 5'b0;
             decoded_rs2_address <= 5'b0;
+            decoded_alu_instruction <= ADDI;
             decoded_halt <= 0;
             decoded_scalar_instruction <= 0;
             floatingRead <= 2'b00;
@@ -69,6 +70,7 @@ module decoder(
             decoded_rd_address <= 5'b0;
             decoded_rs1_address <= 5'b0;
             decoded_rs2_address <= 5'b0;
+            decoded_alu_instruction <= ADDI;
             decoded_mem_read_enable <= 0;
             decoded_mem_write_enable <= 0;
             decoded_branch <= 0;
@@ -83,14 +85,14 @@ module decoder(
                         // Jump instr
                         decoded_alu_instruction     <= JAL;
                         $display("Decoding instruction 0b%32b", instruction);
-                        decoded_immediate           <= sign_extend_26(imm_j);
+                        decoded_immediate           <= sign_extend_28(imm_j);
                         decoded_scalar_instruction  <= 1;
                     end
                     3'b001: begin
-                        // Branch instructions (e.g., BEQZ)
+                        // Branch instructions (e.g., BEQ, BNE)
                         decoded_rs1_address         <= rs1;
                         decoded_rs2_address         <= rs2;
-                        decoded_immediate           <= sign_extend_16(imm_b);
+                        decoded_immediate           <= sign_extend_18(imm_b);
                         decoded_branch              <= 1;
                         decoded_alu_instruction     <= BEQZ;
                         decoded_scalar_instruction  <= 1;
@@ -161,7 +163,6 @@ module decoder(
                         // Vector F-type instructions
                         decoded_rd_address          <= rd;
                         decoded_rs1_address         <= rs1;
-                        decoded_rs2_address         <= rs2;
                         decoded_reg_write_enable    <= 1;
                         decoded_reg_input_mux       <= ALU_OUT;
                         decoded_scalar_instruction  <= instruction[28];
@@ -254,10 +255,5 @@ module decoder(
             end
         end
         // $display("Mem Read Enable: ", decoded_mem_write_enable);
-        // $display("Opcode: ", opcode);
-        // $display("Funct3: ", funct3);
-        // $display("Decoded Alu: ", decoded_alu_instruction);
-        // $display("Rs1: ", decoded_rs1_address);
-        // $display("Branch: ", decoded_branch);
     end
 endmodule
