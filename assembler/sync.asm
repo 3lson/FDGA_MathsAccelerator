@@ -1,3 +1,4 @@
+v.li v2, 1
 sx.slt s0, v30, v2  
 s.beqz s0, warp1_code 
 
