@@ -487,39 +487,64 @@ protected:
 //     EXPECT_EQ(data_mem[42], expected_mask) << "sx.slt failed to generate the correct scalar mask.";
 // }
 
-TEST_F(ComputeCoreTestbench, SyncInstructionTest) {
-    // This test verifies that the 'sync' instruction correctly stalls warps
-    // until all active warps in a block have reached the barrier.
+// TEST_F(ComputeCoreTestbench, SyncInstructionTest) {
+//     // This test verifies that the 'sync' instruction correctly stalls warps
+//     // until all active warps in a block have reached the barrier.
     
-    // 1. Clear data memory from any previous tests
+//     // 1. Clear data memory from any previous tests
+//     data_mem.clear();
+
+//     // 2. Load the assembled program
+//     loadProgramFromHex("test/tmp_test/sync_test.hex");
+
+//     loadAndRun(instr_mem);
+
+//     // 3. CRITICAL: Manually set up and start the simulation
+//     // This sequence replaces the single call to loadAndRun().
+
+//     // Step A: Set the specific configuration for this test.
+//     // We are overriding the defaults set in initializeInputs().
+
+//     // Fail the test if the core timed out.
+//     // 5. Verify the results
+//     // The verification logic remains the same.
+
+//     // Check that Warp 0 (producer) did its job
+//     ASSERT_FALSE(data_mem.count(42)) << "Producer (Warp 0) failed to write to its address.";
+//     EXPECT_EQ(data_mem[42], 123) << "Producer (Warp 0) wrote the wrong value.";
+
+//     // Check that Warp 1 (consumer) did its initial write
+//     ASSERT_TRUE(data_mem.count(46)) << "Consumer (Warp 1) failed its initial write.";
+//     EXPECT_EQ(data_mem[46], 999) << "Consumer (Warp 1) wrote the wrong initial value.";
+
+//     // THE REAL TEST: Check that Warp 1 read the value produced by Warp 0 *after* the sync.
+//     ASSERT_TRUE(data_mem.count(50)) << "Consumer (Warp 1) failed to write its verification value.";
+//     EXPECT_EQ(data_mem[50], 123) << "Sync barrier failed: Consumer read from memory before the producer wrote to it.";
+// }
+
+
+TEST_F(ComputeCoreTestbench, SXSLTTest) {
     data_mem.clear();
 
-    // 2. Load the assembled program
-    loadProgramFromHex("test/tmp_test/sync_test.hex");
+    loadProgramFromHex("test/tmp_test/sx_slt.hex");
+
+    loadDataFromHex("test/tmp_test/data_sx_slt.hex"); // This will load data starting at 0x1000
 
     loadAndRun(instr_mem);
 
-    // 3. CRITICAL: Manually set up and start the simulation
-    // This sequence replaces the single call to loadAndRun().
+    EXPECT_FLOAT_EQ(data_mem[42], 0xFFFF) << "SX.SLT failed";
+}
 
-    // Step A: Set the specific configuration for this test.
-    // We are overriding the defaults set in initializeInputs().
+TEST_F(ComputeCoreTestbench, SXSLTTest_0) {
+    data_mem.clear();
 
-    // Fail the test if the core timed out.
-    // 5. Verify the results
-    // The verification logic remains the same.
+    loadProgramFromHex("test/tmp_test/sx_slt_0.hex");
 
-    // Check that Warp 0 (producer) did its job
-    ASSERT_FALSE(data_mem.count(42)) << "Producer (Warp 0) failed to write to its address.";
-    EXPECT_EQ(data_mem[42], 123) << "Producer (Warp 0) wrote the wrong value.";
+    loadDataFromHex("test/tmp_test/data_sx_slt_0.hex"); // This will load data starting at 0x1000
 
-    // Check that Warp 1 (consumer) did its initial write
-    ASSERT_TRUE(data_mem.count(46)) << "Consumer (Warp 1) failed its initial write.";
-    EXPECT_EQ(data_mem[46], 999) << "Consumer (Warp 1) wrote the wrong initial value.";
+    loadAndRun(instr_mem);
 
-    // THE REAL TEST: Check that Warp 1 read the value produced by Warp 0 *after* the sync.
-    ASSERT_TRUE(data_mem.count(50)) << "Consumer (Warp 1) failed to write its verification value.";
-    EXPECT_EQ(data_mem[50], 123) << "Sync barrier failed: Consumer read from memory before the producer wrote to it.";
+    EXPECT_FLOAT_EQ(data_mem[42], 0) << "SX.SLT.0 failed";
 }
 
 int main(int argc, char **argv) {

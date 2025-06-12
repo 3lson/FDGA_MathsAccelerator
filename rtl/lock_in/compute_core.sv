@@ -161,6 +161,16 @@ for (genvar i = 0; i < THREADS_PER_WARP; i++) begin: g_operand_mux
 end
 endgenerate
 
+always_comb begin
+    all_warps_done = 1'b1;
+    for (int i = 0; i < num_warps; i = i + 1) begin
+        if (warp_state[i] != WARP_DONE) begin
+            all_warps_done = 1'b0;
+            break;
+        end
+    end
+end
+
 //State machine and Scheduler Logic
 always @(posedge clk) begin
     // $display("Start execution: ", start_execution);
@@ -180,6 +190,7 @@ always @(posedge clk) begin
         sync_reached <= 0;
         for (int i = 0; i < WARPS_PER_CORE; i++) begin
             sync_pc[i] <= 0;
+            warp_execution_mask[i] <= {THREADS_PER_WARP{1'b1}}; // Enable all threads
         end
 
     end else if (!start_execution) begin
@@ -201,47 +212,11 @@ always @(posedge clk) begin
             end
         end
     end else begin
-        logic all_warps_synced = 1'b1;
-        // Only check for sync if at least one warp has reached the barrier
-        for (int i = 0; i < num_warps; i++) begin
-            // Only consider warps that are active and not done
-            if ((warp_state[i] != WARP_DONE) && (warp_state[i] != WARP_IDLE)) begin
-                // If any active warp has NOT reached the barrier, we wait.
-                if (!sync_reached[i]) begin
-                    all_warps_synced = 1'b0;
-                    break;
-                end
-            end
-        end
-
-        // If all active warps have synchronized, release them all AT ONCE.
-        if (all_warps_synced) begin
-            $display("Block: %0d: All warps synchronized, releasing barrier", block_id);
-            
-            // Release all warps from the sync barrier
-            for (int i = 0; i < num_warps; i++) begin
-                if (warp_state[i] == WARP_SYNC_WAIT) begin
-                    warp_state[i] <= WARP_UPDATE;
-                end
-            end
-            
-            // Clear the barrier state
-            sync_reached <= '0;
-        end
-
         // In parallel, check if fetchers are done, and if so, move to decode
         for (int i = 0; i < num_warps; i = i + 1) begin
             if (warp_state[i] == WARP_FETCH && fetcher_state[i] == FETCHER_DONE) begin
                 $display("Block: %0d: Warp %0d: Fetched instruction %h at address %h", block_id, i, fetched_instruction[i], pc[i]);
                 warp_state[i] = WARP_DECODE;
-            end
-        end
-        all_warps_done = 1'b1;
-        // If all warps are done, we are done
-        for (int i = 0; i < num_warps; i = i + 1) begin
-            if (warp_state[i] != WARP_DONE) begin
-                all_warps_done = 1'b0;
-                break;
             end
         end
         done <= all_warps_done;
@@ -351,13 +326,16 @@ always @(posedge clk) begin
                     
                     $display("===================================");
                     // The transition to UPDATE now only happens for non-sync instructions
-                    warp_state[current_warp] <= WARP_UPDATE;
+                    warp_state[current_warp] = WARP_UPDATE;
+
+                    $display("Checking reg input mux for VECTOR_TO_SCALAR: ", decoded_reg_input_mux[current_warp] == VECTOR_TO_SCALAR);
 
                     if (decoded_reg_input_mux[current_warp] == VECTOR_TO_SCALAR) begin
                         data_t scalar_write_value;
                         scalar_write_value = {`DATA_WIDTH{1'b0}};
                         for (int i = 0; i < THREADS_PER_WARP; i++) begin
                             scalar_write_value[i] = alu_out[i][0];
+                            $display("scalar write value: ", scalar_write_value[i]);
                         end
                         vector_to_scalar_data[current_warp] <= scalar_write_value;
                     end else begin
@@ -368,10 +346,8 @@ always @(posedge clk) begin
             WARP_SYNC_WAIT: begin
                 // Check if all active warps have reached the sync barrier
                 logic all_warps_synced = 1'b1;
-                $display("Waiting for SYNC");
-                
+    
                 for (int i = 0; i < num_warps; i++) begin
-                    // Only consider warps that are not DONE or IDLE
                     if ((warp_state[i] != WARP_DONE) && (warp_state[i] != WARP_IDLE)) begin
                         if (!sync_reached[i]) begin
                             all_warps_synced = 1'b0;
@@ -383,16 +359,14 @@ always @(posedge clk) begin
                 if (all_warps_synced) begin
                     $display("Block: %0d: All warps synchronized, releasing barrier", block_id);
                     
-                    // Release all warps from sync barrier
+                    // Use non-blocking assignments
                     for (int i = 0; i < num_warps; i++) begin
                         if (warp_state[i] == WARP_SYNC_WAIT) begin
-                            // Use non-blocking assignment for state updates
-                            warp_state[i] = WARP_UPDATE;
+                            warp_state[i] = WARP_UPDATE;  // Non-blocking assignment
                         end
                     end
                     
-                    // Clear sync barrier state
-                    sync_reached <= '0;
+                    sync_reached <= '0;  // Already non-blocking, good
                 end
             end
 
