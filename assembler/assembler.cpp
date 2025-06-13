@@ -573,7 +573,7 @@ int main() {
     //ifstream input("bin/output/algotests/for/for.s"); // Example test file
     ifstream input("assembler/program.asm");
     ofstream instrOut("tb/test/tmp_test/program.hex");
-    ofstream dataOut("tb/test/tmp_test/program.hex");
+    ofstream dataOut("tb/test/tmp_test/data_program.hex");
     vector<pair<int, string>> instructions;
     vector<pair<int, uint32_t>> data;
     string line;

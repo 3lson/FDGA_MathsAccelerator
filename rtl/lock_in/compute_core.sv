@@ -375,7 +375,7 @@ for (genvar i = 0; i < WARPS_PER_CORE; i = i + 1) begin : g_warp
 
         .decoded_halt(decoded_halt[i]),
         .floatingRead(floatingRead_flag[i]),
-        .floatingWrite(floatingWrite_flag[i]),
+        .floatingWrite(floatingWrite_flag[i])
     );
     // Scalar float register file
     scalar_reg_file #(
