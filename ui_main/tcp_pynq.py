@@ -24,13 +24,13 @@ mmio = FakeMMIO()
 def handle_client(conn, addr):
     print(f'Connected by {addr}')
     try:
-        # Wait for start command
+        # Wait for START command
         cmd = recv_line(conn)
         if cmd != "START":
             print("Expected START")
             return
 
-        #define the expected files to receive
+        # Define the expected files to receive
         save_targets = ["out/clicked_points.txt", "out/points.txt"]
         for expected_name in save_targets:
             received_filename = recv_line(conn)  # actual filename sent by client
@@ -42,17 +42,17 @@ def handle_client(conn, addr):
 
             print(f"Saved {received_filename} as {expected_name} ({size} bytes)")
 
-        #wait for END
+        # Wait for END
         end_cmd = recv_line(conn)
         if end_cmd != "END":
             print("Expected END")
             return
 
-        #compile and run the C code
+        # Compile and run the C code
         subprocess.run(['gcc', 'k_means3.c', '-o', 'k_means3'], capture_output=True, text=True)
         subprocess.run(['./k_means3'], capture_output=True, text=True)
 
-        #send back output.txt
+        # Send back output.txt
         if not os.path.exists("out/output.txt"):
             print("output.txt not generated.")
             return
