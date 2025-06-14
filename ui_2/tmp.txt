@@ -1,0 +1,25 @@
+            def gen_points():
+        nonlocal img, tk_img, points_generated, points, centroids_gen, num_centroids
+        points_generated = True
+        points.clear()
+        open("points/clicked_points.txt", "w").close()
+        centroids_gen = False
+        num_centroids = 0
+        # reset image to white background
+        img = np.ones((480, 640, 3), dtype=np.uint8) * 255
+        for i in range(100):
+            x = np.random.uniform(x_min, x_max)
+            y = np.random.uniform(y_min, y_max)
+            px = int(plot_x + (x - x_min) / (x_max - x_min) * plot_width)
+            py = int(plot_y + plot_height - (y - y_min) / (y_max - y_min) * plot_height)
+            points.append((x, y))
+            # 5x5 black squares as points
+            img[py - 2:py + 3, px - 2:px + 3] = [0, 0, 0]
+        f = open('points/points.txt', 'w')
+        for point in points:
+            f.write(f"{point[0]:.2f} {point[1]:.2f}\n")
+        f.close()
+        tk_img = ImageTk.PhotoImage(Image.fromarray(img))
+        canvas.create_image(0, 0, anchor='nw', image=tk_img, tags='plot')
+        canvas.image = tk_img
+        draw_axes()
