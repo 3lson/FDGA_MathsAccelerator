@@ -57,6 +57,8 @@ void Declaration::EmitElsonV(std::ostream &stream, Context &context, std::string
         {
             int array_size = array_declaration->GetArraySize();
 
+            std::vector<int> dimention = array_declaration->GetArrayDim(context);
+
             if (array_declaration->GetArraySize() == -1)
             {
                 throw std::runtime_error("Declaration EmitElsonV: Array size not specified");
@@ -66,7 +68,7 @@ void Declaration::EmitElsonV(std::ostream &stream, Context &context, std::string
 
             std::string variable_name = array_declaration->GetId();
 
-            Variable variable(false, true, array_size, type, offset, 0);
+            Variable variable(false, true, array_size, type, offset, 0, dimention);
             context.define_variable(variable_name, variable);
         }
         else if (pointer_declaration != nullptr)
@@ -132,7 +134,7 @@ int Declaration::get_offset(Context &context) const
 
             if (assignment != nullptr) {
                 //int actual_size = assignment->isPointerInitialization() ? types_size.at(Type::_INT) : type_size;
-                type_size = total_size + type_size * assignment->GetArraySize();
+                total_size = total_size + type_size * assignment->GetArraySize();
             }
             else if (array_declaration != nullptr) {
                 int actual_type_size = array_declaration->isPointer() ? types_size.at(Type::_INT) : type_size;

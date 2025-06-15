@@ -67,6 +67,7 @@ IS  (u|U|l|L)*
 "blockId.x"    { return(BLOCKIDX); }
 "threadId.x"   { return(THREADIDX); }
 "blocksize"    { return(BLOCKSIZE); }
+"kernel"        { return(KERNEL); }
 
 {L}({L}|{D})*		{
   std::string *str = new std::string(yytext);

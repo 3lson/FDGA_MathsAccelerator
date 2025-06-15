@@ -1,7 +1,6 @@
 #include "../../include/context/ast_context.hpp"
 
 namespace ast{
-
 //extern Context context; //Global context object for the lexer hack in typedef
 
 const std::unordered_map<Type, int> types_size = {
@@ -28,6 +27,7 @@ const std::unordered_map<Type, std::string> assembler_directives = {
 };
 
 Context::Context()
+    :reg_manager(&main_cpu_registers)
 {
     label_counter = 0;
     current_stack_offset.push(0);

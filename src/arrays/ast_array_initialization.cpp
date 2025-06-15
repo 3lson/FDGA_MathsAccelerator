@@ -24,17 +24,21 @@ void ArrayInitialization::Print(std::ostream &stream) const
 void ArrayInitialization::SaveValue(std::ostream &stream, Context &context, Variable variable, std::string identifier) const
 {
     int offset;
+    int total_offset;
     Type type = variable.get_type();
     std::string dest_reg = context.get_register(type);
 
     if (variable.get_scope() == ScopeLevel::LOCAL){
         offset = variable.get_offset();
+        total_offset = context.get_total_offset();
+
         for (const auto& initializer : dynamic_cast<const NodeList *>(initializer_list_.get())->get_nodes())
         {
-            dynamic_cast<const Operand *>(initializer.get())->EmitElsonV(stream, context, dest_reg);
-            stream << context.store_instr(type) << " " << dest_reg << ", " << offset << "(s0)" << std::endl;
+            offset -= types_size.at(type);
 
-            offset += types_size.at(type);
+            dynamic_cast<const Operand *>(initializer.get())->EmitElsonV(stream, context, dest_reg);
+            stream << asm_prefix.at(context.get_instruction_state()) << context.store_instr(type) << " " << dest_reg << ", " << offset << "(sp)" << std::endl;
+
         }
 
     }

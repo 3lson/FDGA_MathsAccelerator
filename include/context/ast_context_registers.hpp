@@ -30,24 +30,44 @@ public:
     void setType(Type newType) { type = newType; }
 };
 
-// The ContextRegister class manages register allocation/deallocation
-class ContextRegister {
-private:
+// The RegisterFile abstract class manages registerFile allocation/deallocation for both scalar and vector
+class RegisterFile {
+protected:
     std::unordered_map<int, Register> register_file;
     std::unordered_map<std::string, int> register_name_to_int;
 
-public:
-    ContextRegister();
-    ~ContextRegister();
+    virtual void initialiseRegisters() = 0;
 
-    std::string get_register(Type type);
-    void deallocate_register(const std::string &reg_name);
-    std::string get_register_name(int reg_number) const;
-    void set_register_type(const std::string &reg_name, Type type);
-    void allocate_register(std::string reg_name, Type type);
+public:
+    RegisterFile() {
+        initialiseRegisters();
+
+        for (const auto& [key, reg] : register_file){
+            register_name_to_int[reg.getName()] = key;
+        }
+    };
+    virtual ~RegisterFile() = default;
+
+    virtual std::string get_register(Type type);
+    virtual void deallocate_register(const std::string &reg_name);
+    virtual std::string get_register_name(int reg_number) const;
+    virtual void set_register_type(const std::string &reg_name, Type type);
+    virtual void allocate_register(std::string reg_name, Type type);
     //Getters to be used outside in context class since register_file and register_to_int are private
     Register& get_register_by_id(int reg_num) { return register_file[reg_num]; }
     int get_register_id(const std::string& reg_name) const;
+
+};
+
+class ScalarRegisterFile : public RegisterFile {
+protected:
+    void initialiseRegisters() override;
+
+};
+
+class VectorRegisterFile : public RegisterFile {
+protected:
+    void initialiseRegisters() override;
 
 };
 

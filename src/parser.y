@@ -34,7 +34,7 @@
 %token TYPE_NAME TYPEDEF EXTERN STATIC AUTO REGISTER SIZEOF
 %token CHAR SHORT INT LONG SIGNED UNSIGNED FLOAT DOUBLE CONST VOLATILE VOID
 %token STRUCT UNION ENUM ELLIPSIS
-%token CASE DEFAULT IF ELSE SWITCH WHILE DO FOR GOTO CONTINUE BREAK RETURN FABSF SYNC BLOCKIDX THREADIDX BLOCKSIZE
+%token CASE DEFAULT IF ELSE SWITCH WHILE DO FOR GOTO CONTINUE BREAK RETURN FABSF SYNC BLOCKIDX THREADIDX BLOCKSIZE KERNEL
 
 %type <node> translation_unit external_declaration function_definition primary_expression postfix_expression argument_expression_list
 %type <node> unary_expression cast_expression multiplicative_expression additive_expression shift_expression relational_expression
@@ -44,6 +44,7 @@
 %type <node> struct_declarator enum_specifier enumerator_list enumerator declarator direct_declarator pointer parameter_list parameter_declaration
 %type <node> identifier_list type_name abstract_declarator direct_abstract_declarator initializer initializer_list statement labeled_statement
 %type <node> compound_statement declaration_list expression_statement selection_statement iteration_statement jump_statement
+%type <node> kernel_statement
 
 %type <node_list> statement_list
 
@@ -233,6 +234,7 @@ statement
 	| selection_statement	{ $$ = $1; }
 	| iteration_statement   { $$ = $1; }
 	| labeled_statement		{ $$ = $1; }
+	| kernel_statement      { $$ = $1; }
 	;
 
 jump_statement
@@ -245,6 +247,12 @@ jump_statement
 labeled_statement
 	: CASE constant_expression ':' statement_list { $$ = new CaseStatement(NodePtr($2), NodePtr($4)); }
     | DEFAULT ':' statement_list { $$ = new CaseStatement(nullptr,NodePtr($3)); }
+	;
+
+kernel_statement
+	: KERNEL '(' constant_expression ')' compound_statement {
+		$$ = new KernelStatement(NodePtr($3), NodePtr($5));
+	}
 	;
 
 selection_statement
@@ -277,7 +285,7 @@ primary_expression
 	| FABSF '(' expression ')'  { $$ = new BuiltInFunction("fabsf", NodePtr($3)); }
 	| SYNC { $$ = new BuiltInFunction("sync");}
 	| BLOCKIDX    { $$ = new BuiltInOperand("blockId.x", 30); }
-    | THREADIDX   { $$ = new BuiltInOperand("threadId.x", 29); }
+    | THREADIDX   { $$ = new BuiltInOperand("threadId.x", 25); }
     | BLOCKSIZE   { $$ = new BuiltInOperand("blocksize", 31); }
 	;
 

@@ -24,7 +24,7 @@ int main(){
     float clusters_y[3][num_points];
     int cycle;
     int j;
-    int i;
+    int l; //loop iterator
     int done =1;
     int best;
 
@@ -42,6 +42,8 @@ int main(){
     float sum_y[3][num_points];
     float shortest_distance[num_points];
     int best_centroid_index[num_points];
+    int i;
+    int index;
 
 
     /*--------------------------------------------------------------------------------
@@ -53,9 +55,9 @@ int main(){
     float points_x[9] = {1.0, 2.0, 1.0, 8.0, 9.0, 8.0, -1.0, -2.0, -1.0};
     float points_y[9] = {1.0, 1.0, 2.0, 8.0, 8.0, 9.0, -1.0, -1.0, -2.0}; 
 
-    for(i=0; i<3; i++){
-        centroids_x[i] = points_x[i];
-        centroids_y[i] = points_y[i];
+    for(l=0; l<3; l++){
+        centroids_x[l] = points_x[l];
+        centroids_y[l] = points_y[l];
     }
 
     for(cycle=0; cycle<max_iter; cycle++){
@@ -83,7 +85,7 @@ int main(){
     -------------------------------------------------------------------------------------*/
 
         kernel(num_points){
-            int i = blockId.x * blocksize + threadId.x;
+            i = blockId.x * blocksize + threadId.x;
 
             if(i < num_points){
                 distances[0][i] = fabsf(centroids_x[0]-points_x[i]) + fabsf(centroids_y[0]-points_y[i]);
@@ -99,6 +101,8 @@ int main(){
                     best_centroid_index[i] = 1;
                 }
 
+
+
                 if(distances[2][i] < shortest_distance[i]){
                     shortest_distance[i] = distances[0][i];
                     best_centroid_index[i] = 2;
@@ -106,7 +110,7 @@ int main(){
 
                 clusters_x[best_centroid_index[i]][i] = points_x[i];
                 clusters_y[best_centroid_index[i]][i] = points_y[i];
-                total[best_centroid_index[i]][i]  = 1;
+                total[best_centroid_index[i]][i]  = 1.0;
                 
                 //syncs all threads in the same block
                 sync;
@@ -114,17 +118,19 @@ int main(){
                 //h represents the number of times to half the 100 points in summing operations 
                 for(int h = 0; h < 7; h++){
                     // 1 << h  = 2 ^ h;
-                    if((num_points - 1) < (1 << h)){ 
-                        sum_x[0][i] = clusters_x[0][i] + clusters_x[0][i + (1 << h)];
-                        sum_x[1][i] = clusters_x[1][i] + clusters_x[1][i + (1 << h)];
-                        sum_x[2][i] = clusters_x[2][i] + clusters_x[2][i + (1 << h)];
-                        sum_y[0][i] = clusters_y[0][i] + clusters_y[0][i + (1 << h)];
-                        sum_y[1][i] = clusters_y[1][i] + clusters_y[1][i + (1 << h)];
-                        sum_y[2][i] = clusters_y[2][i] + clusters_y[2][i + (1 << h)];
 
-                        total[0][i] = total[0][i] + total[0][i + (1 << h)];
-                        total[1][i] = total[1][i] + total[1][i + (1 << h)];
-                        total[2][i] = total[2][i] + total[2][i + (1 << h)];
+                    index = i + (1 << h);
+                    if((num_points - 1) < (1 << h)){ 
+                        sum_x[0][i] = clusters_x[0][i] + clusters_x[0][index];
+                        sum_x[1][i] = clusters_x[1][i] + clusters_x[1][index];
+                        sum_x[2][i] = clusters_x[2][i] + clusters_x[2][index];
+                        sum_y[0][i] = clusters_y[0][i] + clusters_y[0][index];
+                        sum_y[1][i] = clusters_y[1][i] + clusters_y[1][index];
+                        sum_y[2][i] = clusters_y[2][i] + clusters_y[2][index];
+
+                        total[0][i] = total[0][i] + total[0][index];
+                        total[1][i] = total[1][i] + total[1][index];
+                        total[2][i] = total[2][i] + total[2][index];
                     }
                     else{
                         sum_x[0][i] = clusters_x[0][i];
@@ -167,13 +173,13 @@ int main(){
         // }
     }
 
-    for (i = 0; i < 3; i++) {
-        OUT_centroids_x[i] = centroids_x[i];
-        OUT_centroids_y[i] = centroids_y[i];
-        OUT_cluster_sizes[i] = cluster_sizes[i];
-        for (j = 0; j < cluster_sizes[i]; j++) {
-            OUT_clusters_x[i][j] = clusters_x[i][j];
-            OUT_clusters_y[i][j] = clusters_y[i][j];
+    for (l = 0; l < 3; l++) {
+        OUT_centroids_x[l] = centroids_x[l];
+        OUT_centroids_y[l] = centroids_y[l];
+        OUT_cluster_sizes[l] = cluster_sizes[l];
+        for (j = 0; j < cluster_sizes[l]; j++) {
+            OUT_clusters_x[l][j] = clusters_x[l][j];
+            OUT_clusters_y[l][j] = clusters_y[l][j];
         }
     }
     

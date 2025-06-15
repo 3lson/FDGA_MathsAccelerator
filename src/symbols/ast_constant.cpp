@@ -8,11 +8,11 @@ void IntConstant::EmitElsonV(std::ostream &stream, Context &context, std::string
     if (dest_reg.rfind("f", 0) == 0) {
         // It's a floating-point register (e.g., ft0, fa1, etc.)
         std::string temp_int_reg = context.get_register(Type::_INT);
-        stream << "li " << temp_int_reg << ", " << value_ << std::endl;
-        stream << "fcvt.s.w " << dest_reg << ", " << temp_int_reg << std::endl;
+        stream << asm_prefix.at(context.get_instruction_state()) <<"li " << temp_int_reg << ", " << value_ << std::endl;
+        stream << asm_prefix.at(context.get_instruction_state()) << "fcvt.s.w " << dest_reg << ", " << temp_int_reg << std::endl;
     } else {
         // It's an integer register
-        stream << "li " << dest_reg << ", " << value_ << std::endl;
+        stream << asm_prefix.at(context.get_instruction_state()) <<"li " << dest_reg << ", " << value_ << std::endl;
     }
 }
 
@@ -37,8 +37,8 @@ void FloatConstant::EmitElsonV(std::ostream &stream, Context &context, std::stri
     int label_number = context.registerConstant(value_);
 
     std::string address_register = context.get_register(Type::_INT);
-    stream << "lui " << address_register << ", %hi(.LC" << label_number << ")" << std::endl;
-    stream << context.load_instr(Type::_FLOAT) << " " << dest_reg << ", %lo(.LC" << label_number << ")" << "(" << address_register << ")" << std::endl;
+    stream << asm_prefix.at(context.get_instruction_state()) <<"lui " << address_register << ", %hi(.LC" << label_number << ")" << std::endl;
+    stream << asm_prefix.at(context.get_instruction_state()) << context.load_instr(Type::_FLOAT) << " " << dest_reg << ", %lo(.LC" << label_number << ")" << "(" << address_register << ")" << std::endl;
     context.deallocate_register(address_register);
 }
 
@@ -58,8 +58,8 @@ void DoubleConstant::EmitElsonV(std::ostream &stream, Context &context, std::str
     int label_number = context.registerConstant(value_);
 
     std::string address_register = context.get_register(Type::_INT);
-    stream << "lui " << address_register << ", %hi(.LC" << label_number << ")" << std::endl;
-    stream << context.load_instr(Type::_DOUBLE) << " " << dest_reg << ", %lo(.LC" << label_number << ")" << "(" << address_register << ")" << std::endl;
+    stream <<asm_prefix.at(context.get_instruction_state()) <<"lui " << address_register << ", %hi(.LC" << label_number << ")" << std::endl;
+    stream << asm_prefix.at(context.get_instruction_state()) <<context.load_instr(Type::_DOUBLE) << " " << dest_reg << ", %lo(.LC" << label_number << ")" << "(" << address_register << ")" << std::endl;
     context.deallocate_register(address_register);
 }
 

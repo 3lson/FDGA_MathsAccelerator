@@ -22,6 +22,7 @@ public:
     Type GetType(Context &context) const override;
 
     int get_val(Context &context) const;
+    int get_index(Context &context) const;
     bool isPointerOp(Context &context) const override;
 };
 

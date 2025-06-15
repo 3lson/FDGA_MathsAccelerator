@@ -1,5 +1,6 @@
 #pragma once
 #include "ast_context_types.hpp"
+#include <vector>
 
 namespace ast{
 enum class ScopeLevel {
@@ -16,6 +17,8 @@ private:
     int memoryOffset;
     int arraySize;
     int dereference_num;
+    std::vector<int> arr_dim = {};
+    int identifier_constant = 0;
     std::string type_name_;
 
 public:
@@ -27,6 +30,15 @@ public:
     Variable(bool ptr, bool arr, int size, Type type, int offset, int dereference_num)
     : isPointer(ptr), isArray(arr), dataType(type), scope(ScopeLevel::LOCAL), memoryOffset(offset), arraySize(size), dereference_num(dereference_num), type_name_("")  {}
 
+    Variable(bool ptr, bool arr, int size, Type type, int offset, int dereference_num, std::vector<int> dim)
+    : isPointer(ptr), isArray(arr), dataType(type), scope(ScopeLevel::LOCAL), memoryOffset(offset), arraySize(size), dereference_num(dereference_num), type_name_(""), arr_dim(dim)  {}
+
+    Variable(bool ptr, bool arr, int size, Type type, int offset, int dereference_num, int constant)
+    : isPointer(ptr), isArray(arr), dataType(type), scope(ScopeLevel::LOCAL), memoryOffset(offset), arraySize(size), dereference_num(dereference_num),identifier_constant(constant), type_name_("")  {}
+
+    Variable(bool ptr, bool arr, int size, Type type, int offset, int dereference_num, int constant, std::vector<int> dim)
+    : isPointer(ptr), isArray(arr), dataType(type), scope(ScopeLevel::LOCAL), memoryOffset(offset), arraySize(size), dereference_num(dereference_num),identifier_constant(constant), type_name_(""), arr_dim(dim)  {}
+
     Variable(bool ptr, bool arr, Type type, ScopeLevel scp, int dereference_num)
     : isPointer(ptr), isArray(arr), dataType(type), scope(scp), memoryOffset(0), arraySize(1), dereference_num(dereference_num), type_name_("")  {}
 
@@ -34,7 +46,7 @@ public:
     : isPointer(ptr), isArray(arr), dataType(type), scope(scp), memoryOffset(0), arraySize(size), dereference_num(dereference_num), type_name_("")  {}
 
     Variable(bool is_pointer, bool arr, int size, Type type, int offset, int dereference_num, std::string type_name)
-        : isPointer(is_pointer), isArray(arr), dataType(type),
+        : isPointer(is_pointer), isArray(arr), dataType(type), //hard coded local as global isn't set this way
           memoryOffset(offset), arraySize(size), dereference_num(dereference_num), type_name_(type_name) {}
 
     //Getters
@@ -45,6 +57,8 @@ public:
     int get_offset() const { return memoryOffset; }
     int get_array_size() const { return arraySize; }
     int get_dereference_num() const {return dereference_num;}
+    int get_value() const {return identifier_constant; }
+    std::vector<int> get_dim() const {return arr_dim; }
     std::string get_type_name() const{ return type_name_; }
 
     //Setters
@@ -53,6 +67,7 @@ public:
     void set_type(Type type) { dataType = type; }
     void set_scope(ScopeLevel scp) { scope = scp; }
     void set_offset(int offset) { memoryOffset = offset; }
+    void set_value(int value) {identifier_constant = value;}
     void set_dereference_num(int num) { dereference_num = num; }
 
 };

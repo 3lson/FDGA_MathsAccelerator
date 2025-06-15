@@ -12,7 +12,7 @@ void Identifier::EmitElsonV(std::ostream &stream, Context &context, std::string 
 
         if (variable.get_scope() == ScopeLevel::LOCAL){
             int offset = variable.get_offset();
-            stream << context.load_instr(type) << " " << dest_reg << ", " << offset << "(s0)" << std::endl;
+            stream << asm_prefix.at(context.get_instruction_state()) <<context.load_instr(type) << " " << dest_reg << ", " << offset-4 << "(sp)" << std::endl;
         }
         else if (variable.get_scope() == ScopeLevel::GLOBAL)
         {
@@ -72,6 +72,11 @@ int Identifier::get_val(Context &context) const{
         throw std::runtime_error("Identifier::get_val - identifier is not an enum");
     }
     return context.get_enum_label(identifier_);
+}
+
+int Identifier::get_index(Context &context) const{
+    Variable var = context.get_variable(GetId());
+    return var.get_value();
 }
 
 bool Identifier::isPointerOp(Context &context) const

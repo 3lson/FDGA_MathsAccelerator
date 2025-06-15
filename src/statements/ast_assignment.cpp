@@ -52,7 +52,7 @@ void Assignment::EmitElsonV(std::ostream &stream, Context &context, std::string 
             {
                 if (variable.get_scope() == ScopeLevel::LOCAL)
                 {
-                    stream << context.store_instr(type) << " " << reg << ", " << offset << "(s0)" << std::endl;
+                    stream << asm_prefix.at(context.get_instruction_state()) << context.store_instr(type) << " " << reg << ", " << offset - 4 << "(sp)" << std::endl;
                 }
 
                 else if (variable.get_scope() == ScopeLevel::GLOBAL)
@@ -76,15 +76,20 @@ void Assignment::EmitElsonV(std::ostream &stream, Context &context, std::string 
             {
                 type = array_index_access->isPointerOp(context) ? Type::_INT : array_index_access->GetType(context);
                 std::string index_register = context.get_register(Type::_INT);
-                array_index_access->get_position(stream, context, index_register, type);
+                array_index_access->get_position(stream, context, index_register, type, variable);
 
                 if (variable.get_scope() == ScopeLevel::LOCAL)
                 {
                     if (variable.is_array())
                     {
-                        // Add index to base pointer
-                        stream << "add " << index_register << ", " << index_register << ", s0" << std::endl;
-                        stream << "addi " << index_register << ", " << index_register << ", " << offset << std::endl;
+
+                        std::string temp_register = context.get_register(Type::_INT);
+
+                        stream << asm_prefix.at(context.get_instruction_state()) << "li " << temp_register << ", " << variable.get_offset() << std::endl;
+                        stream << asm_prefix.at(context.get_instruction_state()) << "sub " << index_register << ", " << temp_register << ", " << index_register << std::endl;
+                        stream << asm_prefix.at(context.get_instruction_state()) << "add " << index_register << ", " << index_register << ", sp" << std::endl; //sp contains the bottom of the stack offset value
+                        
+                        context.deallocate_register(temp_register);
                     }
                     else if (variable.is_pointer())
                     {
@@ -250,7 +255,9 @@ int Assignment::GetArraySize() const
 
 bool Assignment::isArrayInitialization() const
 {
-    return dynamic_cast<const ArrayDeclaration *>(unary_expression_.get()) != nullptr;
+    // return dynamic_cast<const ArrayDeclaration *>(unary_expression_.get()) != nullptr;
+    return dynamic_cast<const ArrayInitialization *>(expression_.get()) != nullptr; //more relevant
+
 }
 
 void Assignment::global_init(std::ostream &stream, Context &context, Global &global) const
@@ -294,7 +301,15 @@ void Assignment::local_init(Type type, int offset, std::ostream &stream, Context
 {
     int array_size = GetArraySize();
 
+    std::vector<int> dimension;
+
     bool is_array = isArrayInitialization();
+
+    if(is_array){
+        const ArrayDeclaration *array = dynamic_cast<const ArrayDeclaration*>(unary_expression_.get());
+        dimension = array->GetArrayDim(context);
+    }
+    
     bool is_pointer = isPointerInitialization();
 
     // Increase stack offset to account for new variable
@@ -304,8 +319,15 @@ void Assignment::local_init(Type type, int offset, std::ostream &stream, Context
 
     std::string variable_name = GetId();
 
+    const IntConstant *int_const = dynamic_cast<const IntConstant *>(expression_.get());
     int dereference_num = get_deref();
-    Variable variable(is_pointer, is_array, array_size, type, offset, dereference_num);
+    int value = 0;
+
+    if(int_const != nullptr){
+        int value = int_const->get_val();
+    }
+
+    Variable variable(is_pointer, is_array, array_size, type, offset, dereference_num, value, dimension);
     context.define_variable(variable_name, variable);
 
     // Evaluate expression and store in variable

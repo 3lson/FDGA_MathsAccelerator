@@ -6,6 +6,7 @@
 #include <stack>
 #include <iostream>
 #include <set>
+#include <cmath>
 
 #include "ast_context_types.hpp"
 #include "ast_context_registers.hpp"
@@ -15,14 +16,23 @@
 #include "ast_context_enums.hpp"
 #include "ast_context_typedef.hpp"
 #include "ast_context_strings.hpp"
+#include "ast_context_kernel.hpp"
 
 namespace ast {
 
 class Context
 {
 private:
+    // ----- Kernel Management ------
+    Kernel instruction_state = Kernel::_SCALAR;
+    int warp_size = 16;
+    std::unordered_map<int, Warp> warp_file;
+
+
     // ----- Register Management ------
-    ContextRegister reg_manager;
+    ScalarRegisterFile main_cpu_registers;
+    RegisterFile* reg_manager; 
+
     std::stack<std::set<int>> allocated_registers;
     std::unordered_map<int, int> allocated_register_offsets;
 
@@ -79,14 +89,23 @@ public:
     Context();
     ~Context();
 
-    // ---------- Register Management --------------
-    std::string get_register(Type type) { return reg_manager.get_register(type); }
-    std::string get_return_register() const { return return_register; }
-    std::string get_register_name(int reg_number) const {return reg_manager.get_register_name(reg_number); }
-    void set_register_type(const std::string &reg_name, Type type) { reg_manager.set_register_type(reg_name, type); }
+    // ---------- Kernel Management ---------------
+    void set_instruction_state(Kernel state);
+    Kernel get_instruction_state() const { return instruction_state; }
+    int get_warp_size() const {return warp_size;}
 
-    void allocate_register(std::string reg_name, Type type) { reg_manager.allocate_register(reg_name, type); }
-    void deallocate_register(const std::string &reg_name) { reg_manager.deallocate_register(reg_name); }
+    // ---------- Register Management --------------
+    void assign_reg_manager(RegisterFile& new_reg_manager) {reg_manager = &new_reg_manager; }
+    void reset_reg_manager(){reg_manager = &main_cpu_registers;}
+    ScalarRegisterFile get_main_cpu_regs() {return main_cpu_registers;}
+    
+    std::string get_register(Type type) { return reg_manager->get_register(type); }
+    std::string get_return_register() const { return return_register; }
+    std::string get_register_name(int reg_number) const {return reg_manager->get_register_name(reg_number); }
+    void set_register_type(const std::string &reg_name, Type type) { reg_manager->set_register_type(reg_name, type); }
+
+    void allocate_register(std::string reg_name, Type type) { reg_manager->allocate_register(reg_name, type); }
+    void deallocate_register(const std::string &reg_name) { reg_manager->deallocate_register(reg_name); }
 
     void add_reg_to_set(std::string reg_name);
     void remove_reg_from_set(std::string reg_name);
@@ -103,6 +122,7 @@ public:
     void create_scope();
     void pop_scope();
     int get_stack_offset() const;
+    int get_total_offset() const;
     void increase_stack_offset(int offset);
     void set_stack_offset(int offset);
 

@@ -1,5 +1,4 @@
-#ifndef AST_HPP
-#define AST_HPP
+#pragma once
 
 #include <iostream>
 #include <string>
@@ -66,6 +65,8 @@
 
 #include "custom/ast_builtin_function.hpp"
 #include "custom/ast_builtin_operand.hpp"
+
+#include "kernel/ast_kernel.hpp"
 
 #include "context/ast_context.hpp"
 

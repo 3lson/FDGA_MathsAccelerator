@@ -1,5 +1,6 @@
 #include "../include/arrays/ast_array_index_access.hpp"
-
+#include <vector>
+#include <algorithm> //for std::reverse
 namespace ast{
 
 std::string ArrayIndexAccess::GetId() const
@@ -23,7 +24,7 @@ void ArrayIndexAccess::EmitElsonV(std::ostream &stream, Context &context, std::s
     Type type = isPointerOp(context) ? Type::_INT : GetType(context);
 
     std::string index_register = context.get_register(Type::_INT);
-    get_position(stream, context, index_register, type);
+    get_position(stream, context, index_register, type, variable);
 
     if (variable.get_scope() ==ScopeLevel::LOCAL){
         if (variable.is_pointer())
@@ -36,16 +37,20 @@ void ArrayIndexAccess::EmitElsonV(std::ostream &stream, Context &context, std::s
         }
         else if (variable.is_array())
         {
-            // Add index to base pointe
-            stream << "add " << index_register << ", " << index_register << ", s0" << std::endl;
-            stream << "addi " << index_register << ", " << index_register << ", " << variable.get_offset() << std::endl;
+            std::string temp_register = context.get_register(Type::_INT);
+
+            stream << asm_prefix.at(context.get_instruction_state()) << "li " << temp_register << ", " << variable.get_offset() << std::endl;
+            stream << asm_prefix.at(context.get_instruction_state()) << "sub " << index_register << ", " << temp_register << ", " << index_register << std::endl;
+            stream << asm_prefix.at(context.get_instruction_state()) << "add " << index_register << ", " << index_register << ", sp" << std::endl; //sp contains the bottom of the stack offset value
+            
+            context.deallocate_register(temp_register);
         }
         else
         {
             throw std::runtime_error("ArrayAccess EmitElsonV: Variable is not a pointer or array");
         }
 
-        stream << context.load_instr(type) << " " << dest_reg << ", 0(" << index_register << ")" << std::endl;
+        stream << asm_prefix.at(context.get_instruction_state()) << context.load_instr(type) << " " << dest_reg << ", 0(" << index_register << ")" << std::endl;
     }
     else if(variable.get_scope() == ScopeLevel::GLOBAL){
         std::string global_memory_location = "global_" + GetId();
@@ -61,17 +66,59 @@ void ArrayIndexAccess::EmitElsonV(std::ostream &stream, Context &context, std::s
     context.deallocate_register(index_register);
 }
 
-void ArrayIndexAccess::get_position(std::ostream &stream, Context &context, std::string dest_reg, Type type) const
+void ArrayIndexAccess::get_position(std::ostream &stream, Context &context, std::string dest_reg, Type type, Variable& variable) const
 {
     // Set operation type as dealing with pointers
     context.push_operation_type(Type::_INT);
 
-    // Emit index to specified register
-    index_->EmitElsonV(stream, context, dest_reg);
+    std::vector<int> indexes = get_linear_index(context);
+    std::vector<int> dimension = variable.get_dim();
 
-    stream << "slli " << dest_reg << ", " << dest_reg << ", " << types_mem_shift.at(type) << std::endl;
+    int linear_index;
+
+    //only can handle up to 2d arrays
+    if(indexes.size() == 2){
+        linear_index = indexes[0] * dimension[1] + (indexes[1]);
+    }
+    else{
+        linear_index = indexes[0];
+    }
+
+    // Emit index to specified register
+    //index_->EmitElsonV(stream, context, dest_reg);
+    stream << asm_prefix.at(context.get_instruction_state()) <<"li " << dest_reg << ", " << linear_index + 1 << std::endl;
+    stream << asm_prefix.at(context.get_instruction_state()) << "slli " << dest_reg << ", " << dest_reg << ", " << types_mem_shift.at(type) << std::endl;
 
     context.pop_operation_type();
+}
+
+std::vector<int> ArrayIndexAccess::get_linear_index(Context &context) const{
+    const ArrayIndexAccess *array = this;
+
+    std::vector<int> indexes;
+
+    const Identifier *variable = dynamic_cast<const Identifier *>(index_.get());
+    const IntConstant *constant = dynamic_cast<const IntConstant*>(index_.get());
+
+    while(array != nullptr){
+
+        variable = dynamic_cast<const Identifier *>(array->index_.get());
+        constant = dynamic_cast<const IntConstant*>(array->index_.get());
+
+        if(variable != nullptr){
+            indexes.push_back(variable->get_index(context));
+        }
+        else if(constant != nullptr){
+            indexes.push_back(constant->get_val());
+        }
+
+        array = dynamic_cast<const ArrayIndexAccess *>(array->identifier_.get());
+    }
+
+    std::reverse(indexes.begin(),indexes.end());
+
+    return indexes;
+
 }
 
 void ArrayIndexAccess::Print(std::ostream &stream) const

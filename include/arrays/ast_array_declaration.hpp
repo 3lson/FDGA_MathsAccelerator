@@ -5,6 +5,7 @@
 #include "../symbols/ast_constant.hpp"
 #include "../pointers/ast_pointer_declaration.hpp"
 #include "../ast_declarator.hpp"
+#include <vector>
 
 namespace ast{
 
@@ -13,6 +14,8 @@ private:
     NodePtr identifier_;
     NodePtr constant_expression_;
 
+    void collect_dims(Context& context, std::vector<int>& dims) const; //recursive helper function
+
 public:
     ArrayDeclaration(NodePtr identifier, NodePtr constant_expression) : identifier_(std::move(identifier)), constant_expression_(std::move(constant_expression)) {}
 
@@ -20,6 +23,7 @@ public:
 
     std::string GetId() const override;
     int GetArraySize() const;
+    std::vector<int> GetArrayDim(Context& context) const;
     bool isPointer() const override;
 
     virtual std::vector<Parameter>get_param(Context &context) const override;

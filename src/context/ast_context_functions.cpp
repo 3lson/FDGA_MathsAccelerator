@@ -34,7 +34,7 @@ void Context::set_return_register(Type type)
     case Type::_CHAR:
     case Type::_SHORT:
     case Type::_UNSIGNED_INT:
-        return_register = "a0";
+        return_register = "s1";
         break;
     case Type::_FLOAT:
     case Type::_DOUBLE:

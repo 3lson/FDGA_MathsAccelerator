@@ -1,4 +1,5 @@
 #include "../../include/context/ast_context.hpp"
+#include <cmath>
 
 namespace ast {
 
@@ -20,8 +21,14 @@ void Context::pop_scope(){
     }
 }
 
+//new for array 
+int Context::get_total_offset() const{
+    return total_offset;
+}
+
+//turn this into absolute value
 int Context::get_stack_offset() const {
-    return current_stack_offset.top() - total_offset;
+    return std::abs(current_stack_offset.top() - total_offset);
 }
 
 void Context::increase_stack_offset(int offset){
