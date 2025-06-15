@@ -42,8 +42,8 @@ def parse_input(input_str):
 def generate_visualization(clusters, width=640, height=480):
     img = np.ones((height, width, 3), dtype=np.uint8) * 255
     plot_width, plot_height = 400, 300
-    plot_x = (width - plot_width) // 2
-    plot_y = (height - plot_height) // 2
+    plot_x = 120
+    plot_y = 70
 
     x_min, x_max = 0, 20
     y_min, y_max = 0, 20
@@ -58,7 +58,7 @@ def generate_visualization(clusters, width=640, height=480):
         y = y_min + (plot_y + plot_height - py) * (y_max - y_min) / plot_height
         return x, y
 
-    light_colors = [
+    colors = [
         [255, 0, 0],
         [0, 255, 0],
         [0, 0, 255]
@@ -75,13 +75,13 @@ def generate_visualization(clusters, width=640, height=480):
                 if dist < min_dist:
                     min_dist = dist
                     closest_cluster = i
-            img[y, x] = light_colors[closest_cluster]
+            img[y, x] = colors[closest_cluster]
 
 
     for cluster in clusters:
         for x, y in cluster['points']:
             px, py = scale(x, y)
-            img[py-2:py+3, px-2:px+3] = 0
+            img[py-2:py+3, px-2:px+3] = [0, 0, 0]
         cx, cy = cluster['centroid']
         px, py = scale(cx, cy)
         img[py-3:py+4, px-3:px+4] = [100, 100, 100]
@@ -104,12 +104,15 @@ def run_gui():
     points = []  
     points_generated = False
     centroids_gen = False
+    drawing = False
+    last_x, last_y = None, None
+    drawn_lines = []
 
     # Plot boundaries
     x_min, x_max = 0, 20
     y_min, y_max = 0, 20
     plot_x = 120
-    plot_y = 90
+    plot_y = 70
     plot_width = 400
     plot_height = 300
 
@@ -122,14 +125,14 @@ def run_gui():
 
     def draw_axes():
         # X-axis
-        canvas.create_line(120, 390, 520, 390, fill='black', tags='plot')
+        canvas.create_line(120, 370, 520, 370, fill='black', tags='plot')
         # Y-axis
-        canvas.create_line(120, 390, 120, 90, fill='black', tags='plot')
+        canvas.create_line(120, 370, 120, 70, fill='black', tags='plot')
         #arrows
-        canvas.create_line(520, 390, 515, 385, fill='black', tags='plot')
-        canvas.create_line(520, 390, 515, 395, fill='black', tags='plot')
-        canvas.create_line(120, 90, 115, 95, fill='black', tags='plot')
-        canvas.create_line(120, 90, 125, 95, fill='black', tags='plot')
+        canvas.create_line(520, 370, 515, 365, fill='black', tags='plot')
+        canvas.create_line(520, 370, 515, 375, fill='black', tags='plot')
+        canvas.create_line(120, 70, 115, 75, fill='black', tags='plot')
+        canvas.create_line(120, 70, 125, 75, fill='black', tags='plot')
 
     # draws the clustersand points on canvas
     def draw_image():
@@ -200,10 +203,11 @@ def run_gui():
         canvas.create_image(0, 0, anchor='nw', image=tk_img, tags='plot')
         canvas.image = tk_img
         draw_axes()
-        root.after(100, lambda: animate(i + 1, all_iterations))  #wait 1 second between frames
+        redraw_lines()
+        root.after(0, lambda: animate(i + 1, all_iterations))  #wait 1 second between frames
 
     def reset_canvas():
-        nonlocal img, tk_img, points_generated, num_centroids, centroids_gen
+        nonlocal img, tk_img, points_generated, num_centroids, centroids_gen, drawn_lines
         num_centroids = 0
         points_generated = False
         centroids_gen = False
@@ -213,9 +217,12 @@ def run_gui():
         tk_img = ImageTk.PhotoImage(Image.fromarray(img))
         open("points/clicked_points.txt", "w").close()
         canvas.delete('plot')
+        canvas.delete('drawings')
         canvas.create_image(0, 0, anchor='nw', image=tk_img, tags='plot')
         canvas.image = tk_img
         draw_axes()
+        drawn_lines.clear()
+
 
     # coordinate labels
     coord_label = tk.Label(root, text="Coordinates: ", font=("Arial", 10))
@@ -224,7 +231,7 @@ def run_gui():
     def get_centroids(event):
         nonlocal img, tk_img, points_generated, num_centroids, points, centroids_gen
 
-        if 120 <= event.x <= 520 and 90 <= event.y <= 390:
+        if 120 <= event.x <= 520 and 70 <= event.y <= 360:
             x = x_min + (event.x - plot_x) * (x_max - x_min) / plot_width
             y = y_min + (plot_y + plot_height - event.y) * (y_max - y_min) / plot_height
             px = int(plot_x + (x - x_min) / (x_max - x_min) * plot_width)
@@ -280,10 +287,11 @@ def run_gui():
             canvas.create_image(0, 0, anchor='nw', image=tk_img, tags='plot')
             canvas.image = tk_img
             draw_axes()
+            redraw_lines()
 
 
     def show_coordinates(event):
-        if 120 <= event.x <= 520 and 90 <= event.y <= 390:
+        if 120 <= event.x <= 520 and 70 <= event.y <= 360:
             x = x_min + (event.x - plot_x) * (x_max - x_min) / plot_width
             y = y_min + (plot_y + plot_height - event.y) * (y_max - y_min) / plot_height
             coord_label.config(text=f"Coordinates: ({x:.2f}, {y:.2f})")
@@ -361,13 +369,40 @@ def run_gui():
         canvas.create_image(0, 0, anchor='nw', image=tk_img, tags='plot')
         canvas.image = tk_img
         draw_axes()
+        redraw_lines()
 
+    def start_drawing(event):
+        global drawing, last_x, last_y
+        if 120 <= event.x <= 520 and 70 <= event.y <= 360:
+            drawing = True
+            last_x, last_y = event.x, event.y
+
+    def draw(event):
+        global drawing, last_x, last_y
+        if drawing and 120 <= event.x <= 520 and 70 <= event.y <= 360:
+            # Draw on canvas
+            canvas.create_line(last_x, last_y, event.x, event.y, fill="orange", width=2, tags='drawings')
+            # Save the line segment
+            drawn_lines.append((last_x, last_y, event.x, event.y))
+            # Update last position
+            last_x, last_y = event.x, event.y
+
+    def redraw_lines():
+        for x1, y1, x2, y2 in drawn_lines:
+            canvas.create_line(x1, y1, x2, y2, fill="orange", width=2, tags='drawings')
+
+
+
+    def stop_drawing(event):
+        global drawing
+        drawing = False
 
     def on_exit():
         open("points/clicked_points.txt", "w").close()
         open("points/points.txt", "w").close()
         open("output.txt", "w").close()
         root.destroy()  # This closes the window
+
 
     # Register the custom exit function
     root.protocol("WM_DELETE_WINDOW", on_exit)
@@ -383,6 +418,10 @@ def run_gui():
     canvas.create_window(320, 440, anchor='s', window=button_gen_points)
     
     canvas.bind('<Button-1>', get_centroids)
+    # Bind right-click events
+    canvas.bind('<ButtonPress-3>', start_drawing)   # Right mouse button press
+    canvas.bind('<B3-Motion>', draw)                # Mouse movement with right button held
+    canvas.bind('<ButtonRelease-3>', stop_drawing)  # Right mouse button release
 
 
     draw_axes()
@@ -409,7 +448,7 @@ def start_screen():
         "Click 'Continue' to proceed to the interactive interface."
     )
 
-    text_label = tk.Label(start_root, text=intro_text, wraplength=600, justify="left", font=("Arial", 12))
+    text_label = tk.Label(start_root, text=intro_text, wraplength=600, justify="left", font=("Arial", 10))
     text_label.pack(padx=20, pady=40)
 
     # Continue button
