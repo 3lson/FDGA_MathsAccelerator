@@ -291,7 +291,7 @@ def run_gui():
 
 
     def show_coordinates(event):
-        if 120 <= event.x <= 520 and 70 <= event.y <= 360:
+        if 120 <= event.x <= 520 and 70 <= event.y <= 370:
             x = x_min + (event.x - plot_x) * (x_max - x_min) / plot_width
             y = y_min + (plot_y + plot_height - event.y) * (y_max - y_min) / plot_height
             coord_label.config(text=f"Coordinates: ({x:.2f}, {y:.2f})")
@@ -373,13 +373,13 @@ def run_gui():
 
     def start_drawing(event):
         global drawing, last_x, last_y
-        if 120 <= event.x <= 520 and 70 <= event.y <= 360:
+        if 120 <= event.x <= 520 and 70 <= event.y <= 370:
             drawing = True
             last_x, last_y = event.x, event.y
 
     def draw(event):
         global drawing, last_x, last_y
-        if drawing and 120 <= event.x <= 520 and 70 <= event.y <= 360:
+        if drawing and 120 <= event.x <= 520 and 70 <= event.y <= 370:
             # Draw on canvas
             canvas.create_line(last_x, last_y, event.x, event.y, fill="orange", width=2, tags='drawings')
             # Save the line segment
@@ -390,8 +390,6 @@ def run_gui():
     def redraw_lines():
         for x1, y1, x2, y2 in drawn_lines:
             canvas.create_line(x1, y1, x2, y2, fill="orange", width=2, tags='drawings')
-
-
 
     def stop_drawing(event):
         global drawing
