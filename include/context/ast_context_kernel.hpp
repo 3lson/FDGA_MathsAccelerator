@@ -44,18 +44,10 @@ private:
     ScalarRegisterFile warp_registers;
     std::vector<Thread> threads;
 
-    void initialise_from_cpu(Context& context);
-
-
 public:
 
-    Warp(int warp_id_,int warp_size_, bool is_active_, int warp_offset_)
-    : warp_id(warp_id_), warp_size(warp_size_), is_active(is_active_), warp_offset(warp_offset_){
-        //initialize warp_size number of threads here
-        initialise_from_cpu(context); 
-    }
-
-
+    Warp(int warp_id_,int warp_size_, bool is_active_);
+    
     //getters
     int get_id() const {return warp_id;}
     int get_size() const {return warp_size;}
@@ -63,10 +55,11 @@ public:
     bool get_completion() const {return is_complete;}
     Thread& return_thread(int thread_id);
     ScalarRegisterFile& get_warp_file() {return warp_registers;}
-    int warp_offset() const {return warp_offset;}
+    int get_warp_offset() const {return warp_offset;}
     
     
     //setters
+    void initialise_from_cpu(const ScalarRegisterFile& cpu_registers);
     void set_activity(bool activity) {is_active = activity;}
     void set_completion(bool status) {is_complete = status;}
     void set_warp_offset(int offset) {warp_offset = offset;}

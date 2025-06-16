@@ -4,12 +4,12 @@
 
 -------------------------------------------------------------------------------*/
 
-float OUT_centroids_x[3];
-float OUT_centroids_y[3];
+// float OUT_centroids_x[3];
+// float OUT_centroids_y[3];
 
-float OUT_clusters_x[3][9];
-float OUT_clusters_y[3][9];
-int OUT_cluster_sizes[3];
+// float OUT_clusters_x[3][9];
+// float OUT_clusters_y[3][9];
+// int OUT_cluster_sizes[3];
 
 
 int main(){
@@ -34,7 +34,7 @@ int main(){
 
     ---------------------------------------------------------------------------------*/
 
-    int warpsize = 32; // dependant on number of SIMT lanes
+    int warpsize = 16; // dependant on number of SIMT lanes
     int blocksize = 4; // ([pts + warpsize-1] // warpsize) * warpsize MANUALLY RECALCULATE WHEN WARPSIZE ALTERED
     float distances[3][num_points];
     float total[3][num_points];
@@ -85,7 +85,8 @@ int main(){
     -------------------------------------------------------------------------------------*/
 
         kernel(num_points){
-            i = blockId.x * blocksize + threadId.x;
+            //i = blockId.x * blocksize + threadId.x;
+            i = threadId.x
 
             if(i < num_points){
                 distances[0][i] = fabsf(centroids_x[0]-points_x[i]) + fabsf(centroids_y[0]-points_y[i]);
@@ -173,15 +174,15 @@ int main(){
         // }
     }
 
-    for (l = 0; l < 3; l++) {
-        OUT_centroids_x[l] = centroids_x[l];
-        OUT_centroids_y[l] = centroids_y[l];
-        OUT_cluster_sizes[l] = cluster_sizes[l];
-        for (j = 0; j < cluster_sizes[l]; j++) {
-            OUT_clusters_x[l][j] = clusters_x[l][j];
-            OUT_clusters_y[l][j] = clusters_y[l][j];
-        }
-    }
+    // for (l = 0; l < 3; l++) {
+    //     OUT_centroids_x[l] = centroids_x[l];
+    //     OUT_centroids_y[l] = centroids_y[l];
+    //     OUT_cluster_sizes[l] = cluster_sizes[l];
+    //     for (j = 0; j < cluster_sizes[l]; j++) {
+    //         OUT_clusters_x[l][j] = clusters_x[l][j];
+    //         OUT_clusters_y[l][j] = clusters_y[l][j];
+    //     }
+    // }
     
     return 5;
 }

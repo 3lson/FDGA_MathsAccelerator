@@ -26,7 +26,7 @@ private:
     // ----- Kernel Management ------
     Kernel instruction_state = Kernel::_SCALAR;
     int warp_size = 16;
-    std::unordered_map<int, Warp> warp_file;
+    std::vector<Warp> warp_file;
 
 
     // ----- Register Management ------
@@ -93,11 +93,12 @@ public:
     void set_instruction_state(Kernel state);
     Kernel get_instruction_state() const { return instruction_state; }
     int get_warp_size() const {return warp_size;}
+    std::vector<Warp>& get_warp_file() {return warp_file;}
 
     // ---------- Register Management --------------
     void assign_reg_manager(RegisterFile& new_reg_manager) {reg_manager = &new_reg_manager; }
     void reset_reg_manager(){reg_manager = &main_cpu_registers;}
-    ScalarRegisterFile get_main_cpu_regs() {return main_cpu_registers;}
+    const ScalarRegisterFile& get_main_cpu_regs() const {return main_cpu_registers;}
     
     std::string get_register(Type type) { return reg_manager->get_register(type); }
     std::string get_return_register() const { return return_register; }
