@@ -26,46 +26,57 @@ def mmio_read(offset):
 def handle_client(conn, addr):
     print(f'Connected by {addr}')
     try:
-        #wait for START command
         cmd = recv_line(conn)
         if cmd != "START":
             print("Expected START")
             return
 
-        #expected files to receive
-        save_targets = ["out/clicked_points.txt", "out/points.txt"]
-        for expected_name in save_targets:
+        save_targets = ["clicked_points.txt", "points.txt"]
+        base_offsets = [0x8000, 0x16000]  # split memory regions for the two files
+
+        for idx, expected_name in enumerate(save_targets):
             received_filename = recv_line(conn)
             size = int(recv_line(conn))
             data = recv_exact(conn, size)
 
-            os.makedirs(os.path.dirname(expected_name), exist_ok=True)
             with open(expected_name, "wb") as f:
                 f.write(data)
-
             print(f"Saved {received_filename} as {expected_name} ({size} bytes)")
 
-        #wait for END
+            #decode and parse the file into integers for MMIO
+            lines = data.decode().splitlines()
+            offset = base_offsets[idx]
+            for line in lines:
+                parts = line.strip().split()
+                for part in parts:
+                    value = int(float(part))
+                    mmio_write(offset, value)
+                    offset += 4  # next 4-byte slot
+
         end_cmd = recv_line(conn)
         if end_cmd != "END":
             print("Expected END")
             return
 
-        subprocess.run(['gcc', 'k_means3.c', '-o', 'k_means3'], capture_output=True, text=True)
-        subprocess.run(['./k_means3'], capture_output=True, text=True)
+        #read output from BRAM starting at address 0x0000
+        output_lines = []
+        offset = 0x0000
+        max_lines = 1000 #adjust later
 
-        output_path = "out/output.txt"
-        if not os.path.exists(output_path):
-            print("output.txt not generated.")
-            return
+        for _ in range(max_lines):
+            value = mmio_read(offset)
+            if value == 0xFFFFFFFF:
+                break
+            output_lines.append(str(value))
+            offset += 4
 
-        with open(output_path, "rb") as f:
-            output_data = f.read()
+        output_str = "\n".join(output_lines) + "\n"
+        output_bytes = output_str.encode()
 
         conn.sendall(b"output.txt\n")
-        conn.sendall(f"{len(output_data)}\n".encode())
-        conn.sendall(output_data)
-        print("Sent output.txt")
+        conn.sendall(f"{len(output_bytes)}\n".encode())
+        conn.sendall(output_bytes)
+        print("Sent output.txt from BRAM")
 
     except Exception as e:
         print(f"Error: {e}")
