@@ -53,38 +53,21 @@ def generate_visualization(clusters, width=640, height=480):
         py = plot_y + plot_height - int((y - y_min) / (y_max - y_min) * plot_height)
         return px, py
 
-    def inv_scale(px, py):
-        x = x_min + (px - plot_x) * (x_max - x_min) / plot_width
-        y = y_min + (plot_y + plot_height - py) * (y_max - y_min) / plot_height
-        return x, y
-
+    # Fixed colors: Red, Green, Blue
     colors = [
-        [255, 0, 0],
-        [0, 255, 0],
-        [0, 0, 255]
+        [255, 0, 0],   # Red
+        [0, 255, 0],   # Green
+        [0, 0, 255]    # Blue
     ]
 
-    for y in range(plot_y, plot_y + plot_height):
-        for x in range(plot_x, plot_x + plot_width):
-            data_x, data_y = inv_scale(x, y)
-            min_dist = float('inf')
-            closest_cluster = 0
-            for i, cluster in enumerate(clusters):
-                cx, cy = cluster['centroid']
-                dist = (data_x - cx)**2 + (data_y - cy)**2
-                if dist < min_dist:
-                    min_dist = dist
-                    closest_cluster = i
-            img[y, x] = colors[closest_cluster]
-
-
-    for cluster in clusters:
+    for i, cluster in enumerate(clusters):
+        color = colors[i % 3]
         for x, y in cluster['points']:
             px, py = scale(x, y)
-            img[py-2:py+3, px-2:px+3] = [0, 0, 0]
+            img[py-2:py+3, px-2:px+3] = color  # Color the data point
         cx, cy = cluster['centroid']
         px, py = scale(cx, cy)
-        img[py-3:py+4, px-3:px+4] = [100, 100, 100]
+        img[py-4:py+5, px-4:px+5] = color  # Color the centroid with the same color
 
     return img
 
@@ -138,7 +121,7 @@ def run_gui():
     def draw_image():
         nonlocal img, tk_img, points_generated, centroids_gen
         if (not points_generated) or (not centroids_gen):
-            messagebox.showwarning("Warning", "Please generate points before starting.")
+            messagebox.showwarning("Warning", "Please generate points and select initial centroids before starting.")
             return
 
         try:
@@ -431,26 +414,29 @@ def start_screen():
     start_root.title("K-Means Clustering - Introduction")
     start_root.geometry("800x800")
     start_root.resizable(False, False)
-
     # Intro text
     intro_text = (
         "Welcome to the K-Means Clustering Visualizer!\n\n"
-        "Raise your hand to camera level to begin"
-        "Point your palm to the screen and lift your thumb, index, and middle finger to use the cursor.\n\n"
-        "Quickly move your index finger down and then up as if clicking a mouse to left click."
         "This tool helps you understand how the K-Means clustering algorithm works.\n\n"
+        "To use the virtual mouse controller:\n\n"
+        "1. Raise your hand to camera level.\n"
+        "2. Point your palm to the screen and lift your thumb, index, and middle finger to use the cursor.\n"
+        "3. Quickly move your index finger down and then up as if clicking a mouse to left click.\n"
+        "4. Activate draw mode by bending your middle finger, then begin drawing.\n\n"
+        "To run the K-Means clustering algorithm, follow these steps:\n\n"
         "1. Generate random points using the 'Generate Points' button.\n"
         "2. Click to place initial centroids on the graph (max 3 at a time).\n"
-        "3. Click 'Start' to run the clustering algorithm implemented in C.\n"
-        "4. Watch as the algorithm updates cluster assignments and centroid positions over iterations.\n\n"
+        "3. You can draw lines on the graph if you want to guess clusters.\n"
+        "4. Click 'Start' to run the clustering algorithm implemented in C.\n"
+        "5. Watch as the algorithm updates cluster assignments and centroid positions over iterations.\n\n"
         "Click 'Continue' to proceed to the interactive interface."
     )
 
-    text_label = tk.Label(start_root, text=intro_text, wraplength=600, justify="left", font=("Arial", 10))
-    text_label.pack(padx=20, pady=40)
+    text_label = tk.Label(start_root, text=intro_text, wraplength=600, justify="left", font=("Arial", 11))
+    text_label.pack(padx=10, pady=20)
 
     # Continue button
-    continue_btn = tk.Button(start_root, text="Continue →", font=("Arial", 12),width=20,height=2,command=lambda: [start_root.destroy(), run_gui()])
+    continue_btn = tk.Button(start_root, text="Continue →", font=("Arial", 12),width=20,height=2,bg="white",command=lambda: [start_root.destroy(), run_gui()])
     continue_btn.pack(side='right', padx=20, pady=20)
 
     start_root.mainloop()
