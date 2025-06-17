@@ -17,6 +17,8 @@ void KernelStatement::EmitElsonV(std::ostream& stream, Context& context, std::st
     InitializeFirstWarp(stream, context);
 
     stream << start_kernel_label << ": " << std::endl;
+
+    compound_statement_->EmitElsonV(stream,context,dest_reg); 
 }
 
 void KernelStatement::Print(std::ostream& stream) const {
@@ -38,10 +40,66 @@ void KernelStatement::InitializeFirstWarp(std::ostream& stream, Context& context
     int thread_num = first_warp.get_size();
     int warp_offset = first_warp.get_warp_offset();
 
-    std::string address_reg = context.get_register(Type::_INT);
+    std::string offset_reg = context.get_register(Type::_INT);
 
+    int address = warp_offset - ((3+1)*4);
+
+    //load gp
+    int address = warp_offset - ((3+1)*4);
+    stream << asm_prefix.at(context.get_instruction_state()) << "li " << offset_reg << ", " << address << std::endl;
+    stream << asm_prefix.at(context.get_instruction_state()) << "lw gp, " << 0 << "(" << offset_reg << ")" << std::endl;
+
+
+    //load s24 (warp-id)
+    address = warp_offset - ((24+1)*4);
+    stream << asm_prefix.at(context.get_instruction_state()) << "li " << offset_reg << ", " << address << std::endl;
+    stream << asm_prefix.at(context.get_instruction_state()) << "lw s24, " << 0 << "(" << offset_reg << ")" << std::endl;
+
+    //load s25 (PC value)
+    address = warp_offset - ((25+1)*4);
+    stream << asm_prefix.at(context.get_instruction_state()) << "li " << offset_reg << ", " << address << std::endl;
+    stream << asm_prefix.at(context.get_instruction_state()) << "lw s25, " << 0 << "(" << offset_reg << ")" << std::endl;
+
+    //load s26 execution mask
+    address = warp_offset - ((26+1)*4);
+    stream << asm_prefix.at(context.get_instruction_state()) << "li " << offset_reg << ", " << address << std::endl;
+    stream << asm_prefix.at(context.get_instruction_state()) << "lw s26, " << 0 << "(" << offset_reg << ")" << std::endl;
+
+    context.deallocate_register(offset_reg);
+
+    context.set_instruction_state(Kernel::_VECTOR);
+    context.assign_reg_manager(first_warp.return_thread(0).get_thread_file());
     
-    
+    //load threads:
+
+    for(int i = 0; i < first_warp.get_size(); i++){
+        Thread& load_thread = first_warp.return_thread(i);
+        int thread_offset = load_thread.get_offset();
+        int address;
+
+        std::string thread_addr = context.get_register(Type::_INT);
+
+        //load sp
+        address = thread_offset - ((2+1)*4);
+        stream << asm_prefix.at(context.get_instruction_state()) << "li " << thread_addr << ", " << address << std::endl;
+        stream << asm_prefix.at(context.get_instruction_state()) << "lw sp, " << 0 << "(" << thread_addr << ")" << std::endl;
+
+        //load gp
+        address = thread_offset - ((3+1)*4);
+        stream << asm_prefix.at(context.get_instruction_state()) << "li " << thread_addr << ", " << address << std::endl;
+        stream << asm_prefix.at(context.get_instruction_state()) << "lw gp, " << 0 << "(" << thread_addr << ")" << std::endl;
+
+        //load v0 (stack header)
+        address = thread_offset - ((6+1)*4);
+        stream << asm_prefix.at(context.get_instruction_state()) << "li " << thread_addr << ", " << address << std::endl;
+        stream << asm_prefix.at(context.get_instruction_state()) << "lw v0, " << 0 << "(" << thread_addr << ")" << std::endl;
+
+        //load v26 (global thread id)
+        address = thread_offset - ((31+1)*4);
+        stream << asm_prefix.at(context.get_instruction_state()) << "li " << thread_addr << ", " << address << std::endl;
+        stream << asm_prefix.at(context.get_instruction_state()) << "lw v26, " << 0 << "(" << thread_addr << ")" << std::endl;
+
+    }
 }
 
 
@@ -122,10 +180,10 @@ void KernelStatement::InitializeKernel(std::string start_kernel_label, std::ostr
     }
 
 
-    //set execution mask registers (s1)
+    //set execution mask registers (s26)
     for(auto& warp: warp_file){
         int warp_offset = warp.get_warp_offset();
-        int address = warp_offset - (7+1)*4;
+        int address = warp_offset - (31+1)*4;
 
         int32_t execution_mask = warp.get_execution_mask();
 
@@ -136,10 +194,10 @@ void KernelStatement::InitializeKernel(std::string start_kernel_label, std::ostr
     }
 
 
-    //set warpid (s26) + global_thread_id
+    //set warpid (s24) + global_thread_id
     for(auto& warp: warp_file){
         int warp_offset = warp.get_warp_offset();
-        int address = warp_offset - (31+1)*4;
+        int address = warp_offset - (29+1)*4;
 
         int warp_id = warp.get_id();
 

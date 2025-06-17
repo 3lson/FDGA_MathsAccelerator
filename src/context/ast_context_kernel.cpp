@@ -24,7 +24,7 @@ Warp::Warp(int warp_id_,int warp_size_, bool is_active_)
     }
 
     //sets exeuction mask
-    execution_mask = (0xFFFFFFFF << (32 - warp_size));
+    execution_mask = (0xFFFFFFFF >> (32 - warp_size));
     
 }
 

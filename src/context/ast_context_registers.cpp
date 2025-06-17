@@ -41,11 +41,11 @@ void ScalarRegisterFile::initialiseRegisters(){
         {32, Register("fs0", Type::_FLOAT, false)}, // zeroreg 
         {33, Register("fs1", Type::_FLOAT, true)},
         {34, Register("fs2", Type::_FLOAT, true)},
-                                                   // not sure why tbh this is was said:
-        {35, Register("fs3", Type::_FLOAT, true)}, // "reserved for multi-threading"
-        {36, Register("fs4", Type::_FLOAT, true)}, // "reserved for multi-threading"
-        {37, Register("fs5", Type::_FLOAT, true)}, // "reserved for multi-threading"
-        {38, Register("fs6", Type::_FLOAT, true)}, // "reserved for multi-threading"
+                                                   
+        {35, Register("fs3", Type::_FLOAT, true)}, 
+        {36, Register("fs4", Type::_FLOAT, true)}, 
+        {37, Register("fs5", Type::_FLOAT, true)}, 
+        {38, Register("fs6", Type::_FLOAT, true)}, 
 
         {39, Register("fs7", Type::_FLOAT, true)},
         {40, Register("fs8", Type::_FLOAT, true)},
@@ -71,7 +71,7 @@ void ScalarRegisterFile::initialiseRegisters(){
         {60, Register("fs28", Type::_FLOAT, true)},
         {61, Register("fs29", Type::_FLOAT, true)},
         {62, Register("fs30", Type::_FLOAT, true)},
-        {63, Register("fs31", Type::_FLOAT, true)}
+        {63, Register("fs31", Type::_FLOAT, false)}
     };
 }
 
@@ -141,7 +141,7 @@ void VectorRegisterFile::initialiseRegisters(){
         {60, Register("fv28", Type::_FLOAT, true)},
         {61, Register("fv29", Type::_FLOAT, true)},
         {62, Register("fv30", Type::_FLOAT, true)},
-        {63, Register("fv31", Type::_FLOAT, true)}
+        {63, Register("fv31", Type::_FLOAT, false)}
     };
 }
 
