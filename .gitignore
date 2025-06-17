@@ -1,5 +1,5 @@
 .DS_Store
-tb/
-rtl/
-bin/
-build/
+/tb
+/rtl
+/bin
+/build
