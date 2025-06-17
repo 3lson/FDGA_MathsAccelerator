@@ -27,6 +27,7 @@ private:
     Kernel instruction_state = Kernel::_SCALAR;
     int warp_size = 16;
     std::vector<Warp> warp_file;
+    int warp_offset = 15000;
 
 
     // ----- Register Management ------
@@ -94,6 +95,7 @@ public:
     Kernel get_instruction_state() const { return instruction_state; }
     int get_warp_size() const {return warp_size;}
     std::vector<Warp>& get_warp_file() {return warp_file;}
+    int get_warp_offset() const {return warp_offset;}
 
     // ---------- Register Management --------------
     void assign_reg_manager(RegisterFile& new_reg_manager) {reg_manager = &new_reg_manager; }

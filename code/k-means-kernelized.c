@@ -55,11 +55,6 @@ int main(){
     float points_x[9] = {1.0, 2.0, 1.0, 8.0, 9.0, 8.0, -1.0, -2.0, -1.0};
     float points_y[9] = {1.0, 1.0, 2.0, 8.0, 8.0, 9.0, -1.0, -1.0, -2.0}; 
 
-    for(l=0; l<3; l++){
-        centroids_x[l] = points_x[l];
-        centroids_y[l] = points_y[l];
-    }
-
     for(cycle=0; cycle<max_iter; cycle++){
         done = 1;
         for(j=0; j<3; j++){

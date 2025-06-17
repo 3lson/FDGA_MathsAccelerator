@@ -79,13 +79,13 @@ void VectorRegisterFile::initialiseRegisters(){
     register_file = {
         {0, Register("zero", Type::_INT, false)},
         {1, Register("ra", Type::_INT, false)},
-        {2, Register("sp", Type::_INT, false)},
-        {3, Register("gp", Type::_INT, false)},
-        {4, Register("tp", Type::_INT, false)},
+        {2, Register("sp", Type::_INT, false)}, //data stack pointer
+        {3, Register("gp", Type::_INT, false)}, //thread offset
+        {4, Register("tp", Type::_INT, false)}, 
         {5, Register("v0", Type::_INT, false)}, //stack header
         {6, Register("v1", Type::_INT, true)},  
         {7, Register("v2", Type::_INT, true)},
-        {8, Register("v3", Type::_INT, true)}, //?? this was set false could be important
+        {8, Register("v3", Type::_INT, true)}, 
         {9, Register("v4", Type::_INT, true)},
         {10, Register("v5", Type::_INT, true)},
         {11, Register("v6", Type::_INT, true)},
@@ -105,21 +105,18 @@ void VectorRegisterFile::initialiseRegisters(){
         {25, Register("v20", Type::_INT, true)},
         {26, Register("v21", Type::_INT, true)},
         {27, Register("v22", Type::_INT, true)},
-
-        {28, Register("v23", Type::_INT, true)}, // reserved for multi-threading
-        {29, Register("v24", Type::_INT, true)}, // reserved for multi-threading
-        {30, Register("v25", Type::_INT, false)}, // localThreadId
-        {31, Register("v26", Type::_INT, false)}, // warpId
+        {28, Register("v23", Type::_INT, true)}, 
+        {29, Register("v24", Type::_INT, true)},
+        {30, Register("v25", Type::_INT, true)}, 
+        {31, Register("v26", Type::_INT, false)}, // global thread id
 
         {32, Register("fv0", Type::_FLOAT, false)}, // zeroreg 
         {33, Register("fv1", Type::_FLOAT, true)},
         {34, Register("fv2", Type::_FLOAT, true)},
-                                                   // not sure why tbh this is was said:
-        {35, Register("fv3", Type::_FLOAT, true)}, // "reserved for multi-threading"
-        {36, Register("fv4", Type::_FLOAT, true)}, // "reserved for multi-threading"
-        {37, Register("fv5", Type::_FLOAT, true)}, // "reserved for multi-threading"
-        {38, Register("fv6", Type::_FLOAT, true)}, // "reserved for multi-threading"
-
+        {35, Register("fv3", Type::_FLOAT, true)}, 
+        {36, Register("fv4", Type::_FLOAT, true)}, 
+        {37, Register("fv5", Type::_FLOAT, true)},
+        {38, Register("fv6", Type::_FLOAT, true)},
         {39, Register("fv7", Type::_FLOAT, true)},
         {40, Register("fv8", Type::_FLOAT, true)},
         {41, Register("fv9", Type::_FLOAT, true)},

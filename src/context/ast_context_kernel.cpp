@@ -22,7 +22,18 @@ Warp::Warp(int warp_id_,int warp_size_, bool is_active_)
     for(int i = 0; i < warp_size; i++){
         threads.emplace_back(i, warp_id);
     }
+
+    //sets exeuction mask
+    execution_mask = (0xFFFFFFFF << (32 - warp_size));
     
+}
+
+void Warp::deactivate_lane(int index){
+    execution_mask &= ~(1 << index);
+}
+
+void Warp::activate_lane(int index){
+    execution_mask |= (1 << index);
 }
 
 void Warp::initialise_from_cpu(const ScalarRegisterFile& cpu_registers){

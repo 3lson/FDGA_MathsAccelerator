@@ -12,7 +12,9 @@ private:
     NodePtr threads_;
     NodePtr compound_statement_;
 
-    void InitializeKernel(Context& context) const;
+    void InitializeKernel(std::string start_kernel_label, std::ostream& stream, Context& context) const;
+    void InitializeFirstWarp(std::ostream& stream, Context& context) const;
+    int KernelStackSize(Context& context) const;
 
 public:
     KernelStatement(NodePtr threads, NodePtr compound_statement)
