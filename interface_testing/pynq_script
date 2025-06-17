@@ -1,0 +1,127 @@
+import socket
+import threading
+import os
+import subprocess
+from pynq import Overlay, MMIO
+
+# Load overlay
+overlay = Overlay("/home/xilinx/jupyter_notebooks/design_1_wrapper.bit")
+
+# Access to memory map of the AXI GPIO 0
+GPIO0_ADDR_BASE = 0x41200000
+GPIO0_ADDR_RANGE = 0x10000
+gpio0_obj = MMIO(GPIO0_ADDR_BASE, GPIO0_ADDR_RANGE)
+
+# Access to memory map of the BRAM 0
+BRAM0_ADDR_BASE = 0x40000000
+BRAM0_ADDR_RANGE = 0x2000
+bram0_obj = MMIO(BRAM0_ADDR_BASE, BRAM0_ADDR_RANGE)
+
+# Access to memory map of the BRAM 1
+BRAM1_ADDR_BASE = 0x42000000
+BRAM1_ADDR_RANGE = 0x2000
+bram1_obj = MMIO(BRAM1_ADDR_BASE, BRAM1_ADDR_RANGE)
+
+# MMIO read/write using specified BRAM
+def mmio_write(bram, offset, value): 
+    bram0_obj.write(offset, value)
+
+def mmio_read(bram, offset):
+    return bram1_obj.read(offset)
+
+def handle_client(conn, addr):
+    print(f'Connected by {addr}')
+    try:
+        cmd = recv_line(conn)
+        if cmd != "START":
+            print("Expected START")
+            return
+
+        save_targets = ["clicked_points.txt", "points.txt"]
+        bram_objs = [bram0_obj, bram0_obj]  # First file → BRAM0, Second → BRAM1
+        base_offsets = [0x0000, 0x1000]
+
+        for idx, expected_name in enumerate(save_targets):
+            received_filename = recv_line(conn)
+            size = int(recv_line(conn))
+            data = recv_exact(conn, size)
+
+            with open(expected_name, "wb") as f:
+                f.write(data)
+            print(f"Saved {received_filename} as {expected_name} ({size} bytes)")
+
+            lines = data.decode().splitlines()
+            offset = base_offsets[idx]
+            bram = bram_objs[idx]
+            for line in lines:
+                parts = line.strip().split()
+                for part in parts:
+                    value = int(float(part))
+                    mmio_write(bram, offset, value)
+                    offset += 4
+
+        end_cmd = recv_line(conn)
+        if end_cmd != "END":
+            print("Expected END")
+            return
+
+        # Read output from BRAM1
+        output_lines = []
+        offset = 0x0000
+        max_lines = 1000
+
+        for _ in range(max_lines):
+            value = mmio_read(bram1_obj, offset)
+            if value == 0xFFFFFFFF:
+                break
+            output_lines.append(str(value))
+            offset += 4
+
+        output_str = "\n".join(output_lines) + "\n"
+        output_bytes = output_str.encode()
+
+        conn.sendall(b"output.txt\n")
+        conn.sendall(f"{len(output_bytes)}\n".encode())
+        conn.sendall(output_bytes)
+        print("Sent output.txt from BRAM1")
+
+    except Exception as e:
+        print(f"Error: {e}")
+    finally:
+        conn.close()
+
+def recv_line(sock):
+    data = b""
+    while not data.endswith(b"\n"):
+        part = sock.recv(1)
+        if not part:
+            break
+        data += part
+    return data.decode().strip()
+
+def recv_exact(sock, size):
+    data = b""
+    while len(data) < size:
+        part = sock.recv(min(2048, size - len(data)))
+        if not part:
+            break
+        data += part
+    return data
+
+def run_server():
+    HOST = '192.168.2.99'
+    PORT = 9093
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind((HOST, PORT))
+        s.listen(1)
+        print(f"Server listening on {HOST}:{PORT}")
+        while True:
+            conn, addr = s.accept()
+            thread = threading.Thread(target=handle_client, args=(conn, addr))
+            thread.start()
+
+# Start the TCP server
+threading.Thread(target=run_server, daemon=True).start()
+print("TCP server started")
