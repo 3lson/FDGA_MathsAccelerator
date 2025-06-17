@@ -1,1 +1,5 @@
 .DS_Store
+tb/
+rtl/
+bin/
+build/
