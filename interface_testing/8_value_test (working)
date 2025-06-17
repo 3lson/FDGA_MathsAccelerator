@@ -1,0 +1,216 @@
+# Dummy working python script to show
+# data going from user to PL and back
+# again via BRAM and TCP.
+
+import socket
+import threading
+import os
+import subprocess
+from pynq import Overlay, MMIO
+import struct
+
+# Load overlay
+overlay = Overlay("/home/xilinx/jupyter_notebooks/design_1_wrapper.bit")
+
+# Access to memory map of the AXI GPIO 0
+GPIO0_ADDR_BASE = 0x41200000
+GPIO0_ADDR_RANGE = 0x10000
+gpio0_obj = MMIO(GPIO0_ADDR_BASE, GPIO0_ADDR_RANGE)
+
+# Access to memory map of the BRAM 0
+BRAM0_ADDR_BASE = 0x40000000
+BRAM0_ADDR_RANGE = 0x2000
+bram0_obj = MMIO(BRAM0_ADDR_BASE, BRAM0_ADDR_RANGE)
+
+# Access to memory map of the BRAM 1
+BRAM1_ADDR_BASE = 0x42000000
+BRAM1_ADDR_RANGE = 0x2000
+bram1_obj = MMIO(BRAM1_ADDR_BASE, BRAM1_ADDR_RANGE)
+
+def mmio_write(bram, offset, value): 
+    bram.write(offset, value)
+
+def mmio_read(bram, offset):
+    return bram.read(offset)
+
+def extract_8_numbers_from_files():
+    """
+    Extract exactly 8 numbers from the input files for MAC processing
+    """
+    numbers = []
+    
+    try:
+        # Read centroids (3 centroids × 2 coordinates = 6 numbers)
+        with open("clicked_points.txt", "r") as f:
+            centroid_lines = f.readlines()[:3]  # Max 3 centroids
+            for line in centroid_lines:
+                if line.strip():
+                    parts = line.strip().split()
+                    if len(parts) >= 2:
+                        numbers.extend([float(parts[0]), float(parts[1])])
+        
+        # Pad with zeros if we have fewer than 6 numbers from centroids
+        while len(numbers) < 6:
+            numbers.append(0.0)
+        
+        # Add 2 more numbers from first data point
+        with open("points.txt", "r") as f:
+            first_point = f.readline().strip()
+            if first_point:
+                parts = first_point.split()
+                if len(parts) >= 2:
+                    numbers.extend([float(parts[0]), float(parts[1])])
+                else:
+                    numbers.extend([0.0, 0.0])
+            else:
+                numbers.extend([0.0, 0.0])
+        
+        # Ensure exactly 8 numbers
+        numbers = numbers[:8]
+        while len(numbers) < 8:
+            numbers.append(0.0)
+            
+        print(f"Extracted 8 numbers for MAC: {numbers}")
+        return numbers
+        
+    except Exception as e:
+        print(f"Error extracting numbers: {e}")
+        return [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]  # Default test values
+
+def handle_client(conn, addr):
+    print(f'Connected by {addr}')
+    try:
+        cmd = recv_line(conn)
+        if cmd != "START":
+            print("Expected START")
+            return
+        
+        # Receive the two files
+        save_targets = ["clicked_points.txt", "points.txt"]
+        
+        for idx, expected_name in enumerate(save_targets):
+            received_filename = recv_line(conn)
+            size = int(recv_line(conn))
+            data = recv_exact(conn, size)
+            
+            with open(expected_name, "wb") as f:
+                f.write(data)
+            print(f"Saved {received_filename} as {expected_name} ({size} bytes)")
+        
+        end_cmd = recv_line(conn)
+        if end_cmd != "END":
+            print("Expected END")
+            return
+        
+        # Extract exactly 8 numbers for MAC processor
+        eight_numbers = extract_8_numbers_from_files()
+        
+        # Write the 8 numbers to BRAM0 (input to MAC processor)
+        print("Writing 8 numbers to BRAM0...")
+        for i, num in enumerate(eight_numbers):
+            # Convert float to 32-bit integer representation
+            int_value = int(num * 1000)  # Scale by 1000 for fixed-point
+            mmio_write(bram0_obj, i * 4, int_value)
+            print(f"  BRAM0[{i*4:04X}] = {int_value} (from {num})")
+        
+        # Trigger MAC processor (if needed)
+        # This depends on your hardware design - you might need to:
+        # gpio0_obj.write(0x00, 1)  # Start signal
+        # time.sleep(0.1)  # Wait for processing
+        # gpio0_obj.write(0x00, 0)  # Clear start signal
+        
+        print("MAC processing triggered, waiting for results...")
+        
+        # Read results from BRAM1 (output from MAC processor)
+        results = []
+        for i in range(8):  # Assuming MAC outputs 8 results
+            result = mmio_read(bram1_obj, i * 4)
+            results.append(result)
+            print(f"  BRAM1[{i*4:04X}] = {result}")
+        
+        # Create mock clustering output using MAC results
+        # This is just for visualization - adapt based on what you want to show
+        formatted_output = create_mock_clustering_from_mac_results(results, eight_numbers)
+        output_bytes = formatted_output.encode()
+        
+        conn.sendall(b"output.txt\n")
+        conn.sendall(f"{len(output_bytes)}\n".encode())
+        conn.sendall(output_bytes)
+        print("Sent MAC results as clustering output")
+        
+    except Exception as e:
+        print(f"Error: {e}")
+    finally:
+        conn.close()
+
+def create_mock_clustering_from_mac_results(mac_results, input_numbers):
+    """
+    Create a mock clustering visualization using MAC processor results
+    """
+    # Use MAC results to create some clustering visualization
+    # This is just an example - adapt based on what you want to show
+    
+    formatted_lines = []
+    
+    # Create a simple clustering based on MAC results
+    formatted_lines.append("ITERATION 1")
+    
+    # Use first 6 input numbers as centroids (3 centroids × 2 coordinates)
+    c1_x, c1_y = input_numbers[0], input_numbers[1]
+    c2_x, c2_y = input_numbers[2], input_numbers[3]  
+    c3_x, c3_y = input_numbers[4], input_numbers[5]
+    
+    # Use MAC results to create some point variations
+    scale_factor = 0.001  # Convert back from fixed-point
+    
+    # Generate some points around each centroid using MAC results
+    formatted_lines.append(f"C1 ({c1_x:.2f},{c1_y:.2f}): ({c1_x + mac_results[0]*scale_factor:.2f},{c1_y + mac_results[1]*scale_factor:.2f}) ({c1_x - mac_results[0]*scale_factor:.2f},{c1_y - mac_results[1]*scale_factor:.2f})")
+    formatted_lines.append(f"C2 ({c2_x:.2f},{c2_y:.2f}): ({c2_x + mac_results[2]*scale_factor:.2f},{c2_y + mac_results[3]*scale_factor:.2f}) ({c2_x - mac_results[2]*scale_factor:.2f},{c2_y - mac_results[3]*scale_factor:.2f})")
+    formatted_lines.append(f"C3 ({c3_x:.2f},{c3_y:.2f}): ({c3_x + mac_results[4]*scale_factor:.2f},{c3_y + mac_results[5]*scale_factor:.2f}) ({c3_x - mac_results[4]*scale_factor:.2f},{c3_y - mac_results[5]*scale_factor:.2f})")
+    formatted_lines.append("END")
+    
+    # Add a second iteration with slightly different values
+    formatted_lines.append("ITERATION 2")
+    formatted_lines.append(f"C1 ({c1_x + 0.1:.2f},{c1_y + 0.1:.2f}): ({c1_x + mac_results[6]*scale_factor:.2f},{c1_y + mac_results[7]*scale_factor:.2f}) ({c1_x - mac_results[6]*scale_factor:.2f},{c1_y - mac_results[7]*scale_factor:.2f})")
+    formatted_lines.append(f"C2 ({c2_x + 0.1:.2f},{c2_y + 0.1:.2f}): ({c2_x + mac_results[0]*scale_factor:.2f},{c2_y + mac_results[1]*scale_factor:.2f}) ({c2_x - mac_results[0]*scale_factor:.2f},{c2_y - mac_results[1]*scale_factor:.2f})")
+    formatted_lines.append(f"C3 ({c3_x + 0.1:.2f},{c3_y + 0.1:.2f}): ({c3_x + mac_results[2]*scale_factor:.2f},{c3_y + mac_results[3]*scale_factor:.2f}) ({c3_x - mac_results[2]*scale_factor:.2f},{c3_y - mac_results[3]*scale_factor:.2f})")
+    formatted_lines.append("END")
+    
+    return "\n".join(formatted_lines)
+
+def recv_line(sock):
+    data = b""
+    while not data.endswith(b"\n"):
+        part = sock.recv(1)
+        if not part:
+            break
+        data += part
+    return data.decode().strip()
+
+def recv_exact(sock, size):
+    data = b""
+    while len(data) < size:
+        part = sock.recv(min(2048, size - len(data)))
+        if not part:
+            break
+        data += part
+    return data
+
+def run_server():
+    HOST = '192.168.2.99'
+    PORT = 9087
+    
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind((HOST, PORT))
+        s.listen(1)
+        print(f"Server listening on {HOST}:{PORT}")
+        
+        while True:
+            conn, addr = s.accept()
+            thread = threading.Thread(target=handle_client, args=(conn, addr))
+            thread.start()
+
+# Start the TCP server
+threading.Thread(target=run_server, daemon=True).start()
+print("TCP server started - Ready for MAC processing")
