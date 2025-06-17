@@ -18,7 +18,14 @@ void KernelStatement::EmitElsonV(std::ostream& stream, Context& context, std::st
 
     stream << start_kernel_label << ": " << std::endl;
 
-    compound_statement_->EmitElsonV(stream,context,dest_reg); 
+    compound_statement_->EmitElsonV(stream,context,dest_reg);
+
+    std::vector<Warp>& warp_file = context.get_warp_file();
+    Warp& first_warp = warp_file[0];
+
+    context.set_instruction_state(Kernel::_SCALAR);
+    context.assign_reg_manager(first_warp.get_warp_file());
+    
 }
 
 void KernelStatement::Print(std::ostream& stream) const {
