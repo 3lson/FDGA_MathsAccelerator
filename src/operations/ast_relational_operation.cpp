@@ -66,24 +66,46 @@ void RelationExpression::EmitElsonV(std::ostream &stream, Context &context, std:
         rightStructAccess->EmitElsonV(stream, context, right_register);
     }
 
-    // Handle LESS_THAN or GREATER_THAN and others normally
-    if (op_ == RelationOp::LESS_THAN) {
-        stream << GetOperation(type) << " " << dest_reg << ", " << left_register << ", " << right_register << std::endl;
+    if(context.get_instruction_state() == Kernel::_SCALAR){
+        // Handle LESS_THAN or GREATER_THAN and others normally
+        if (op_ == RelationOp::LESS_THAN) {
+            stream << asm_prefix.at(context.get_instruction_state()) << GetOperation(type) << " " << dest_reg << ", " << left_register << ", " << right_register << std::endl;
+        }
+        else if (op_ == RelationOp::GREATER_THAN) {
+            stream << asm_prefix.at(context.get_instruction_state()) << GetOperation(type) << " " << dest_reg << ", " << left_register << ", " << right_register << std::endl;
+        }
+        // Handle LESS_THAN_OR_EQUAL: Invert the result of LESS_THAN
+        else if (op_ == RelationOp::LESS_THAN_OR_EQUAL) {
+            stream << asm_prefix.at(context.get_instruction_state()) << GetOperation(type) << " " << dest_reg << ", " << left_register << ", " << right_register << std::endl;
+            stream << asm_prefix.at(context.get_instruction_state()) << "xori " << dest_reg << ", " << dest_reg << ", 1" << std::endl; // Inverts the result
+        }
+        // Handle GREATER_THAN_OR_EQUAL: Invert the result of GREATER_THAN
+        else if (op_ == RelationOp::GREATER_THAN_OR_EQUAL) {
+            stream << asm_prefix.at(context.get_instruction_state()) << GetOperation(type) << " " << dest_reg << ", " << left_register << ", " << right_register << std::endl;
+            stream << asm_prefix.at(context.get_instruction_state()) << "xori " << dest_reg << ", " << dest_reg << ", 1" << std::endl; // Inverts the result
+        }
     }
-    else if (op_ == RelationOp::GREATER_THAN) {
-        stream << GetOperation(type) << " " << dest_reg << ", " << left_register << ", " << right_register << std::endl;
-    }
-    // Handle LESS_THAN_OR_EQUAL: Invert the result of LESS_THAN
-    else if (op_ == RelationOp::LESS_THAN_OR_EQUAL) {
-        stream << GetOperation(type) << " " << dest_reg << ", " << left_register << ", " << right_register << std::endl;
-        stream << "xori " << dest_reg << ", " << dest_reg << ", 1" << std::endl; // Inverts the result
-    }
-    // Handle GREATER_THAN_OR_EQUAL: Invert the result of GREATER_THAN
-    else if (op_ == RelationOp::GREATER_THAN_OR_EQUAL) {
-        stream << GetOperation(type) << " " << dest_reg << ", " << left_register << ", " << right_register << std::endl;
-        stream << "xori " << dest_reg << ", " << dest_reg << ", 1" << std::endl; // Inverts the result
+    else{
+        // Handle LESS_THAN or GREATER_THAN and others normally
+        if (op_ == RelationOp::LESS_THAN) {
+            stream << "sx." <<GetOperation(type) << " s26, " << left_register << ", " << right_register << std::endl;
+        }
+        else if (op_ == RelationOp::GREATER_THAN) {
+            stream << "sx." << GetOperation(type) << " s26, " << left_register << ", " << right_register << std::endl;
+        }
+        // Handle LESS_THAN_OR_EQUAL: Invert the result of LESS_THAN
+        else if (op_ == RelationOp::LESS_THAN_OR_EQUAL) {
+            stream << "sx." << GetOperation(type) << " " << dest_reg << ", " << left_register << ", " << right_register << std::endl;
+            stream << "xori s26, " << dest_reg << ", 1" << std::endl; // Inverts the result
+        }
+        // Handle GREATER_THAN_OR_EQUAL: Invert the result of GREATER_THAN
+        else if (op_ == RelationOp::GREATER_THAN_OR_EQUAL) {
+            stream << "sx." << GetOperation(type) << " " << dest_reg << ", " << left_register << ", " << right_register << std::endl;
+            stream << "xori s26, " << dest_reg << ", 1" << std::endl; // Inverts the result
+        }
     }
 
+    
     // Clean up: Deallocate registers and reset operation type
     context.deallocate_register(right_register);
     context.deallocate_register(left_register);

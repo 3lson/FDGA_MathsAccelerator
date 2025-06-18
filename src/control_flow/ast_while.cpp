@@ -15,11 +15,11 @@ void WhileStatement::EmitElsonV(std::ostream& stream, Context& context, std::str
 
     condition_->EmitElsonV(stream, context, condition_reg);
 
-    stream << "beqz " << condition_reg << ", " << end_label << std::endl;
+    stream << "s.beqz " << condition_reg << ", " << end_label << std::endl;
 
     body_->EmitElsonV(stream, context, dest_reg);
 
-    stream << "j " << start_label << std::endl;
+    stream << "s.j " << start_label << std::endl;
 
     stream << end_label << ":" << std::endl;
 

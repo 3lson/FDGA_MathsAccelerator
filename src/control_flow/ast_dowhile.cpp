@@ -14,7 +14,7 @@ void DoWhileStatement::EmitElsonV(std::ostream& stream, Context& context, std::s
     std::string condition_reg = context.get_register(Type::_INT);
     condition_->EmitElsonV(stream, context, condition_reg);
 
-    stream << "bnez " << condition_reg << ", " << start_label << std::endl;
+    stream << "s.bnez " << condition_reg << ", " << start_label << std::endl;
 
     stream << end_label << ":" << std::endl;
 

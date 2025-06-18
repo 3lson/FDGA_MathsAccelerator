@@ -56,15 +56,15 @@ void CompoundStatement::GetCases(std::ostream &stream, Context &context, std::st
         std::string caselabel = context.create_label("case");
         std::string casereg = caseitem->Getcasereg(stream,context,dest_reg);
         if(casereg == "default"){
-            stream << "j " << caselabel << std::endl;
+            stream << "s.j " << caselabel << std::endl;
         }
         else{
-            stream << "beq " << condition << ", " << casereg << ", " << caselabel << std::endl;
+            stream << "s.beq " << condition << ", " << casereg << ", " << caselabel << std::endl;
         }
         caselabels.push_back(caselabel);
     }
 
-    stream << "j " << endcases << std::endl;
+    stream << "s.j " << endcases << std::endl;
 
     int count = 0;
     for(const auto& caseitem : casesList){

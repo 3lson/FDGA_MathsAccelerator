@@ -56,11 +56,19 @@ void Assignment::EmitElsonV(std::ostream &stream, Context &context, std::string 
                         stream << asm_prefix.at(context.get_instruction_state()) << context.store_instr(type) << " " << reg << ", " << offset - 4 << "(sp)" << std::endl;
                     }
                     else{
-                        std::string perma_reg = context.get_register(type);
-                        stream << asm_prefix.at(context.get_instruction_state()) << "add " << perma_reg << ", " << perma_reg << ", " << reg << std::endl;
-                        variable.set_reg(perma_reg);
-                        context.add_thread_reg(perma_reg);
-                        std::cout << "[DEBUG] perma_reg assignment: " << GetId() << ": " << variable.get_reg() << std::endl;
+                        std::string perma_reg;
+                        if(variable.get_reg() == ""){
+                            perma_reg = context.get_register(type);
+                            variable.set_reg(perma_reg);
+                            context.add_thread_reg(perma_reg);
+                            std::cout << "[DEBUG] perma_reg assignment: " << GetId() << ": " << variable.get_reg() << std::endl;
+                        }
+                        else{
+                            perma_reg = variable.get_reg();
+                        }
+
+                        stream << asm_prefix.at(context.get_instruction_state()) << "addi " << perma_reg << ", " << reg << ", 0" << std::endl;
+                        
                     }
                     
                 }

@@ -63,7 +63,7 @@ void ArithExpression::EmitElsonV(std::ostream &stream, Context &context, std::st
         context.add_reg_to_set(int_right_reg);
 
         right_register = context.get_register(Type::_FLOAT);
-        stream << "fcvt.s.w " << right_register << ", " << int_right_reg << std::endl;
+        stream << asm_prefix.at(context.get_instruction_state()) << "fcvt.s.w " << right_register << ", " << int_right_reg << std::endl;
     } else {
         right_register = context.get_register(type);
         right_->EmitElsonV(stream, context, right_register);
@@ -84,7 +84,7 @@ void ArithExpression::EmitElsonV(std::ostream &stream, Context &context, std::st
 
 
     // Emit the final operation, adding the two operands
-    stream << GetOperation(type) << " " << dest_reg << ", " << left_register << ", " << right_register << std::endl;
+    stream << asm_prefix.at(context.get_instruction_state())  << GetOperation(type) << " " << dest_reg << ", " << left_register << ", " << right_register << std::endl;
 
     // Clean up the registers
     context.deallocate_register(right_register);
@@ -164,7 +164,7 @@ void ArithExpression::ShiftPointerOp(std::ostream &stream, Context &context, std
         if (!dynamic_cast<const Operand *>(node.get())->isPointerOp(context))
         {
             Type type = NewPointerType(context);
-            stream << "slli " << dest_reg << ", " << dest_reg << ", " << types_mem_shift.at(type) << std::endl;
+            stream << asm_prefix.at(context.get_instruction_state()) << "slli " << dest_reg << ", " << dest_reg << ", " << types_mem_shift.at(type) << std::endl;
         }
     }
 }

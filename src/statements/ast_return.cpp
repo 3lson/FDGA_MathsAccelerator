@@ -8,7 +8,7 @@ void ReturnStatement::EmitElsonV(std::ostream &stream, Context &context, std::st
     {
         expression_->EmitElsonV(stream, context, return_register);
     }
-    stream << "j " << context.get_function_end() << std::endl;
+    stream << "s.j " << context.get_function_end() << std::endl;
 }
 
 void ReturnStatement::Print(std::ostream &stream) const

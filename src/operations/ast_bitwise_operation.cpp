@@ -63,7 +63,7 @@ void BitwiseExpression::EmitElsonV(std::ostream &stream, Context &context, std::
         rightStructAccess->EmitElsonV(stream, context, right_register);
     }
 
-    stream << GetOperation(type) << " " << dest_reg << ", " << left_register << ", " << right_register << std::endl;
+    stream << asm_prefix.at(context.get_instruction_state()) <<GetOperation(type) << " " << dest_reg << ", " << left_register << ", " << right_register << std::endl;
 
     context.deallocate_register(right_register);
     context.deallocate_register(left_register);

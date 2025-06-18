@@ -5,7 +5,9 @@ int f(){
     int mini[2][5];
     kernel(1){
         i = threadId.x;
-        y = fabsf(i-10);
+        for(y = 0; y < 5; y++){
+            i = i + 1;
+        }
     }
     return 0;
 }
