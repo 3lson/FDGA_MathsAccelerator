@@ -55,7 +55,6 @@ private:
     std::vector<Thread> threads;
 
 public:
-
     Warp(int warp_id_,int warp_size_, bool is_active_);
     
     //getters
@@ -76,9 +75,6 @@ public:
     void set_warp_offset(int offset) {warp_offset = offset;}
     void deactivate_lane(int index);
     void activate_lane(int index);
-
-
-    Thread& return_thread(int thread_id);
 };
 
 }//namespace ast

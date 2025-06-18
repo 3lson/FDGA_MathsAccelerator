@@ -25,7 +25,7 @@ class Context
 private:
     // ----- Kernel Management ------
     Kernel instruction_state = Kernel::_SCALAR;
-    int warp_size = 16;
+    int warp_size = 4;
     std::vector<Warp> warp_file;
     int warp_offset = 15000;
 

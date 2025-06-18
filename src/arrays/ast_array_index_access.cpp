@@ -1,4 +1,5 @@
 #include "../include/arrays/ast_array_index_access.hpp"
+#include "../../include/custom/ast_builtin_operand.hpp"
 #include <vector>
 #include <algorithm> //for std::reverse
 namespace ast{
@@ -70,46 +71,84 @@ void ArrayIndexAccess::get_position(std::ostream &stream, Context &context, std:
 {
     // Set operation type as dealing with pointers
     context.push_operation_type(Type::_INT);
+    std::string index_reg = context.get_register(Type::_INT);
 
-    std::vector<int> indexes = get_linear_index(context);
+    std::vector<int> indexes = get_linear_index(stream, context, index_reg);
     std::vector<int> dimension = variable.get_dim();
+    bool Operand = false;
+    int Opindex = 0;
 
-    int linear_index;
+    for(auto index : indexes){
+        if(index == -1){
+            Operand = true;
+            break;
+        }
+        Opindex++;
+    }
 
-    //only can handle up to 2d arrays
-    if(indexes.size() == 2){
-        linear_index = indexes[0] * dimension[1] + (indexes[1]);
+    if(!Operand){
+        int linear_index;
+
+        //only can handle up to 2d arrays
+        if(indexes.size() == 2){
+            linear_index = indexes[0] * dimension[1] + (indexes[1]);
+        }
+        else{
+            linear_index = indexes[0];
+        }
+        
+        stream << asm_prefix.at(context.get_instruction_state()) <<"li " << dest_reg << ", " << linear_index + 1 << std::endl;
+        stream << asm_prefix.at(context.get_instruction_state()) << "slli " << dest_reg << ", " << dest_reg << ", " << types_mem_shift.at(type) << std::endl;
     }
     else{
-        linear_index = indexes[0];
+        
+        if(Opindex == 0){
+            if(indexes.size() == 1){
+                stream << asm_prefix.at(context.get_instruction_state()) << "addi " << index_reg << ", " << index_reg << ", 1" << std::endl;
+                stream << asm_prefix.at(context.get_instruction_state()) << "slli " << dest_reg << ", " << index_reg << ", " << types_mem_shift.at(type) << std::endl;
+            }
+            else{
+                stream << asm_prefix.at(context.get_instruction_state()) << "muli " << index_reg << ", " <<index_reg << ", " <<  dimension[0] << std::endl;
+                stream << asm_prefix.at(context.get_instruction_state()) << "addi " << index_reg << ", " << index_reg << ", " << indexes[1] + 1 << std::endl;
+                stream << asm_prefix.at(context.get_instruction_state()) << "slli " << dest_reg << ", " << index_reg << ", " << types_mem_shift.at(type) << std::endl;
+            }
+        }
+        else{
+            int32_t multiply = indexes[0] * dimension[1];
+            stream << asm_prefix.at(context.get_instruction_state()) << "addi " << index_reg << ", " << index_reg << ", " << multiply + 1 << std::endl;
+            stream << asm_prefix.at(context.get_instruction_state()) << "slli " << dest_reg << ", " << index_reg << ", " << types_mem_shift.at(type) << std::endl;
+        }
+
     }
 
-    // Emit index to specified register
-    //index_->EmitElsonV(stream, context, dest_reg);
-    stream << asm_prefix.at(context.get_instruction_state()) <<"li " << dest_reg << ", " << linear_index + 1 << std::endl;
-    stream << asm_prefix.at(context.get_instruction_state()) << "slli " << dest_reg << ", " << dest_reg << ", " << types_mem_shift.at(type) << std::endl;
-
+    context.deallocate_register(index_reg);
     context.pop_operation_type();
 }
 
-std::vector<int> ArrayIndexAccess::get_linear_index(Context &context) const{
+std::vector<int> ArrayIndexAccess::get_linear_index(std::ostream& stream, Context &context, std::string dest_reg) const{
     const ArrayIndexAccess *array = this;
 
     std::vector<int> indexes;
 
     const Identifier *variable = dynamic_cast<const Identifier *>(index_.get());
     const IntConstant *constant = dynamic_cast<const IntConstant*>(index_.get());
+    const BuiltInOperand *thread_id = dynamic_cast<const BuiltInOperand*>(index_.get());
 
     while(array != nullptr){
 
         variable = dynamic_cast<const Identifier *>(array->index_.get());
         constant = dynamic_cast<const IntConstant*>(array->index_.get());
+        thread_id = dynamic_cast <const BuiltInOperand*>(array->index_.get());
 
         if(variable != nullptr){
             indexes.push_back(variable->get_index(context));
         }
         else if(constant != nullptr){
             indexes.push_back(constant->get_val());
+        }
+        else if(thread_id != nullptr){
+            thread_id->EmitElsonV(stream,context,dest_reg);
+            indexes.push_back(-1);
         }
 
         array = dynamic_cast<const ArrayIndexAccess *>(array->identifier_.get());

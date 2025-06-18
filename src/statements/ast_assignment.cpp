@@ -52,7 +52,13 @@ void Assignment::EmitElsonV(std::ostream &stream, Context &context, std::string 
             {
                 if (variable.get_scope() == ScopeLevel::LOCAL)
                 {
-                    stream << asm_prefix.at(context.get_instruction_state()) << context.store_instr(type) << " " << reg << ", " << offset - 4 << "(sp)" << std::endl;
+                    if(context.get_instruction_state() == Kernel::_SCALAR){
+                        stream << asm_prefix.at(context.get_instruction_state()) << context.store_instr(type) << " " << reg << ", " << offset - 4 << "(sp)" << std::endl;
+                    }
+                    else{
+                        
+                    }
+                    
                 }
 
                 else if (variable.get_scope() == ScopeLevel::GLOBAL)
@@ -103,7 +109,7 @@ void Assignment::EmitElsonV(std::ostream &stream, Context &context, std::string 
                         throw std::runtime_error("Assignment EmitElsonV: Variable is not a pointer or array in ArrayAccess LOCAL");
                     }
 
-                    stream << context.store_instr(type) << " " << reg << ", 0(" << index_register << ")" << std::endl;
+                    stream << asm_prefix.at(context.get_instruction_state()) <<context.store_instr(type) << " " << reg << ", 0(" << index_register << ")" << std::endl;
                 }
 
                 // If global scope, access global memory by targetting global label
@@ -324,7 +330,7 @@ void Assignment::local_init(Type type, int offset, std::ostream &stream, Context
     int value = 0;
 
     if(int_const != nullptr){
-        int value = int_const->get_val();
+        value = int_const->get_val();
     }
 
     Variable variable(is_pointer, is_array, array_size, type, offset, dereference_num, value, dimension);

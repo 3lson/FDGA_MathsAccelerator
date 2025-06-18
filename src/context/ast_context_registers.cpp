@@ -75,6 +75,16 @@ void ScalarRegisterFile::initialiseRegisters(){
     };
 }
 
+ScalarRegisterFile::ScalarRegisterFile(){
+    initialiseRegisters();
+    populateNameMap();
+}
+
+VectorRegisterFile::VectorRegisterFile(){
+    initialiseRegisters();
+    populateNameMap();
+}
+
 void VectorRegisterFile::initialiseRegisters(){
     register_file = {
         {0, Register("zero", Type::_INT, false)},

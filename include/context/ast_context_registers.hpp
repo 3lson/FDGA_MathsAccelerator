@@ -37,15 +37,16 @@ protected:
     std::unordered_map<std::string, int> register_name_to_int;
 
     virtual void initialiseRegisters() = 0;
-
-public:
-    RegisterFile() {
-        initialiseRegisters();
-
+    void populateNameMap(){
         for (const auto& [key, reg] : register_file){
             register_name_to_int[reg.getName()] = key;
         }
-    };
+    }
+
+public:
+    RegisterFile() = default;
+
+
     virtual ~RegisterFile() = default;
 
     virtual std::string get_register(Type type);
@@ -62,12 +63,17 @@ public:
 class ScalarRegisterFile : public RegisterFile {
 protected:
     void initialiseRegisters() override;
+public:
+    ScalarRegisterFile();
 
 };
 
 class VectorRegisterFile : public RegisterFile {
 protected:
     void initialiseRegisters() override;
+
+public:
+    VectorRegisterFile();
 
 };
 

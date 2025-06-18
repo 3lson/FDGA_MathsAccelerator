@@ -285,7 +285,7 @@ primary_expression
 	| FABSF '(' expression ')'  { $$ = new BuiltInFunction("fabsf", NodePtr($3)); }
 	| SYNC { $$ = new BuiltInFunction("sync");}
 	| BLOCKIDX    { $$ = new BuiltInOperand("blockId.x", 30); }
-    | THREADIDX   { $$ = new BuiltInOperand("threadId.x", 25); }
+    | THREADIDX   { $$ = new BuiltInOperand("threadId.x", 26); }
     | BLOCKSIZE   { $$ = new BuiltInOperand("blocksize", 31); }
 	;
 

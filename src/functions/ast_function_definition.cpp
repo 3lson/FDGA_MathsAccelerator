@@ -57,23 +57,23 @@ void FunctionDefinition::EmitElsonV(std::ostream &stream, Context &context, std:
         }
         context.set_stack_offset(stack_allocated_space);
 
-        int offset = 1200;
+        int offset = 4000;
 
-        stream << "li s0, " << stack_allocated_space + offset << std::endl;
-        stream << "li sp, " << stack_allocated_space + offset << std::endl;
-        stream << "addi sp, sp, -" << stack_allocated_space << std::endl;
-        stream << "sw ra, " << stack_allocated_space - 4 << "(sp)" <<std::endl;
-        stream << "sw s0, " << stack_allocated_space - 8 << "(sp)" <<std::endl;
-        stream << "addi s0, sp, " << stack_allocated_space <<std::endl;
+        stream << asm_prefix.at(context.get_instruction_state()) << "li s0, " << stack_allocated_space + offset << std::endl;
+        stream << asm_prefix.at(context.get_instruction_state()) << "li sp, " << stack_allocated_space + offset << std::endl;
+        stream << asm_prefix.at(context.get_instruction_state()) << "addi sp, sp, -" << stack_allocated_space << std::endl;
+        stream << asm_prefix.at(context.get_instruction_state()) << "sw ra, " << stack_allocated_space - 4 << "(sp)" <<std::endl;
+        stream << asm_prefix.at(context.get_instruction_state()) << "sw s0, " << stack_allocated_space - 8 << "(sp)" <<std::endl;
+        stream << asm_prefix.at(context.get_instruction_state()) << "addi s0, sp, " << stack_allocated_space <<std::endl;
         direct_declarator_->store_param(stream, context, dest_reg);
 
         compound_statement_->EmitElsonV(stream, context, dest_reg);
 
         stream << context.get_function_end() << ":" << std::endl;
-        stream << "lw s0, "<< stack_allocated_space - 8 << "(sp)" << std::endl;
-        stream << "lw ra, "<< stack_allocated_space - 4 << "(sp)" <<std::endl;
-        stream << "addi sp, sp, " << stack_allocated_space <<std::endl;
-        stream << "ret" << std::endl;
+        stream << asm_prefix.at(context.get_instruction_state()) <<"lw s0, "<< stack_allocated_space - 8 << "(sp)" << std::endl;
+        stream << asm_prefix.at(context.get_instruction_state()) <<"lw ra, "<< stack_allocated_space - 4 << "(sp)" <<std::endl;
+        stream << asm_prefix.at(context.get_instruction_state()) <<"addi sp, sp, " << stack_allocated_space <<std::endl;
+        stream << "exit" << std::endl;
 
         context.pop_scope();
         if (return_type != Type::_VOID){

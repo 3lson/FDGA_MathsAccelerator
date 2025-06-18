@@ -44,7 +44,7 @@ void KernelStatement::InitializeFirstWarp(std::ostream& stream, Context& context
     std::vector<Warp>& warp_file = context.get_warp_file();
 
     Warp& first_warp = warp_file[0];
-    int thread_num = first_warp.get_size();
+    first_warp.set_activity(true); //set to true
     int warp_offset = first_warp.get_warp_offset();
 
     std::string offset_reg = context.get_register(Type::_INT);
@@ -52,7 +52,7 @@ void KernelStatement::InitializeFirstWarp(std::ostream& stream, Context& context
     int address = warp_offset - ((3+1)*4);
 
     //load gp
-    int address = warp_offset - ((3+1)*4);
+    address = warp_offset - ((3+1)*4);
     stream << asm_prefix.at(context.get_instruction_state()) << "li " << offset_reg << ", " << address << std::endl;
     stream << asm_prefix.at(context.get_instruction_state()) << "lw gp, " << 0 << "(" << offset_reg << ")" << std::endl;
 
@@ -150,7 +150,7 @@ void KernelStatement::InitializeKernel(std::string start_kernel_label, std::ostr
 
         int tmp_total = total_size;
         for(int i = 0; i < warp.get_size(); i++){
-            tmp_total -= (i+1) * file_offset;
+            tmp_total -= file_offset;
             Thread& threadref = warp.return_thread(i);
             threadref.set_offset(tmp_total);
         }

@@ -44,6 +44,7 @@ int main(){
     int best_centroid_index[num_points];
     int i;
     int index;
+    int best_centroid;
 
 
     /*--------------------------------------------------------------------------------
@@ -80,69 +81,61 @@ int main(){
     -------------------------------------------------------------------------------------*/
 
         kernel(num_points){
-            //i = blockId.x * blocksize + threadId.x;
-            i = threadId.x
+            distances[0][threadId.x] = fabsf(centroids_x[0]-points_x[threadId.x]) + fabsf(centroids_y[0]-points_y[threadId.x]);
+            distances[1][threadId.x] = fabsf(centroids_x[1]-points_x[threadId.x]) + fabsf(centroids_y[1]-points_y[threadId.x]);
+            distances[2][threadId.x] = fabsf(centroids_x[2]-points_x[threadId.x]) + fabsf(centroids_y[2]-points_y[threadId.x]);
 
-            if(i < num_points){
-                distances[0][i] = fabsf(centroids_x[0]-points_x[i]) + fabsf(centroids_y[0]-points_y[i]);
-                distances[1][i] = fabsf(centroids_x[1]-points_x[i]) + fabsf(centroids_y[1]-points_y[i]);
-                distances[2][i] = fabsf(centroids_x[2]-points_x[i]) + fabsf(centroids_y[2]-points_y[i]);
+            if(distances[0][threadId.x] < distances[1][threadId.x]){
+                shortest_distance[threadId.x] = distances[0][threadId.x];
+                best_centroid_index[threadId.x] = 0;
+            }
+            else{
+                shortest_distance[threadId.x] = distances[1][threadId.x];
+                best_centroid_index[threadId.x] = 1;
+            }
 
-                if(distances[0][i] < distances[1][i]){
-                    shortest_distance[i] = distances[0][i];
-                    best_centroid_index[i] = 0;
+            if(distances[2][threadId.x] < shortest_distance[threadId.x]){
+                shortest_distance[threadId.x] = distances[0][threadId.x];
+                best_centroid_index[threadId.x] = 2;
+            }
+            
+            best_centroid = best_centroid_index[threadId.x];
+            clusters_x[best_centroid][threadId.x] = points_x[threadId.x];
+            clusters_y[best_centroid][threadId.x] = points_y[threadId.x];
+            total[best_centroid][threadId.x]  = 1.0;
+            
+            //syncs all threads in the same block
+            sync;
+            
+            //h represents the number of times to half the 100 points in summing operations 
+            for(int h = 0; h < 7; h++){
+                // 1 << h  = 2 ^ h;
+
+                index = threadId.x + (1 << h);
+                if((num_points - 1) < (1 << h)){ 
+                    sum_x[0][threadId.x] = clusters_x[0][threadId.x] + clusters_x[0][index];
+                    sum_x[1][threadId.x] = clusters_x[1][threadId.x] + clusters_x[1][index];
+                    sum_x[2][threadId.x] = clusters_x[2][threadId.x] + clusters_x[2][index];
+                    sum_y[0][threadId.x] = clusters_y[0][threadId.x] + clusters_y[0][index];
+                    sum_y[1][threadId.x] = clusters_y[1][threadId.x] + clusters_y[1][index];
+                    sum_y[2][threadId.x] = clusters_y[2][threadId.x] + clusters_y[2][index];
+
+                    total[0][threadId.x] = total[0][threadId.x] + total[0][index];
+                    total[1][threadId.x] = total[1][threadId.x] + total[1][index];
+                    total[2][threadId.x] = total[2][threadId.x] + total[2][index];
                 }
                 else{
-                    shortest_distance[i] = distances[1][i];
-                    best_centroid_index[i] = 1;
+                    sum_x[0][threadId.x] = clusters_x[0][threadId.x];
+                    sum_x[1][threadId.x] = clusters_x[1][threadId.x];
+                    sum_x[2][threadId.x] = clusters_x[2][threadId.x];
+                    sum_y[0][threadId.x] = clusters_y[0][threadId.x];
+                    sum_y[1][threadId.x] = clusters_y[1][threadId.x];
+                    sum_y[2][threadId.x] = clusters_y[2][threadId.x];
+                    total[0][threadId.x] = total[0][threadId.x];
+                    total[1][threadId.x] = total[1][threadId.x];
+                    total[2][threadId.x] = total[2][threadId.x];
                 }
-
-
-
-                if(distances[2][i] < shortest_distance[i]){
-                    shortest_distance[i] = distances[0][i];
-                    best_centroid_index[i] = 2;
-                }
-
-                clusters_x[best_centroid_index[i]][i] = points_x[i];
-                clusters_y[best_centroid_index[i]][i] = points_y[i];
-                total[best_centroid_index[i]][i]  = 1.0;
-                
-                //syncs all threads in the same block
-                sync;
-                
-                //h represents the number of times to half the 100 points in summing operations 
-                for(int h = 0; h < 7; h++){
-                    // 1 << h  = 2 ^ h;
-
-                    index = i + (1 << h);
-                    if((num_points - 1) < (1 << h)){ 
-                        sum_x[0][i] = clusters_x[0][i] + clusters_x[0][index];
-                        sum_x[1][i] = clusters_x[1][i] + clusters_x[1][index];
-                        sum_x[2][i] = clusters_x[2][i] + clusters_x[2][index];
-                        sum_y[0][i] = clusters_y[0][i] + clusters_y[0][index];
-                        sum_y[1][i] = clusters_y[1][i] + clusters_y[1][index];
-                        sum_y[2][i] = clusters_y[2][i] + clusters_y[2][index];
-
-                        total[0][i] = total[0][i] + total[0][index];
-                        total[1][i] = total[1][i] + total[1][index];
-                        total[2][i] = total[2][i] + total[2][index];
-                    }
-                    else{
-                        sum_x[0][i] = clusters_x[0][i];
-                        sum_x[1][i] = clusters_x[1][i];
-                        sum_x[2][i] = clusters_x[2][i];
-                        sum_y[0][i] = clusters_y[0][i];
-                        sum_y[1][i] = clusters_y[1][i];
-                        sum_y[2][i] = clusters_y[2][i];
-                        total[0][i] = total[0][i];
-                        total[1][i] = total[1][i];
-                        total[2][i] = total[2][i];
-                    }
-                }
-
             }
-           
         }
 
         for(int i = 0; i < 3; i++){
@@ -150,34 +143,8 @@ int main(){
             centroids_y[i] = sum_y[i][0]/total[i][0];
         }
 
-        /*-----------------------------------------------------------------------------
-
-        CONVERGENCE CONDITION FOR EARLY TERMINATION OF ALGORITHM NOW REDUNDANT!!!!!!
-
-        ------------------------------------------------------------------------------*/
-        
-        // for (i = 0; i < 3; i++) {
-        //     float side1 = fabsf(centroids_x[i] - old_centroids_x[i]);
-        //     float side2 = fabsf(centroids_y[i] - old_centroids_y[i]);
-        //     if (!(side1 < 0.000001 && side2 < 0.000001)) {
-        //         done = 0;
-        //         break;
-        //     }
-        // }
-        // if (done) {
-        //     break;
-        // }
     }
 
-    // for (l = 0; l < 3; l++) {
-    //     OUT_centroids_x[l] = centroids_x[l];
-    //     OUT_centroids_y[l] = centroids_y[l];
-    //     OUT_cluster_sizes[l] = cluster_sizes[l];
-    //     for (j = 0; j < cluster_sizes[l]; j++) {
-    //         OUT_clusters_x[l][j] = clusters_x[l][j];
-    //         OUT_clusters_y[l][j] = clusters_y[l][j];
-    //     }
-    // }
     
     return 5;
 }

@@ -71,5 +71,3 @@
 #include "context/ast_context.hpp"
 
 ast::NodePtr ParseAST(std::string file_name);
-
-#endif

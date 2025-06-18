@@ -113,7 +113,7 @@ void Dereference::StartingOffset(std::ostream &stream, Context &context, std::st
     if (array_index_access != nullptr)
     {
         std::string index_reg = context.get_register(Type::_INT);
-        array_index_access->get_position(stream, context, address_reg, type);
+        array_index_access->get_position(stream, context, address_reg, type, variable);
         stream << "add " << address_reg << ", " << address_reg << ", " << index_reg << std::endl;
         context.deallocate_register(index_reg);
     }

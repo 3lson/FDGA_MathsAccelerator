@@ -31,13 +31,13 @@ public:
     : isPointer(ptr), isArray(arr), dataType(type), scope(ScopeLevel::LOCAL), memoryOffset(offset), arraySize(size), dereference_num(dereference_num), type_name_("")  {}
 
     Variable(bool ptr, bool arr, int size, Type type, int offset, int dereference_num, std::vector<int> dim)
-    : isPointer(ptr), isArray(arr), dataType(type), scope(ScopeLevel::LOCAL), memoryOffset(offset), arraySize(size), dereference_num(dereference_num), type_name_(""), arr_dim(dim)  {}
+    : isPointer(ptr), isArray(arr), dataType(type), scope(ScopeLevel::LOCAL), memoryOffset(offset), arraySize(size), dereference_num(dereference_num), arr_dim(dim) , type_name_("")  {}
 
     Variable(bool ptr, bool arr, int size, Type type, int offset, int dereference_num, int constant)
     : isPointer(ptr), isArray(arr), dataType(type), scope(ScopeLevel::LOCAL), memoryOffset(offset), arraySize(size), dereference_num(dereference_num),identifier_constant(constant), type_name_("")  {}
 
     Variable(bool ptr, bool arr, int size, Type type, int offset, int dereference_num, int constant, std::vector<int> dim)
-    : isPointer(ptr), isArray(arr), dataType(type), scope(ScopeLevel::LOCAL), memoryOffset(offset), arraySize(size), dereference_num(dereference_num),identifier_constant(constant), type_name_(""), arr_dim(dim)  {}
+    : isPointer(ptr), isArray(arr), dataType(type), scope(ScopeLevel::LOCAL), memoryOffset(offset), arraySize(size), dereference_num(dereference_num), arr_dim(dim) ,identifier_constant(constant), type_name_("") {}
 
     Variable(bool ptr, bool arr, Type type, ScopeLevel scp, int dereference_num)
     : isPointer(ptr), isArray(arr), dataType(type), scope(scp), memoryOffset(0), arraySize(1), dereference_num(dereference_num), type_name_("")  {}
