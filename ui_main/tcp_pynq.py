@@ -27,22 +27,22 @@ NUM_CENTROIDS = 3
 NUM_POINTS = 100
 
 def read_bram_data():
-    offset = 0
+    offset = 1000
 
     centroids_x = [read_float(offset + i * 4) for i in range(NUM_CENTROIDS)]
-    offset += NUM_CENTROIDS * 4
+    offset -= NUM_CENTROIDS * 4
 
     centroids_y = [read_float(offset + i * 4) for i in range(NUM_CENTROIDS)]
-    offset += NUM_CENTROIDS * 4
+    offset -= NUM_CENTROIDS * 4
 
     cluster_labels = [int(read_float(offset + i * 4)) for i in range(NUM_POINTS)]
-    offset += NUM_POINTS * 4
+    offset -= NUM_POINTS * 4
 
     clusters_x = [read_float(offset + i * 4) for i in range(NUM_POINTS)]
-    offset += NUM_POINTS * 4
+    offset -= NUM_POINTS * 4
 
     clusters_y = [read_float(offset + i * 4) for i in range(NUM_POINTS)]
-    offset += NUM_POINTS * 4
+    offset -= NUM_POINTS * 4
 
     return centroids_x, centroids_y, cluster_labels, clusters_x, clusters_y
 
@@ -68,7 +68,11 @@ def handle_client(conn, addr):
             return
 
         save_targets = ["clicked_points.txt", "points.txt"]
-        base_offsets = [0x0BB8, 0x16000] 
+        base_offsets = [0x3268, 0x16000]
+        y_val_points = []
+        x_val_points = [] 
+        y_val_centroids = []
+        x_val_centroids = [] 
 
         for idx, expected_name in enumerate(save_targets):
             received_filename = recv_line(conn)
@@ -88,13 +92,32 @@ def handle_client(conn, addr):
                     continue  # skip bad lines
                 x = float(parts[0])
                 y = float(parts[1])
-                x_raw = struct.unpack("I", struct.pack("f", x))[0]
-                y_raw = struct.unpack("I", struct.pack("f", y))[0]
-                mmio_write(offset, x_raw)
-                offset += 4
-                mmio_write(offset, y_raw)
-                offset += 4
 
+                # Store coordinates
+                if expected_name == "clicked_points.txt":
+                    x_val_centroids.append(x)
+                    y_val_centroids.append(y)
+                elif expected_name == "points.txt":
+                    x_val_points.append(x)
+                    y_val_points.append(y)
+
+            for i in x_val_centroids:
+                x_raw = struct.unpack("I", struct.pack("f", i))[0]
+                mmio_write(offset, x_raw)
+                offset -= 4
+            for i in y_val_centroids:
+                y_raw = struct.unpack("I", struct.pack("f", i))[0]
+                mmio_write(offset, y_raw)
+                offset -= 4
+            for i in x_val_points:
+                x_raw = struct.unpack("I", struct.pack("f", i))[0]
+                mmio_write(offset, x_raw)
+                offset -= 4
+            for i in y_val_points:
+                y_raw = struct.unpack("I", struct.pack("f", i))[0]
+                mmio_write(offset, y_raw)
+                offset -= 4
+            
         end_cmd = recv_line(conn)
         if end_cmd != "END":
             print("Expected END")
