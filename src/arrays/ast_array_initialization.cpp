@@ -21,7 +21,7 @@ void ArrayInitialization::Print(std::ostream &stream) const
     stream << " }";
 }
 
-void ArrayInitialization::SaveValue(std::ostream &stream, Context &context, Variable variable, std::string identifier) const
+void ArrayInitialization::SaveValue(std::ostream &stream, Context &context, Variable& variable, std::string identifier) const
 {
     int offset;
     Type type = variable.get_type();

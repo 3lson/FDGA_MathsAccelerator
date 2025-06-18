@@ -20,8 +20,21 @@ void KernelStatement::EmitElsonV(std::ostream& stream, Context& context, std::st
 
     compound_statement_->EmitElsonV(stream,context,dest_reg);
 
+    //deallocate accumulated thread regs (universalize for all threads)
+    std::vector<std::string>& thread_regs = context.get_thread_regs();
+
     std::vector<Warp>& warp_file = context.get_warp_file();
     Warp& first_warp = warp_file[0];
+
+    for(auto& warp : warp_file){
+        for(int i = 0; i < warp.get_size(); i++){
+            Thread& current_thread = warp.return_thread(i);
+            context.assign_reg_manager(current_thread.get_thread_file());
+            for(std::string regs : thread_regs){
+                context.deallocate_register(regs);
+            }
+        }
+    }
 
     context.set_instruction_state(Kernel::_SCALAR);
     context.assign_reg_manager(first_warp.get_warp_file());
@@ -126,7 +139,7 @@ void KernelStatement::InitializeKernel(std::string start_kernel_label, std::ostr
             thread = warp_size;
         }
         else{
-            thread = std::abs(thread_total);
+            thread = thread_total + warp_size;
         }
 
         bool active = false;

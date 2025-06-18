@@ -76,8 +76,9 @@ void ArrayIndexAccess::get_position(std::ostream &stream, Context &context, std:
     std::vector<int> indexes = get_linear_index(stream, context, index_reg);
     std::vector<int> dimension = variable.get_dim();
     bool Operand = false;
-    int Opindex = 0;
+    bool Identbool = false;
 
+    int Opindex = 0;
     for(auto index : indexes){
         if(index == -1){
             Operand = true;
@@ -86,19 +87,54 @@ void ArrayIndexAccess::get_position(std::ostream &stream, Context &context, std:
         Opindex++;
     }
 
-    if(!Operand){
-        int linear_index;
+    int IdentIndex = 0;
+    for(auto index : indexes){
+        if(index == -2){
+            Identbool = true;
+            break;
+        }
+        IdentIndex++;
+    }
 
-        //only can handle up to 2d arrays
-        if(indexes.size() == 2){
-            linear_index = indexes[0] * dimension[1] + (indexes[1]);
+    std::string var_reg;
+
+    if(Identbool){
+        const Identifier *variable = dynamic_cast<const Identifier *>(index_.get());
+        Variable var = context.get_variable(variable->GetId());
+        var_reg = var.get_reg();
+    }
+
+    if(!Operand){
+
+        if(!Identbool){
+            int linear_index;
+
+            //only can handle up to 2d arrays
+            if(indexes.size() == 2){
+                linear_index = indexes[0] * dimension[1] + (indexes[1]);
+            }
+            else{
+                linear_index = indexes[0];
+            }
+            
+            stream << asm_prefix.at(context.get_instruction_state()) <<"li " << dest_reg << ", " << linear_index + 1 << std::endl;
+            stream << asm_prefix.at(context.get_instruction_state()) << "slli " << dest_reg << ", " << dest_reg << ", " << types_mem_shift.at(type) << std::endl;
         }
         else{
-            linear_index = indexes[0];
+
+            if(indexes.size() == 2){
+                int multiply = indexes[0] * dimension[1];
+                stream << asm_prefix.at(context.get_instruction_state()) <<"li " << dest_reg << ", " << multiply + 1 << std::endl;
+                stream << asm_prefix.at(context.get_instruction_state()) <<"add " << dest_reg << ", " << dest_reg << ", " << var_reg << std::endl;
+                stream << asm_prefix.at(context.get_instruction_state()) << "slli " << dest_reg << ", " << dest_reg << ", " << types_mem_shift.at(type) << std::endl;
+            }
+            else{
+                stream << asm_prefix.at(context.get_instruction_state()) <<"addi " << index_reg << ", " << var_reg <<  ", 1" << std::endl;
+                stream << asm_prefix.at(context.get_instruction_state()) << "slli " << dest_reg << ", " << index_reg << ", " << types_mem_shift.at(type) << std::endl;
+            }
+            
         }
-        
-        stream << asm_prefix.at(context.get_instruction_state()) <<"li " << dest_reg << ", " << linear_index + 1 << std::endl;
-        stream << asm_prefix.at(context.get_instruction_state()) << "slli " << dest_reg << ", " << dest_reg << ", " << types_mem_shift.at(type) << std::endl;
+
     }
     else{
         
@@ -114,9 +150,22 @@ void ArrayIndexAccess::get_position(std::ostream &stream, Context &context, std:
             }
         }
         else{
-            int32_t multiply = indexes[0] * dimension[1];
-            stream << asm_prefix.at(context.get_instruction_state()) << "addi " << index_reg << ", " << index_reg << ", " << multiply + 1 << std::endl;
-            stream << asm_prefix.at(context.get_instruction_state()) << "slli " << dest_reg << ", " << index_reg << ", " << types_mem_shift.at(type) << std::endl;
+            if(!Identbool){
+                int32_t multiply = indexes[0] * dimension[1];
+                stream << asm_prefix.at(context.get_instruction_state()) << "addi " << index_reg << ", " << index_reg << ", " << multiply + 1 << std::endl;
+                stream << asm_prefix.at(context.get_instruction_state()) << "slli " << dest_reg << ", " << index_reg << ", " << types_mem_shift.at(type) << std::endl;
+            }
+            else{
+                std::string intermediate_temp = context.get_register(Type::_INT);
+
+                stream << asm_prefix.at(context.get_instruction_state()) << "muli " << intermediate_temp << ", " << var_reg << ", " << dimension[0] << std::endl;
+                stream << asm_prefix.at(context.get_instruction_state()) << "addi " << index_reg << ", " << index_reg << ", 1" << std::endl;
+                stream << asm_prefix.at(context.get_instruction_state()) << "add " << index_reg << ", " << index_reg << ", " << intermediate_temp << std::endl;
+                stream << asm_prefix.at(context.get_instruction_state()) << "slli " << dest_reg << ", " << index_reg << ", " << types_mem_shift.at(type) << std::endl;
+
+                context.deallocate_register(intermediate_temp);
+            }
+            
         }
 
     }
@@ -141,7 +190,14 @@ std::vector<int> ArrayIndexAccess::get_linear_index(std::ostream& stream, Contex
         thread_id = dynamic_cast <const BuiltInOperand*>(array->index_.get());
 
         if(variable != nullptr){
-            indexes.push_back(variable->get_index(context));
+            Variable var = context.get_variable(variable->GetId());
+
+            if(var.get_reg() != ""){
+                indexes.push_back(-2);
+            }
+            else{
+                indexes.push_back(variable->get_index(context));
+            }
         }
         else if(constant != nullptr){
             indexes.push_back(constant->get_val());
@@ -149,6 +205,18 @@ std::vector<int> ArrayIndexAccess::get_linear_index(std::ostream& stream, Contex
         else if(thread_id != nullptr){
             thread_id->EmitElsonV(stream,context,dest_reg);
             indexes.push_back(-1);
+        }
+
+        std::cout << "[DEBUG] get_linear_index processing index of type: " << typeid(*array->index_).name() << std::endl;
+
+        if(variable != nullptr){
+            Variable var = context.get_variable(variable->GetId());
+            std::cout << "[DEBUG] culprit " << variable->GetId() << ": " << var.get_reg() << std::endl;
+            std::cout << "[DEBUG] values stored in indexes: wtf is going on???" << std::endl;
+            std::cout << "[DEBUG] indexes size: " << indexes.size() << std::endl;
+            for(auto index : indexes){
+                std::cout << index << std::endl;
+            }
         }
 
         array = dynamic_cast<const ArrayIndexAccess *>(array->identifier_.get());

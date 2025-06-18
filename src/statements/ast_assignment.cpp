@@ -22,7 +22,7 @@ void Assignment::EmitElsonV(std::ostream &stream, Context &context, std::string 
         return;
     } else {
         std::cout << "Entering Assignment::EmitElsonV for everything else" << std::endl;
-        Variable variable = context.get_variable(GetId());
+        Variable& variable = context.get_variable(GetId());
         Type type = variable.is_pointer() ? Type::_INT : variable.get_type();
         int offset = variable.get_offset();
         context.push_operation_type(type);
@@ -56,7 +56,11 @@ void Assignment::EmitElsonV(std::ostream &stream, Context &context, std::string 
                         stream << asm_prefix.at(context.get_instruction_state()) << context.store_instr(type) << " " << reg << ", " << offset - 4 << "(sp)" << std::endl;
                     }
                     else{
-                        
+                        std::string perma_reg = context.get_register(type);
+                        stream << asm_prefix.at(context.get_instruction_state()) << "add " << perma_reg << ", " << perma_reg << ", " << reg << std::endl;
+                        variable.set_reg(perma_reg);
+                        context.add_thread_reg(perma_reg);
+                        std::cout << "[DEBUG] perma_reg assignment: " << GetId() << ": " << variable.get_reg() << std::endl;
                     }
                     
                 }

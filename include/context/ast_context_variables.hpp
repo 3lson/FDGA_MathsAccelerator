@@ -20,6 +20,7 @@ private:
     std::vector<int> arr_dim = {};
     int identifier_constant = 0;
     std::string type_name_;
+    std::string reg = "";
 
 public:
     Variable() : isPointer(false), isArray(false), dataType(Type::_INT), scope(ScopeLevel::LOCAL), memoryOffset(0), arraySize(0), dereference_num(0), type_name_("")  {}
@@ -60,6 +61,7 @@ public:
     int get_value() const {return identifier_constant; }
     std::vector<int> get_dim() const {return arr_dim; }
     std::string get_type_name() const{ return type_name_; }
+    std::string get_reg() const {return reg;}
 
     //Setters
     void set_pointer(bool ptr) {isPointer = ptr; }
@@ -69,7 +71,7 @@ public:
     void set_offset(int offset) { memoryOffset = offset; }
     void set_value(int value) {identifier_constant = value;}
     void set_dereference_num(int num) { dereference_num = num; }
-
+    void set_reg(std::string fixed_register) {reg = fixed_register;}
 };
 
 class Global : public Variable {

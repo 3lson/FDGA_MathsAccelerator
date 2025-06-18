@@ -14,7 +14,7 @@ public:
 
     int GetArraySize() const;
 
-    void SaveValue(std::ostream &stream, Context &context, Variable variable, std::string identifier) const;
+    void SaveValue(std::ostream &stream, Context &context, Variable& variable, std::string identifier) const;
     void global_init(std::ostream &stream, Context &context, Global &global) const;
 
     void EmitElsonV(std::ostream& stream, Context& context, std::string dest_reg) const;

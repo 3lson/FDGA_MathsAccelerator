@@ -1,6 +1,11 @@
 int f(){
-    int  threads = 50;
-    kernel(4){
+    int i;
+    int y;
+    int arr[2] = {1,2};
+    int mini[2][5];
+    kernel(1){
+        i = threadId.x;
+        y = fabsf(i-10);
     }
-    return threads;
+    return 0;
 }

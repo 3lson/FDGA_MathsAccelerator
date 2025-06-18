@@ -28,6 +28,7 @@ private:
     int warp_size = 4;
     std::vector<Warp> warp_file;
     int warp_offset = 15000;
+    std::vector<std::string> allocated_thread_regs;
 
 
     // ----- Register Management ------
@@ -96,6 +97,8 @@ public:
     int get_warp_size() const {return warp_size;}
     std::vector<Warp>& get_warp_file() {return warp_file;}
     int get_warp_offset() const {return warp_offset;}
+    void add_thread_reg(std::string thread_reg) {allocated_thread_regs.push_back(thread_reg);}
+    std::vector<std::string>& get_thread_regs() {return allocated_thread_regs;} //will be needed for end of program deallocation
 
     // ---------- Register Management --------------
     void assign_reg_manager(RegisterFile& new_reg_manager) {reg_manager = &new_reg_manager; }
@@ -119,7 +122,7 @@ public:
     // --------- Variable Management --------
 
     void define_variable(const std::string& name, const Variable& var);
-    Variable get_variable(const std::string& name) const;
+    Variable& get_variable(const std::string& name);
 
     // --------- Scope Management ---------
     void create_scope();

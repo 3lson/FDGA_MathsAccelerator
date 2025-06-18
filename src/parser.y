@@ -300,7 +300,7 @@ postfix_expression
     | postfix_expression DEC_OP { $$ = new UnaryExpression(UnaryOp::DEC, NodePtr($1)); }
 	| postfix_expression '(' ')' { $$ = new FunctionInvocation(NodePtr($1)); }
 	| postfix_expression '(' argument_expression_list ')' { $$ = new FunctionInvocation(NodePtr($1), NodePtr($3)); }
-	| postfix_expression '[' expression ']' { $$ = new ArrayIndexAccess{NodePtr($1), NodePtr($3)}; }
+	| postfix_expression '[' primary_expression ']' { $$ = new ArrayIndexAccess{NodePtr($1), NodePtr($3)}; }
 	| postfix_expression '.' IDENTIFIER { $$ = new StructAccess(NodePtr($1), $3); }
 	;
 
