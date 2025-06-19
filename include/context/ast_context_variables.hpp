@@ -21,6 +21,7 @@ private:
     int identifier_constant = 0;
     std::string type_name_;
     std::string reg = "";
+    int out_offset = 0;
 
 public:
     Variable() : isPointer(false), isArray(false), dataType(Type::_INT), scope(ScopeLevel::LOCAL), memoryOffset(0), arraySize(0), dereference_num(0), type_name_("")  {}
@@ -62,6 +63,7 @@ public:
     std::vector<int> get_dim() const {return arr_dim; }
     std::string get_type_name() const{ return type_name_; }
     std::string get_reg() const {return reg;}
+    int get_out_offset() const {return out_offset;}
 
     //Setters
     void set_pointer(bool ptr) {isPointer = ptr; }
@@ -72,6 +74,7 @@ public:
     void set_value(int value) {identifier_constant = value;}
     void set_dereference_num(int num) { dereference_num = num; }
     void set_reg(std::string fixed_register) {reg = fixed_register;}
+    void set_out_offset(int offset) {out_offset = offset;}
 };
 
 class Global : public Variable {

@@ -7,7 +7,7 @@ std::string RelationExpression::GetOperation(Type type) const {
         {RelationOp::LESS_THAN, {
             {Type::_INT, "slt"}, {Type::_UNSIGNED_INT, "sltu"}, {Type::_CHAR, "slt"},
             {Type::_SHORT, "slt"},
-            {Type::_FLOAT, "flt.s"}, {Type::_DOUBLE, "flt.d"}
+            {Type::_FLOAT, "flt"}, {Type::_DOUBLE, "slt"}
         }},
         {RelationOp::GREATER_THAN, {
             {Type::_INT, "sgt"}, {Type::_UNSIGNED_INT, "sgtu"}, {Type::_CHAR, "sgt"},
@@ -22,7 +22,7 @@ std::string RelationExpression::GetOperation(Type type) const {
         {RelationOp::GREATER_THAN_OR_EQUAL, {
             {Type::_INT, "slt"}, {Type::_UNSIGNED_INT, "sltu"}, {Type::_CHAR, "slt"},
             {Type::_SHORT, "slt"},
-            {Type::_FLOAT, "flt.s"}, {Type::_DOUBLE, "flt.d"}
+            {Type::_FLOAT, "flt"}, {Type::_DOUBLE, "flt.d"}
         }}
     };
 
@@ -88,7 +88,7 @@ void RelationExpression::EmitElsonV(std::ostream &stream, Context &context, std:
     else{
         // Handle LESS_THAN or GREATER_THAN and others normally
         if (op_ == RelationOp::LESS_THAN) {
-            stream << "sx." <<GetOperation(type) << " s26, " << left_register << ", " << right_register << std::endl;
+            stream << "sx." << GetOperation(type) << " s26, " << left_register << ", " << right_register << std::endl;
         }
         else if (op_ == RelationOp::GREATER_THAN) {
             stream << "sx." << GetOperation(type) << " s26, " << left_register << ", " << right_register << std::endl;

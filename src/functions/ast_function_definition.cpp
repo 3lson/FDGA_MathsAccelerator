@@ -18,11 +18,6 @@ void FunctionDefinition::EmitElsonV(std::ostream &stream, Context &context, std:
     Type return_type = return_type_specifier->GetType();
 
     //Hard coding according to assembler directives
-    stream << ".text" << std::endl;
-    stream << ".globl " << function_name << std::endl;
-    stream << ".align " << types_mem_shift.at(return_type) << std::endl;
-    stream << ".type " << function_name << ", @function" << std::endl;
-    stream << function_name << ":" << std::endl;
 
     ReturnValue return_value(return_is_pointer, false, return_type, direct_declarator_->get_deref());
     //vector for my arguments to pull the arguments out then processing then in "pameter_definition"

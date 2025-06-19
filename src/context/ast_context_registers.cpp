@@ -268,4 +268,45 @@ void Context::pop_registers(std::ostream &stream)
     }
 }
 
+std::string Context::get_divergence_safe_register(Type type) {
+    std::vector<Warp>& warps = get_warp_file();
+    
+    // Find active warp
+    for(auto& warp : warps) {
+        if(warp.get_activity()) {
+            // Get register from first thread (as template)
+            Thread& first_thread = warp.return_thread(0);
+            std::string reg_name = first_thread.get_thread_file().get_register(type);
+            
+            // Apply same allocation to ALL threads in the warp
+            for(int i = 0; i < warp.get_size(); i++) {
+                Thread& thread = warp.return_thread(i);
+                VectorRegisterFile& thread_file = thread.get_thread_file();
+                thread_file.allocate_register(reg_name, type);
+            }
+            
+            return reg_name;
+        }
+    }
+    
+    // Fallback to regular allocation if no active warp found
+    return get_register(type);
+}
+
+void Context::deallocate_from_all_threads(const std::string& reg_name) {
+    std::vector<Warp>& warps = get_warp_file();
+    
+    for(auto& warp : warps) {
+        if(warp.get_activity()) {
+            // Deallocate from ALL threads in the active warp
+            for(int i = 0; i < warp.get_size(); i++) {
+                Thread& thread = warp.return_thread(i);
+                VectorRegisterFile& thread_file = thread.get_thread_file();
+                thread_file.deallocate_register(reg_name);
+            }
+            break;
+        }
+    }
+}
+
 }//namespace ast

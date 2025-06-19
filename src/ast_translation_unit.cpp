@@ -3,7 +3,6 @@
 namespace ast{
 
 void TranslationUnit::EmitElsonV(std::ostream &stream, Context &context, std::string dest_reg) const{
-    stream << ".text" << std::endl;
     for (const auto& node : get_nodes()){
         if (node == nullptr){
             continue;

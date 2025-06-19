@@ -23,12 +23,18 @@ namespace ast {
 class Context
 {
 private:
+    //-------OUT variablel Management------
+    int out_offset = 2500;
+    int current_out_offset = 2500;
+
+
     // ----- Kernel Management ------
     Kernel instruction_state = Kernel::_SCALAR;
     int warp_size = 4;
     std::vector<Warp> warp_file;
     int warp_offset = 15000;
     std::vector<std::string> allocated_thread_regs;
+
 
 
     // ----- Register Management ------
@@ -91,6 +97,10 @@ public:
     Context();
     ~Context();
 
+    //-----------Out Management -----------------
+    void set_current_out_offset(int size) {current_out_offset -= size;}
+    int get_current_out_offset() const {return current_out_offset;}
+
     // ---------- Kernel Management ---------------
     void set_instruction_state(Kernel state);
     Kernel get_instruction_state() const { return instruction_state; }
@@ -99,6 +109,10 @@ public:
     int get_warp_offset() const {return warp_offset;}
     void add_thread_reg(std::string thread_reg) {allocated_thread_regs.push_back(thread_reg);}
     std::vector<std::string>& get_thread_regs() {return allocated_thread_regs;} //will be needed for end of program deallocation
+    
+    //prevents divergence between threads in the same warp
+    std::string get_divergence_safe_register(Type type);
+    void deallocate_from_all_threads(const std::string& reg_name);
 
     // ---------- Register Management --------------
     void assign_reg_manager(RegisterFile& new_reg_manager) {reg_manager = &new_reg_manager; }

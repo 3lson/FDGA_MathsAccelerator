@@ -33,7 +33,7 @@
 %token MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN ADD_ASSIGN SUB_ASSIGN LEFT_ASSIGN RIGHT_ASSIGN AND_ASSIGN XOR_ASSIGN OR_ASSIGN
 %token TYPE_NAME TYPEDEF EXTERN STATIC AUTO REGISTER SIZEOF
 %token CHAR SHORT INT LONG SIGNED UNSIGNED FLOAT DOUBLE CONST VOLATILE VOID
-%token STRUCT UNION ENUM ELLIPSIS
+%token STRUCT UNION ENUM ELLIPSIS OUT
 %token CASE DEFAULT IF ELSE SWITCH WHILE DO FOR GOTO CONTINUE BREAK RETURN FABSF SYNC BLOCKIDX THREADIDX BLOCKSIZE KERNEL
 
 %type <node> translation_unit external_declaration function_definition primary_expression postfix_expression argument_expression_list
@@ -44,7 +44,7 @@
 %type <node> struct_declarator enum_specifier enumerator_list enumerator declarator direct_declarator pointer parameter_list parameter_declaration
 %type <node> identifier_list type_name abstract_declarator direct_abstract_declarator initializer initializer_list statement labeled_statement
 %type <node> compound_statement declaration_list expression_statement selection_statement iteration_statement jump_statement
-%type <node> kernel_statement
+%type <node> kernel_statement sync_statement out_declaration_statement
 
 %type <node_list> statement_list
 
@@ -235,6 +235,8 @@ statement
 	| iteration_statement   { $$ = $1; }
 	| labeled_statement		{ $$ = $1; }
 	| kernel_statement      { $$ = $1; }
+	| sync_statement		{ $$ = $1; }
+	| out_declaration_statement {$$ = $1; }
 	;
 
 jump_statement
@@ -247,6 +249,10 @@ jump_statement
 labeled_statement
 	: CASE constant_expression ':' statement_list { $$ = new CaseStatement(NodePtr($2), NodePtr($4)); }
     | DEFAULT ':' statement_list { $$ = new CaseStatement(nullptr,NodePtr($3)); }
+	;
+
+sync_statement
+	: SYNC ';' { $$ = new SyncStatement();}
 	;
 
 kernel_statement
@@ -270,8 +276,8 @@ selection_statement
 iteration_statement
     : WHILE '(' expression ')' compound_statement { $$ = new WhileStatement(NodePtr($3), NodePtr($5)); }
 	| DO statement WHILE '(' expression ')' ';' { $$ = new DoWhileStatement(NodePtr($2), NodePtr($5)); }
-	| FOR '(' expression_statement expression_statement ')' statement { $$ = new ForStatement(NodePtr($3), NodePtr($4), nullptr, NodePtr($6)); }
-	| FOR '(' expression_statement expression_statement expression ')' statement { $$ = new ForStatement(NodePtr($3), NodePtr($4), NodePtr($5), NodePtr($7)); }
+	| FOR '(' expression_statement expression ';' ')' statement { $$ = new ForStatement(NodePtr($3), NodePtr($4), nullptr, NodePtr($7)); }
+	| FOR '(' expression_statement expression ';' expression ')' statement { $$ = new ForStatement(NodePtr($3), NodePtr($4), NodePtr($6), NodePtr($8)); }
 	;
 
 primary_expression
@@ -283,7 +289,6 @@ primary_expression
 	| CHAR_LITERAL { $$ = new CharacterLiteral($1); }
 	| STRING_LITERAL { $$ = new StringLiteral($1); }
 	| FABSF '(' expression ')'  { $$ = new BuiltInFunction("fabsf", NodePtr($3)); }
-	| SYNC { $$ = new BuiltInFunction("sync");}
 	| BLOCKIDX    { $$ = new BuiltInOperand("blockId.x", 30); }
     | THREADIDX   { $$ = new BuiltInOperand("threadId.x", 26); }
     | BLOCKSIZE   { $$ = new BuiltInOperand("blocksize", 31); }
@@ -469,6 +474,9 @@ init_declarator
 	: declarator
 	| declarator '=' initializer	{ $$ = new Assignment(NodePtr($1), NodePtr($3)); }
 	;
+
+out_declaration_statement
+	: OUT direct_declarator ';' {$$ = new OutStatement(NodePtr($2)); }
 
 initializer
 	: assignment_expression

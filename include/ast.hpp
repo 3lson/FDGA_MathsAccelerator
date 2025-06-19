@@ -67,6 +67,8 @@
 #include "custom/ast_builtin_operand.hpp"
 
 #include "kernel/ast_kernel.hpp"
+#include "kernel/ast_sync.hpp"
+#include "kernel/ast_out.hpp"
 
 #include "context/ast_context.hpp"
 

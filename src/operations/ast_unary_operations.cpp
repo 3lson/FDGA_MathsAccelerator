@@ -104,7 +104,7 @@ void UnaryExpression::EmitElsonV(std::ostream& stream, Context& context, std::st
     if (identifier){
         Variable variable = context.get_variable(identifier->GetId());
         int offset = variable.get_offset();
-        stream << asm_prefix.at(context.get_instruction_state()) << context.store_instr(type) << " " << dest_reg << ", " << offset << "(s0)" <<std::endl;
+        stream << asm_prefix.at(context.get_instruction_state()) << context.store_instr(type) << " " << dest_reg << ", " << offset - 4 << "(sp)" <<std::endl;
     }
 
     context.deallocate_register(operand_register);

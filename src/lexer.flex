@@ -68,6 +68,7 @@ IS  (u|U|l|L)*
 "threadId.x"   { return(THREADIDX); }
 "blocksize"    { return(BLOCKSIZE); }
 "kernel"        { return(KERNEL); }
+"OUT"           { return(OUT); }
 
 {L}({L}|{D})*		{
   std::string *str = new std::string(yytext);
@@ -76,7 +77,7 @@ IS  (u|U|l|L)*
     delete str;
     return INT_CONSTANT;
   } else if(context.is_typedef(*str)){
-    process_typedef(context.get_typedef(*str));
+    process_typedef(context.get_typedef(*str)); 
     delete str;
   } else {
     yylval.string = str;

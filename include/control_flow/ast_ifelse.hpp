@@ -11,6 +11,8 @@ private:
     NodePtr else_branch_;
     bool is_ternary_; //tenary op flag
 
+    Warp& GetActiveWarp(std::vector<Warp>& warps) const;
+
 public:
     IfStatement(NodePtr condition, NodePtr then_branch, NodePtr else_branch = nullptr, bool is_ternary = false)
         : condition_(std::move(condition)), then_branch_(std::move(then_branch)), else_branch_(std::move(else_branch)), is_ternary_(is_ternary) {}
