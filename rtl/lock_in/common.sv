@@ -26,13 +26,9 @@ typedef struct packed {
 `define FUNCT3_WIDTH 3
 `define FUNCT4_WIDTH 4
 
-// Halt Instruction Opcode
-`define OPCODE_HALT     3'b110
-
 // Vector-Scalar Instruction Opcodes (SX_SLTI and SX_SLT)
 // SX_SLTI sets one bit of a scalar register based on thread's comparison result
-`define OPCODE_SX_SLT   7'b1111110        // SX_SLT rd, rs1, rs2 <=> rd[id] = rs1 < rs2 ? 1 : 0
-`define OPCODE_SX_SLTI  7'b1111101        // SX_SLTI rd, rs1, imm <=> rd[id] = rs1 < imm ? 1 : 0
+`define OPCODE_SX_SLT   3'b101        // SX_SLT rd, rs1, rs2 <=> rd[id] = rs1 < rs2 ? 1 : 0
 
 // Instruction Opcodes
 // The entire opcode is 7 bits, the most significant bit decides whether the instruction is vector or scalar
@@ -59,12 +55,11 @@ typedef enum logic [4:0] {
     MUL, // 00010
     DIV, // 00011
     SLT, // 00100
-    SGT, // 00101
+    SLL, // 00101
     SEQ, // 00110
     SNEZ, // 00111
     MIN, // 01000
     ABS, // 01001
-    SLL, // 01010
 
     ADDI, // 01010
     MULI, // 01011
@@ -76,7 +71,7 @@ typedef enum logic [4:0] {
     FSUB, // 01111
     FMUL, // 10000
     FDIV, // 10001
-    FLT, // 10010
+    FSLT, // 10010
     FNEG, // 10011
     FEQ, // 10100
     FMIN, // 10101
@@ -88,11 +83,17 @@ typedef enum logic [4:0] {
     BEQZ, // 11001
 
     // jump instructions
-    JAL // 11010
+    JAL, // 11010
+
+    // special
+    SEQI, // 11011
+    BEQO, // 11100
+    SYNC, // 11101
+    END_SYNC // 11110
 } alu_instruction_t;
 
 // warp state enum
-typedef enum logic [2:0] {
+typedef enum logic [3:0] {
     WARP_IDLE,
     WARP_FETCH,
     WARP_DECODE,
@@ -100,6 +101,7 @@ typedef enum logic [2:0] {
     WARP_WAIT,
     WARP_EXECUTE,
     WARP_UPDATE,
+    WARP_SYNC_WAIT,
     WARP_DONE
 } warp_state_t;
 
@@ -147,25 +149,25 @@ function automatic data_t sign_extend_15(logic[14:0] imm15);
     return signed_imm15;
 endfunction
 
-function automatic data_t sign_extend_18(logic[17:0] imm18);
-    data_t signed_imm18;
-    if (imm18[17]) begin
-        signed_imm18 = {{14{1'b1}}, imm18};
+function automatic data_t sign_extend_16(logic[15:0] imm16);
+    data_t signed_imm16;
+    if (imm16[15]) begin
+        signed_imm16 = {{14{1'b1}}, imm16};
     end else begin
-        signed_imm18 = {{14{1'b0}}, imm18};
+        signed_imm16 = {{14{1'b0}}, imm16};
     end
-    return signed_imm18;
+    return signed_imm16;
 endfunction
 
 // sign extend function for 21-bit immediate values
-function automatic data_t sign_extend_28(logic[27:0] imm28);
-    data_t signed_imm28;
-    if (imm28[27]) begin
-        signed_imm28 = {{4{1'b1}}, imm28};
+function automatic data_t sign_extend_26(logic[25:0] imm26);
+    data_t signed_imm26;
+    if (imm26[25]) begin
+        signed_imm26 = {{6{1'b1}}, imm26};
     end else begin
-        signed_imm28 = {{4{1'b0}}, imm28};
+        signed_imm26 = {{6{1'b0}}, imm26};
     end
-    return signed_imm28;
+    return signed_imm26;
 endfunction
 
 `endif // COMMON_SV

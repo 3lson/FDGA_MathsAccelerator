@@ -42,7 +42,16 @@ module lsu (
 data_t offset_address;
 assign offset_address = rs1 + imm;
 
+// always_comb begin 
+//     // $display("Enable: ", enable);
+//     // $display("Mem read enable: ", decoded_mem_read_enable);
+//     // $display("Mem write enable: ", decoded_mem_write_enable);
+//     // $display("Rs1: ", rs1);
+// end
+
 always @(posedge clk) begin
+    // $display("Write enable: ", decoded_mem_write_enable);
+    // $display("Write enable: ", decoded_mem_write_enable);
     if (reset) begin
         lsu_state <= LSU_IDLE;
         lsu_out <= 0;
@@ -54,6 +63,7 @@ always @(posedge clk) begin
     end else if (enable) begin
         // If memory read enable is triggered (LDR instruction)
         if (decoded_mem_read_enable) begin 
+            //$display("LSU_State: ", lsu_state);
             case (lsu_state)
                 LSU_IDLE: begin
                     // Only read when warp_state = REQUEST
@@ -68,7 +78,7 @@ always @(posedge clk) begin
                 end
                 LSU_WAITING: begin
                     if (mem_read_ready == 1) begin
-                        //$display("LSU: Reading %d from memory address %d", mem_read_data, rs1);
+                        // $display("LSU: Reading %d from memory address %d", mem_read_data, offset_address);
                         mem_read_valid <= 0;
                         lsu_out <= mem_read_data;
                         lsu_state <= LSU_DONE;
@@ -85,6 +95,7 @@ always @(posedge clk) begin
 
         // If memory write enable is triggered (STR instruction)
         if (decoded_mem_write_enable) begin 
+            //$display("LSU State: ", lsu_state);
             case (lsu_state)
                 LSU_IDLE: begin
                     // Only read when warp_state = REQUEST
@@ -93,7 +104,7 @@ always @(posedge clk) begin
                     end
                 end
                 LSU_REQUESTING: begin 
-                    $display("LSU: Writing %d to memory address %d", rs2, rs1);
+                    // $display("LSU: Writing %d to memory address %d", rs2, offset_address);
                     mem_write_valid <= 1;
                     mem_write_address <= offset_address;
                     mem_write_data <= rs2;

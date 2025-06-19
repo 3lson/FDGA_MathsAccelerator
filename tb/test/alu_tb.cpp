@@ -8,7 +8,7 @@
 #define MUL         2
 #define DIV         3
 #define SLT         4
-#define SGT         5
+#define SLL         5
 #define SEQ         6
 #define SNEZ        7
 #define MIN         8
@@ -17,26 +17,23 @@
 #define MULI        11
 #define DIVI        12
 #define SLLI        13
+#define SEQI        27
 #define BEQZ        25
 #define JAL        26
+#define BEQ0        28
 
 // Base class for testing the sequential ALU
 class ALUTestbench : public BaseTestbench {
 protected:
     void clockCycle() {
         // Falling edge
-        top->clk = 0;
         top->eval();
         // Rising edge
-        top->clk = 1;
         top->eval();
     }
 
     // This method is called by the test fixture setup
     void initializeInputs() override {
-        top->clk = 0;
-        top->reset = 1; // Start in reset
-        top->enable = 0;
         top->instruction = 0;
         top->ALUop1 = 0;
         top->ALUop2 = 0;
@@ -45,9 +42,7 @@ protected:
 
     // Helper to reset the DUT
     void resetDUT() {
-        top->reset = 1;
         clockCycle(); // Hold reset for one cycle
-        top->reset = 0;
         top->eval();    // Let reset go low
     }
 
@@ -58,11 +53,7 @@ protected:
         top->ALUop1 = op1;
         top->ALUop2 = op2;
         top->IMM = imm;
-        top->enable = 1;
-
         clockCycle();
-
-        top->enable = 0;
     }
 };
 
@@ -111,24 +102,22 @@ TEST_F(ALUTestbench, LessThanTestFalse) {
 }
 
 
-TEST_F(ALUTestbench, GreaterThanTestTrue) {
+TEST_F(ALUTestbench, SLLTest) {
     resetDUT();
-    run_operation(SGT, 8, 5);
-    EXPECT_EQ(top->Result, 1);
+    run_operation(SLL, 1, 2);
+    EXPECT_EQ(top->Result, 4);
 }
 
 TEST_F(ALUTestbench, EqualToTestTrue) {
     resetDUT();
     run_operation(SEQ, 5, 5);
     EXPECT_EQ(top->Result, 1);
-    EXPECT_EQ(top->EQ, 1); // Check EQ signal specifically
 }
 
 TEST_F(ALUTestbench, EqualToTestFalse) {
     resetDUT();
     run_operation(SEQ, 8, 5);
     EXPECT_EQ(top->Result, 0);
-    EXPECT_EQ(top->EQ, 0); // Check EQ signal specifically
 }
 
 TEST_F(ALUTestbench, MinTestOp1) {
@@ -142,7 +131,7 @@ TEST_F(ALUTestbench, AbsTest) {
     // For -8 (0xFFFFFFF8), it will result in 0x7FFFFFF8.
     // Let's test based on the actual Verilog implementation.
     run_operation(ABS, 0xFFFFFFF8, 0); // op1 = -8
-    EXPECT_EQ(top->Result, 0x7FFFFFF8);
+    EXPECT_EQ(top->Result, 8);
 }
 
 TEST_F(ALUTestbench, AddImmediateTest) {
@@ -170,6 +159,18 @@ TEST_F(ALUTestbench, SLLI_Test) {
     EXPECT_EQ(top->Result, 0x000000F0);
 }
 
+TEST_F(ALUTestbench, SEQI_Test_True) {
+    resetDUT();
+    int32_t op1 = 4;
+    int32_t imm = 4;
+
+    // For an I-type instruction, op2 is ignored.
+    // Pass the immediate value in the 'imm' parameter.
+    run_operation(SEQI, op1, 0, imm); // Correct usage
+
+    EXPECT_EQ(top->Result, 1);
+}
+
 TEST_F(ALUTestbench, BEQZ_ConditionTrue) {
     resetDUT();
     int32_t op1_is_zero = 0;
@@ -178,7 +179,6 @@ TEST_F(ALUTestbench, BEQZ_ConditionTrue) {
     run_operation(BEQZ, op1_is_zero, 0);
 
     EXPECT_EQ(top->Result, 1) << "Result should be 1 when condition is true";
-    EXPECT_EQ(top->EQ, 1) << "EQ flag should be set when condition is true";
 }
 
 TEST_F(ALUTestbench, BEQZ_ConditionFalse) {
@@ -187,7 +187,6 @@ TEST_F(ALUTestbench, BEQZ_ConditionFalse) {
     run_operation(BEQZ, op1_not_zero, 0);
 
     EXPECT_EQ(top->Result, 0) << "Result should be 0 when condition is false";
-    EXPECT_EQ(top->EQ, 0) << "EQ flag should be clear when condition is false";
 }
 
 TEST_F(ALUTestbench, JumpTest) {
@@ -199,4 +198,22 @@ TEST_F(ALUTestbench, JumpTest) {
     run_operation(JAL, 0, 0, offset, current_pc);
     
     EXPECT_EQ(top->Result, current_pc + offset);
+}
+
+TEST_F(ALUTestbench, BEQ0_ConditionTrue) {
+    resetDUT();
+    int32_t op1_is_zero = 1;
+    // For BEQZ, op1 is rs1, op2 is not used.
+    // The ALU checks if op1 is zero and sets the EQ flag.
+    run_operation(BEQ0, op1_is_zero, 1);
+
+    EXPECT_EQ(top->Result, 1) << "Result should be 1 when condition is true";
+}
+
+TEST_F(ALUTestbench, BEQ0_ConditionFalse) {
+    resetDUT();
+    int32_t op1_not_zero = 0;
+    run_operation(BEQ0, op1_not_zero, 1);
+
+    EXPECT_EQ(top->Result, 0) << "Result should be 0 when condition is false";
 }

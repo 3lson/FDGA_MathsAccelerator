@@ -1,3 +1,6 @@
+`default_nettype none
+`timescale 1ns/1ns
+
 `include "common.sv"
 // =================================================
 // A 32-bit Floating Point ALU
@@ -7,8 +10,7 @@ module floating_alu (
     input   logic [31:0] op1,
     input   logic [31:0] op2,
     input   alu_instruction_t instruction,
-    output  logic [31:0] result,
-    output  logic        cmp
+    output  logic [31:0] result
 );
 
 // 1 sign bit, 8 exponent bits and 23 mantissa bits
@@ -40,7 +42,6 @@ logic signed [8:0] shift;
 
 always_comb begin
     result = 32'd0;
-    cmp = 0;
 
     op1_sign_bit = op1[31];
     
@@ -246,7 +247,6 @@ always_comb begin
         FABS: result = {0'b0, op1[30:0]};
 
         FEQ: begin
-            cmp = (op1 == op2) ? 1'b1:1'b0;
             result = (op1 == op2) ? 32'd1:32'd0;
         end
 
@@ -299,7 +299,6 @@ always_comb begin
 
         default: begin
             result = 32'd0;
-            cmp = 0;
         end
     endcase
 end

@@ -29,7 +29,7 @@ enum class RegInputMux : uint8_t {
 };
 
 const int ZERO_REG = 0;
-const int EXECUTION_MASK_REG = 1;
+const int EXECUTION_MASK_REG = 31;
 
 class ScalarRegFileTestbench : public BaseTestbench {
 protected:
@@ -88,26 +88,26 @@ public:
     }
 };
 
-TEST_F(ScalarRegFileTestbench, ResetAndSpecialRegisterRead) {
+TEST_F(ScalarRegFileTestbench, ResetAndZeroRegister) {
+    // After reset, all registers should be 0.
     top->enable = 1;
-    setWarpState(WarpState::REQUEST);
-
-    runSimulation(1);
 
     // Test zero register
     top->decoded_rs1_address = ZERO_REG;
-    runSimulation(1);
-    EXPECT_EQ(top->rs1, 0) << "ZERO_REG value mismatch after reset";
+    tick();
+    EXPECT_EQ(top->rs1, 0) << "ZERO_REG should always read 0";
 
-    // Test execution mask register (should be 1 after reset)
-    top->decoded_rs1_address = EXECUTION_MASK_REG;
-    runSimulation(1);
-    EXPECT_EQ(top->rs1, 0xFFFFFFFF) << "EXECUTION_MASK_REG value mismatch after reset";
+    // Test a general-purpose register
+    top->decoded_rs1_address = 4; // x4
+    top->reset = 1;
+    tick();
+    EXPECT_EQ(top->rs1, 0) << "GP reg x4 should be 0 after reset";
 
-    // Test general purpose register
-    top->decoded_rs1_address = 4; // R4
-    runSimulation(1);
-    EXPECT_EQ(top->rs1, 0) << "R4 (GP reg) value mismatch after reset";
+    // Test another GP register, including the one that used to be the mask
+    top->decoded_rs1_address = 31; // x31
+    top->reset = 1;
+    tick();
+    EXPECT_EQ(top->rs1, 0) << "GP reg x31 should be 0 after reset";
 }
 
 TEST_F(ScalarRegFileTestbench, WriteReadGeneralPurpose) {
