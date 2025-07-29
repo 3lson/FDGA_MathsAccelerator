@@ -25,7 +25,7 @@ unordered_map<string, int> rTypeFunctMap = {
     {"add", 0b0000}, {"sub", 0b0001}, {"mul", 0b0010},
     {"div", 0b0011}, {"slt", 0b0100}, {"sll", 0b0101},
     {"seq", 0b0110}, {"snez", 0b0111}, {"min", 0b1000},
-    {"abs", 0b1001}
+    {"abs", 0b1001}, {"neg", 0b1011}
 };
 
 unordered_map<string, int> iTypeFunctMap = {
@@ -72,13 +72,14 @@ void initregisterMap() {
 
     // Int vector register file
     for(int i = 0; i <= 31; ++i) int_vector_registerMap["x" + to_string(i)] = i; // Placeholder for xN mapping
-    int_vector_registerMap["zero"] = 0; // Vector zero
-    for(int i = 1; i <= 31; ++i) int_vector_registerMap["v" + to_string(i)] = i;
+    int_vector_registerMap["zero"] = 0; int_vector_registerMap["ra"] = 1; int_vector_registerMap["sp"] = 2;
+    int_vector_registerMap["gp"] = 3; int_vector_registerMap["tp"] = 4; int_vector_registerMap["v0"] = 5;
+    for(int i = 1; i <= 26; ++i) int_vector_registerMap["v" + to_string(i)] = 5 + i;
 
     // Float vector register file
     for(int i = 0; i <= 31; ++i) float_vector_registerMap["f" + to_string(i)] = i; // Placeholder for fN mapping
-    float_vector_registerMap["zero"] = 0; // Vector zero
-    for(int i = 1; i <= 31; ++i) float_vector_registerMap["fv" + to_string(i)] = i;
+    //float_vector_registerMap["zero"] = 0; // Vector zero
+    for(int i = 0; i <= 31; ++i) float_vector_registerMap["fv" + to_string(i)] = i;
     
 }
 
@@ -474,6 +475,33 @@ uint32_t encodeControl(string op, const vector<string>& args, int pc) {
 
     }
 
+    if (op == "sync") {
+        if (args.size() != 2) { cerr << "Error: Instruction '" << op << "' expects 1 argument (label)." << endl; return 0; }
+        auto it = labelMap.find(args[1]);
+        if(it == labelMap.end()) { cerr << "Error: Undefined label '" << args[1] << "' for jump." << endl; return 0; }
+        uint32_t target = it->second + 4;
+        // int32_t offset = (target - pc);
+        // // Jumps are PC-relative and word addressed (offset / 4). Immediate is signed.
+        // uint32_t imm = (offset >> 2) & 0x3FFFFFF; // 26 bits used in ISA (Imm[27:2])
+        // uint32_t imm_27_12 = (imm >> 10) & 0xFFFF; // corresponds to Imm[27:12] -> bits [28:13]
+        // uint32_t imm_11_2 = imm & 0x3FF;          // corresponds to Imm[11:2] -> bits [9:0]
+        
+        // return (opcode << 29) | (imm_27_12 << 13) | (funct3 << 10) | imm_11_2;
+
+        // We will now forge the arguments for an 'addi s25, zero, <endsync_address>' instruction
+        vector<string> addi_args = {
+            "s25",                       // rd = s25
+            "zero",                      // rs1 = zero
+            to_string(target)   // immediate = address of ENDSYNC
+        };
+        
+        cout << " (interpreted as addi s25, zero, 0x" << hex << target << dec << ") -> ";
+
+        // Reuse the I-Type encoder to generate the instruction word
+        return encodeIType("addi", addi_args, true); // 'true' for scalar
+
+    }
+
 
     // Fallback for sync, exit
     // These have funct3=110 and 111, respectively.
@@ -568,12 +596,46 @@ uint32_t encodeXType(string op, const vector<string>& args) {
     return (opcode << 29) | (rs2 << 14) | (funct4 << 10) | (rs1 << 5) | rd;
 }
 
-int main() {
+int main(int argc, char* argv[]) {
     initregisterMap();
     //ifstream input("bin/output/algotests/for/for.s"); // Example test file
-    ifstream input("assembler/program.asm");
-    ofstream instrOut("tb/test/tmp_test/program.hex");
-    ofstream dataOut("tb/test/tmp_test/data_program.hex");
+    // -- USED for generating new tests ----
+    // ifstream input("assembler/tests/asm_files/sx_slt.asm");
+    // ofstream instrOut("assembler/tests/expected_output/sx_slt.instr.hex");
+    // ofstream dataOut("assembler/tests/expected_output/sx_slt.data.hex");
+
+    // -- To handle automated testings of assembler --
+    if (argc != 4) {
+        cerr << "Usage: " << argv[0] << " <input.asm> <output.instr.hex> <output.data.hex>" << endl;
+        return 1; // Return a non-zero code to indicate an error
+    }
+
+    string input_filename = argv[1];
+    string instr_out_filename = argv[2];
+    string data_out_filename = argv[3];
+    // --- End of new code ---
+
+    initregisterMap();
+
+    // Use the filenames from the command line
+    ifstream input(input_filename);
+    if (!input.is_open()) {
+        cerr << "Error: Could not open input file: " << input_filename << endl;
+        return 1;
+    }
+
+    ofstream instrOut(instr_out_filename);
+    if (!instrOut.is_open()) {
+        cerr << "Error: Could not open instruction output file: " << instr_out_filename << endl;
+        return 1;
+    }
+
+    ofstream dataOut(data_out_filename);
+    if (!dataOut.is_open()) {
+        cerr << "Error: Could not open data output file: " << data_out_filename << endl;
+        return 1;
+    }
+
     vector<pair<int, string>> instructions;
     vector<pair<int, uint32_t>> data;
     string line;
@@ -678,7 +740,7 @@ int main() {
         bool is_scalar = true; // Default to scalar if no prefix? Or require prefix? Let's require prefix.
         string op;
 
-        cout << "PC 0x" << hex << pc_addr << ": " << line << " -> ";
+        //cout << "PC 0x" << hex << pc_addr << ": " << line << " -> ";
 
         if (op_with_prefix.rfind("sx.", 0) == 0) {
             op = op_with_prefix.substr(3);
@@ -708,11 +770,7 @@ int main() {
                 cerr << "Error: Instruction '" << op_with_prefix << "' at PC 0x" << hex << pc_addr << dec << " is missing 's.' or 'v.' prefix." << endl;
                 continue; // Skip encoding this instruction
              }
-             // For control flow, lui, li, the is_scalar flag might still matter for register lookup
-             // but the scalar bit in the instruction encoding is handled differently (or not present)
-             // Let's set is_scalar based on the *first operand's register type* for these,
-             // UNLESS the instruction explicitly defines register types (like beqz takes int scalar).
-             // Simpler: Assume control flow is always scalar logic, lui/li can be scalar or vector depending on RD.
+
              if (cTypeFunctMap.count(op) || op == "sync" || op == "exit") {
                  is_scalar = true; // Control flow, sync, exit are fundamentally scalar
              } else if (op == "lui" || op == "li") {
@@ -741,28 +799,7 @@ int main() {
         tokens[0] = op; // Update token with stripped opcode (or original if no prefix)
         
         cout << "PC 0x" << hex << pc_addr << ": " << line << " -> ";
-        if (op == "sync") {
-            auto it = labelMap.find("ENDSYNC");
-            if (it == labelMap.end()) {
-                cerr << "Assembler Error: 'sync' instruction requires a label 'ENDSYNC' to be defined." << endl;
-                continue; // Fail to assemble this instruction
-            }
-            // The immediate for the addi is the address of ENDSYNC
-            uint32_t endsync_address = it->second;
-
-            // We will now forge the arguments for an 'addi s25, zero, <endsync_address>' instruction
-            vector<string> addi_args = {
-                "s25",                       // rd = s25
-                "zero",                      // rs1 = zero
-                to_string(endsync_address)   // immediate = address of ENDSYNC
-            };
-            
-            cout << " (interpreted as addi s25, zero, 0x" << hex << endsync_address << dec << ") -> ";
-
-            // Reuse the I-Type encoder to generate the instruction word
-            instr = encodeIType("addi", addi_args, true); // 'true' for scalar
-        }
-        else if (rTypeFunctMap.count(op)) instr = encodeRType(op, {tokens[1], tokens[2], tokens[3]}, is_scalar);
+        if (rTypeFunctMap.count(op)) instr = encodeRType(op, {tokens[1], tokens[2], tokens[3]}, is_scalar);
         else if (iTypeFunctMap.count(op)) instr = encodeIType(op, {tokens[1], tokens[2], tokens[3]}, is_scalar);
         else if (fTypeFunctMap.count(op)) instr = encodeFType(op, tokens, is_scalar); // F-type takes full tokens vector
         else if (op == "lw" || op == "flw") instr = encodeLoad(op, {tokens[1], tokens[2]}, is_scalar);
@@ -779,6 +816,7 @@ int main() {
 
         cout << "0x" << hex << setw(8) << setfill('0') << instr << dec << endl;
         instrOut << hex << setw(8) << setfill('0') << instr << endl;
+        instrOut.flush();
     }
 
     // Output data section
@@ -786,6 +824,7 @@ int main() {
     for (auto& [addr, value] : data) {
         cout << "0x" << hex << setw(8) << setfill('0') << value << dec << endl;
         dataOut << hex << setw(8) << setfill('0') << value << endl;
+        dataOut.flush();
     }
 
 
