@@ -1,7 +1,5 @@
 .DS_Store
-obj_dir/
-tb/obj_dir/
-tb/logs/
+hardware/tb/
 tb/waveform.vcd
 .vscode/
 bin/

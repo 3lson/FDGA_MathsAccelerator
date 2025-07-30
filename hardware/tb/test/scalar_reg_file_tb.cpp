@@ -6,9 +6,9 @@
 #define MODULE_NAME "scalar_reg_file"
 
 // Constants for the design parameters (match Verilog compilation)
-const int DATA_WIDTH = 32;       // Must match Verilog parameter (`common.sv` `DATA_WIDTH`)
+const int DATA_WIDTH = 32;       // Must match Verilog parameter (`common.svh` `DATA_WIDTH`)
 
-// C++ equivalents for Verilog enums (values must match Verilog definitions in common.sv)
+// C++ equivalents for Verilog enums (values must match Verilog definitions in common.svh)
 enum class WarpState : uint8_t {
     IDLE = 0,
     FETCH = 1,

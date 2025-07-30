@@ -1,4 +1,4 @@
-// common.sv
+// common.svh
 `ifndef COMMON_SV
 `define COMMON_SV
 

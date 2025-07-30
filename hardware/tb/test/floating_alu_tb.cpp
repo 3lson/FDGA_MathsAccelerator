@@ -1,4 +1,4 @@
-#include "base_testbench.h"
+#include "sync_testbench.h"
 #include <verilated_cov.h>
 #include <gtest/gtest.h>
 #include <bit>
@@ -8,15 +8,15 @@
 #define FALU_SUB        0b01111
 #define FALU_MUL        0b10000
 #define FALU_DIV        0b10001
+#define FALU_NEG        0b10011
 #define FALU_ABS        0b10110
 #define FALU_EQ         0b10100
 #define FALU_SLT        0b10010
 #define FALU_FCVT_WS    0b10111
 #define FALU_FCVT_SW    0b11000
-//new tests need to be implemented
-#define FALU_NEG 0b10011
 
-class FloatingALUTestbench : public BaseTestbench {
+
+class FloatingALUTestbench : public SyncTestbench {
 protected:
     void initializeInputs() override {
         top->instruction = 0;
@@ -42,7 +42,7 @@ TEST_F(FloatingALUTestbench, AddTest) {
     top->op1 = float_to_bits(op1);
     top->op2 = float_to_bits(op2);
 
-    top->eval();
+    runSimulation(5);
 
     EXPECT_FLOAT_EQ(bits_to_float(top->result), expected);
 }
@@ -56,7 +56,7 @@ TEST_F(FloatingALUTestbench, SubTest) {
     top->op1 = float_to_bits(op1);
     top->op2 = float_to_bits(op2);
 
-    top->eval();
+    runSimulation(5);
 
     EXPECT_FLOAT_EQ(bits_to_float(top->result), expected);
 }
@@ -70,7 +70,7 @@ TEST_F(FloatingALUTestbench, MulTest) {
     top->op1 = float_to_bits(op1);
     top->op2 = float_to_bits(op2);
 
-    top->eval();
+    runSimulation(5);
 
     EXPECT_FLOAT_EQ(bits_to_float(top->result), expected);
 }
@@ -84,7 +84,20 @@ TEST_F(FloatingALUTestbench, DivTest) {
     top->op1 = float_to_bits(op1);
     top->op2 = float_to_bits(op2);
 
-    top->eval();
+    runSimulation(5);
+
+    EXPECT_FLOAT_EQ(bits_to_float(top->result), expected);
+}
+
+TEST_F(FloatingALUTestbench, NegTest) {
+    float op1 = 7.25f;
+    float expected = -7.25f;
+
+    top->instruction = FALU_NEG;
+    top->op1 = float_to_bits(op1);
+    top->op2 = 0;
+
+    runSimulation(5);
 
     EXPECT_FLOAT_EQ(bits_to_float(top->result), expected);
 }
@@ -97,7 +110,7 @@ TEST_F(FloatingALUTestbench, AbsTest) {
     top->op1 = float_to_bits(op1);
     top->op2 = 0;
 
-    top->eval();
+    runSimulation(5);
 
     EXPECT_FLOAT_EQ(bits_to_float(top->result), expected);
 }
@@ -110,8 +123,9 @@ TEST_F(FloatingALUTestbench, EqTestTrue) {
     top->op1 = float_to_bits(op1);
     top->op2 = float_to_bits(op2);
 
-    top->eval();
+    runSimulation(5);
 
+    EXPECT_FLOAT_EQ(top->result, 1);
 }
 
 TEST_F(FloatingALUTestbench, EqTestFalse) {
@@ -122,8 +136,9 @@ TEST_F(FloatingALUTestbench, EqTestFalse) {
     top->op1 = float_to_bits(op1);
     top->op2 = float_to_bits(op2);
 
-    top->eval();
+    runSimulation(5);
 
+    EXPECT_FLOAT_EQ(bits_to_float(top->result), 0);
 }
 
 
@@ -135,8 +150,20 @@ TEST_F(FloatingALUTestbench, SltTestFalse) {
     top->op1 = float_to_bits(op1);
     top->op2 = float_to_bits(op2);
 
-    top->eval();
+    runSimulation(5);
+    EXPECT_FLOAT_EQ(top->result, 0);
+}
 
+TEST_F(FloatingALUTestbench, SltTestTrue) {
+    float op1 = -2.0f;
+    float op2 = 4.0f;
+
+    top->instruction = FALU_SLT;
+    top->op1 = float_to_bits(op1);
+    top->op2 = float_to_bits(op2);
+
+    runSimulation(5);
+    EXPECT_FLOAT_EQ(top->result, 1);
 }
 
 TEST_F(FloatingALUTestbench, ConvertFloatToInt) {
@@ -163,7 +190,7 @@ TEST_F(FloatingALUTestbench, ConvertFloatToInt) {
         top->instruction = FALU_FCVT_WS; // fixed macro name
         top->op1 = float_to_bits(tc.input);
 
-        top->eval();
+        runSimulation(5);
 
         EXPECT_EQ(static_cast<int32_t>(top->result), tc.expected)
             << "Failed for input: " << tc.input;
@@ -190,7 +217,7 @@ TEST_F(FloatingALUTestbench, ConvertIntToFloat) {
         top->instruction = FALU_FCVT_SW; // Integer to float conversion opcode
         top->op1 = static_cast<uint32_t>(tc.input);
 
-        top->eval();
+        runSimulation(5);
 
         float result = bits_to_float(top->result);
         EXPECT_FLOAT_EQ(result, tc.expected)
