@@ -152,10 +152,11 @@ endgenerate
 
 always_comb begin
     all_warps_done = 1'b1;
-    for (int i = 0; i < num_warps; i = i + 1) begin
-        if (warp_state[i] != WARP_DONE) begin
-            all_warps_done = 1'b0;
-            break;
+    for (int i = 0; i < WARPS_PER_CORE; i = i + 1) begin
+        if (i < num_warps) begin
+            if (warp_state[i] != WARP_DONE) begin
+                all_warps_done = 1'b0;
+            end
         end
     end
 end
@@ -165,7 +166,6 @@ always_comb begin
     for (int i = 0; i < THREADS_PER_WARP; i++) begin
         if (current_warp_execution_mask[i] && !vector_fpu_valid[i]) begin
             all_vector_fpus_done=1'b0;
-            break;
         end
     end
 end
@@ -198,19 +198,23 @@ always @(posedge clk) begin
             // Set all warps to fetch state on start
             start_execution <= 1;
             current_warp <= 0;
-            for (int i = 0; i < num_warps; i = i + 1) begin
-                warp_state[i] = WARP_FETCH;
-                fetcher_state[i] = FETCHER_IDLE;
-                pc[i] = kernel_config.base_instructions_address;
-                next_pc[i] = kernel_config.base_instructions_address;
+            for (int i = 0; i < WARPS_PER_CORE; i = i + 1) begin
+                if (i < num_warps) begin
+                    warp_state[i] = WARP_FETCH;
+                    fetcher_state[i] = FETCHER_IDLE;
+                    pc[i] = kernel_config.base_instructions_address;
+                    next_pc[i] = kernel_config.base_instructions_address;
+                end
             end
         end
     end else begin
         // In parallel, check if fetchers are done, and if so, move to decode
-        for (int i = 0; i < num_warps; i = i + 1) begin
-            if (warp_state[i] == WARP_FETCH && fetcher_state[i] == FETCHER_DONE) begin
-                $display("Block: %0d: Warp %0d: Fetched instruction %h at address %h", block_id, i, fetched_instruction[i], pc[i]);
-                warp_state[i] = WARP_DECODE;
+        for (int i = 0; i < WARPS_PER_CORE; i = i + 1) begin
+            if ( i < num_warps ) begin
+                if (warp_state[i] == WARP_FETCH && fetcher_state[i] == FETCHER_DONE) begin
+                    $display("Block: %0d: Warp %0d: Fetched instruction %h at address %h", block_id, i, fetched_instruction[i], pc[i]);
+                    warp_state[i] = WARP_DECODE;
+                end
             end
         end
         done <= all_warps_done;
@@ -223,7 +227,6 @@ always @(posedge clk) begin
                 int warp_index = (next_warp + i) % num_warps;
                 if ((warp_state[warp_index] != WARP_IDLE) && (warp_state[warp_index] != WARP_FETCH) && (warp_state[warp_index] != WARP_DONE)) begin
                     found_warp = warp_index;
-                    break;
                 end
             end
             if (found_warp != -1) begin
