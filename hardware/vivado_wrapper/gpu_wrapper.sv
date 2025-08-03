@@ -5,7 +5,8 @@
 module gpu_wrapper (
     // Only the primary clock and reset are needed for synthesis analysis.
     input wire clk,
-    input wire reset
+    input wire reset,
+    output wire gpu_done_led
 );
 
     localparam NUM_CORES_PARAM                  = 1;
@@ -22,7 +23,7 @@ module gpu_wrapper (
     logic [31:0] warps_per_block_in = WARPS_PER_CORE_PARAM;
 
     // --- Control Output (Absorbed by a wire) ---
-    wire   execution_done_out;
+    wire   execution_done_internal;
 
     // --- Instruction Memory Interface ---
     // Outputs from GPU are absorbed by internal wires.
@@ -61,7 +62,7 @@ module gpu_wrapper (
         .num_blocks                 (num_blocks_in),
         .warps_per_block            (warps_per_block_in),
         .execution_start            (execution_start_in),
-        .execution_done             (execution_done_out),
+        .execution_done             (execution_done_internal),
 
         // --- Instruction Memory Interface ---
         .instruction_mem_read_valid   (imem_read_valid_out),
@@ -79,5 +80,7 @@ module gpu_wrapper (
         .data_mem_write_data        (dmem_write_data_out),
         .data_mem_write_ready       (dmem_write_ready_in)
     );
+
+    assign gpu_done_led = execution_done_internal;
 
 endmodule
