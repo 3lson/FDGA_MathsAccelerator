@@ -2,7 +2,7 @@
 `include "common.svh"
 // Added for the purpose of Vivado gpu wrapper to test the modules and get feedback
 
-module synth_wrapper (
+module gpu_wrapper (
     // Only the primary clock and reset are needed for synthesis analysis.
     input wire clk,
     input wire reset

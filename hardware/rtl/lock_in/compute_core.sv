@@ -184,7 +184,6 @@ always @(posedge clk) begin
             pc[i] <= 0;
             next_pc[i] <= 0;
             current_warp <= 0;
-            fetched_instruction[i] <= 32'b0;
         end
 
     end else if (!start_execution) begin
