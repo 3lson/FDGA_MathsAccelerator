@@ -199,8 +199,8 @@ always_comb begin
 
             // $display("s2_op1_biased_exp: ", s2_op1_biased_exp);
             // $display("s2_op2_biased_exp: ", s2_op2_biased_exp);
-            $display("s2_op1_significand: %b", s2_op1_significand);
-            $display("s2_op2_significand: %b", s2_op2_significand);
+            //$display("s2_op1_significand: %b", s2_op1_significand);
+            //$display("s2_op2_significand: %b", s2_op2_significand);
             
             // Align mantissas based on which operand has the larger exponent
             if (s2_op1_larger) begin
@@ -219,8 +219,8 @@ always_comb begin
                 s2_final_sign = s2_op1_sign_bit; // Sign is the same as either operand
             end else begin
                 // EFFECTIVE SUBTRACTION: (A + -B) or (-A + B)
-                $display("aligned_op1: %b", aligned_op1);
-                $display("aligned_op2: %b", aligned_op2);
+                //$display("aligned_op1: %b", aligned_op1);
+                //$display("aligned_op2: %b", aligned_op2);
                 if (aligned_op1 >= aligned_op2) begin
                     s2_mantissa_result = aligned_op1 - aligned_op2;
                     s2_final_sign = s2_op1_sign_bit; // Result takes sign of the larger operand
@@ -232,7 +232,7 @@ always_comb begin
             
             // The final exponent is the exponent of the larger-exponent operand
             s2_final_exp = s2_aligned_exp;
-            $display("s2_mantissa_result: ", s2_mantissa_result);
+            //$display("s2_mantissa_result: ", s2_mantissa_result);
         end
         
         FMUL: begin
@@ -524,8 +524,8 @@ always_comb begin
             end else begin
                 result = {s4_normalized_sign, final_exp, final_mantissa[22:0]};
             end
-            $display("final mantissa: %b", final_mantissa);
-            $display("final_exp: %b", final_exp);
+            //$display("final mantissa: %b", final_mantissa);
+            //$display("final_exp: %b", final_exp);
         end
         
         FCVT_W_S: begin
@@ -579,7 +579,7 @@ always_comb begin
             result = 32'd0;
         end
     endcase
-    $display("result: %h", result);
+    //$display("result: %h", result);
 end
 
 // Valid signal follows the pipeline

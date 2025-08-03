@@ -89,7 +89,8 @@ typedef enum logic [4:0] {
     SEQI, // 11011
     BEQO, // 11100
     SYNC, // 11101
-    END_SYNC // 11110
+    END_SYNC, // 11110
+    NOP // 11111 - Added for pipeline reset
 } alu_instruction_t;
 
 // warp state enum
@@ -100,6 +101,8 @@ typedef enum logic [3:0] {
     WARP_REQUEST,
     WARP_WAIT,
     WARP_EXECUTE,
+    WARP_ALU_WAIT,
+    WARP_INT_ALU_WAIT,
     WARP_UPDATE,
     WARP_SYNC_WAIT,
     WARP_DONE

@@ -16,8 +16,11 @@ enum class WarpState : uint8_t {
     REQUEST = 3,
     WAIT = 4,
     EXECUTE = 5,
-    UPDATE = 6,
-    DONE = 7
+    ALU_WAIT = 6,
+    INT_ALU_WAIT = 7,
+    UPDATE = 8,
+    SYNC_WAIT = 9,
+    DONE = 10
 };
 
 enum class RegInputMux : uint8_t {

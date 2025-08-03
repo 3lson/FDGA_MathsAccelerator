@@ -1,4 +1,3 @@
-`default_nettype none
 `timescale 1ns/1ns
 
 // This simulates the execution of a block of warps which contains multiple threads
@@ -100,6 +99,8 @@ lsu_state_t lsu_state [THREADS_PER_WARP];
 data_t scalar_lsu_out;
 lsu_state_t scalar_lsu_state;
 data_t vector_to_scalar_data [WARPS_PER_CORE];
+logic vector_fpu_valid [THREADS_PER_WARP];
+logic all_vector_fpus_done;
 
 // Operand Muxing Logic
 warp_mask_t current_warp_execution_mask;
@@ -124,11 +125,6 @@ always_comb begin
 end
 
 //Generate Muxing logic for each of the Vector SIMT lanes
-// DELETE the entire old `g_operand_mux` generate block.
-
-// REPLACE it with this:
-
-//Generate Muxing logic for each of the Vector SIMT lanes
 generate
 for (genvar i = 0; i < THREADS_PER_WARP; i++) begin: g_operand_mux
     logic [31:0] vector_op1;
@@ -149,7 +145,6 @@ for (genvar i = 0; i < THREADS_PER_WARP; i++) begin: g_operand_mux
         // $display("Vector op2: ", vector_op2);
     end
 
-    // This part was correct. It selects between scalar and vector operands.
     assign final_op1[i] = decoded_scalar_instruction[current_warp] ? scalar_op1 : vector_op1;
     assign final_op2[i] = decoded_scalar_instruction[current_warp] ? scalar_op2 : vector_op2;
 end
@@ -160,6 +155,16 @@ always_comb begin
     for (int i = 0; i < num_warps; i = i + 1) begin
         if (warp_state[i] != WARP_DONE) begin
             all_warps_done = 1'b0;
+            break;
+        end
+    end
+end
+
+always_comb begin
+    all_vector_fpus_done = 1'b1;
+    for (int i = 0; i < THREADS_PER_WARP; i++) begin
+        if (current_warp_execution_mask[i] && !vector_fpu_valid[i]) begin
+            all_vector_fpus_done=1'b0;
             break;
         end
     end
@@ -210,12 +215,6 @@ always @(posedge clk) begin
         end
         done <= all_warps_done;
 
-        // Choose a warp to execute
-        // We don't choose warps that are in one of the following states:
-        // - WARP_IDLE - that means that the warp is not active
-        // - WARP_DONE - that means that the warp has finished execution
-        // - WARP_FETCH - that means that the warp is fetching instructions
-        // For now we do not change state unless we are in WARP_UPDATE
         if (current_warp_state == WARP_UPDATE || current_warp_state == WARP_DONE || current_warp_state == WARP_WAIT) begin
             int next_warp = (current_warp + 1) % num_warps;
             int found_warp = -1;
@@ -230,7 +229,6 @@ always @(posedge clk) begin
             if (found_warp != -1) begin
                 current_warp <= found_warp;
             end else begin
-                // No active warp ready; remain with current warp
                 current_warp <= current_warp;
             end
         end
@@ -274,46 +272,47 @@ always @(posedge clk) begin
                 $display("===================================");
                 $display("Mask: %32b", warp_execution_mask[current_warp]);
                 $display("Block: %0d: Warp %0d: Executing instruction %h at address %h", block_id, current_warp, fetched_instruction[current_warp], pc[current_warp]);
-                $display("Instruction opcode: %b", fetched_instruction[current_warp][31:29]);
-                $display("Block: %0d: Warp %0d: Executing instruction %h", block_id, current_warp, fetched_instruction[current_warp]);
-            
-                if (decoded_scalar_instruction[current_warp]) begin
-                    if (decoded_branch[current_warp]) begin
-                        // Branch instruction
-                        if (scalar_alu_out == 1) begin
-                            // Branch taken
-                            next_pc[current_warp] <= pc[current_warp] + decoded_immediate[current_warp];
-                        end else begin
-                            // Branch not taken
-                            next_pc[current_warp] <= pc[current_warp] + 1;
-                        end
-                    end else if (decoded_alu_instruction[current_warp] == JAL) begin
-                        next_pc[current_warp] <= scalar_alu_out;
-                    end else begin
-                        // Other scalar instruction
-                        next_pc[current_warp] <= pc[current_warp] + 1;
-                    end
-                end else begin
-                    // Vector instruction
-                    next_pc[current_warp] <= pc[current_warp] + 1;
-                end
+                //$display("Instruction opcode: %b", fetched_instruction[current_warp][31:29]);
+                //$display("Block: %0d: Warp %0d: Executing instruction %h", block_id, current_warp, fetched_instruction[current_warp]);
                 
-                $display("===================================");
-                // The transition to UPDATE now only happens for non-sync instructions
-                warp_state[current_warp] = WARP_UPDATE;
+                // Determine the next state based on the instruction type
+                if (decoded_alu_instruction[current_warp] >= FADD && decoded_alu_instruction[current_warp] < BEQZ) begin
+                    // It's a Floating Point instruction, go to the FPU wait state
+                    warp_state[current_warp] <= WARP_ALU_WAIT;
+                end else if ((decoded_alu_instruction[current_warp] < FADD) || decoded_branch[current_warp] || (decoded_alu_instruction[current_warp] == JAL)) begin
+                    warp_state[current_warp] <= WARP_INT_ALU_WAIT;
+                end else begin
+                    warp_state[current_warp] <= WARP_UPDATE;
+                end
 
-                $display("Checking reg input mux for VECTOR_TO_SCALAR: ", decoded_reg_input_mux[current_warp] == VECTOR_TO_SCALAR);
-
+                // Handle vector-to-scalar write setup
                 if (decoded_reg_input_mux[current_warp] == VECTOR_TO_SCALAR) begin
                     data_t scalar_write_value;
                     scalar_write_value = {`DATA_WIDTH{1'b0}};
                     for (int i = 0; i < THREADS_PER_WARP; i++) begin
                         scalar_write_value[i] = alu_out[i][0];
-                        $display("scalar write value: ", scalar_write_value[i]);
                     end
                     vector_to_scalar_data[current_warp] <= scalar_write_value;
                 end else begin
                     vector_to_scalar_data[current_warp] <= {`DATA_WIDTH{1'b0}};
+                end
+            end
+
+            WARP_INT_ALU_WAIT: begin
+                // This state is just a one-cycle delay for the 2-stage ALU.
+                warp_state[current_warp] <= WARP_UPDATE;
+            end
+
+            WARP_ALU_WAIT: begin
+                // This state remains the same, for the FPU
+                if (decoded_scalar_instruction[current_warp]) begin
+                    if(scalar_fpu_valid) begin
+                        warp_state[current_warp] <= WARP_UPDATE;
+                    end
+                end else begin
+                    if(all_vector_fpus_done) begin
+                        warp_state[current_warp] <= WARP_UPDATE;
+                    end
                 end
             end
             
@@ -322,10 +321,20 @@ always @(posedge clk) begin
                     $display("Block: %0d: Warp %0d: Finished executing instruction %h", block_id, current_warp, fetched_instruction[current_warp]);
                     warp_state[current_warp] <= WARP_DONE;
                 end else begin
-                    pc[current_warp] <= next_pc[current_warp];
+                    logic [`INSTRUCTION_MEMORY_ADDRESS_WIDTH-1:0] resolved_next_pc = pc[current_warp] + 1;
+
+                    if (decoded_branch[current_warp] && (scalar_alu_out == 1)) begin
+                        resolved_next_pc = pc[current_warp] + decoded_immediate[current_warp];
+                    end
+                    else if (decoded_alu_instruction[current_warp] == JAL) begin
+                        resolved_next_pc = scalar_alu_out;
+                    end
+                    
+                    pc[current_warp] <= resolved_next_pc;
                     warp_state[current_warp] <= WARP_FETCH;
                 end
             end
+
             WARP_DONE: begin
                 // we chillin
             end
@@ -515,20 +524,6 @@ for (genvar i = 0; i < WARPS_PER_CORE; i = i + 1) begin : g_warp
             .rs1(vector_int_rs1[i]),
             .rs2(vector_int_rs2[i])
         );
-
-    // always_comb begin
-    //     if (current_warp == i) begin
-    //         $display("Enable: ", current_warp == i);
-    //         $display("Warp State: ", warp_state[i]);
-    //         $display("Decoded_rs1: ", decoded_rs1_address[i]);
-    //         $display("Decoded_rs2: ", decoded_rs2_address[i]);
-    //         $display("Vector_lsu: ", lsu_out);
-    //         $display("Vector_int_rs1: ", vector_int_rs1[i]);
-    //         $display("Vector_int_rs2: ", vector_int_rs2[i]);
-    //     end
-    // end
-
-
     
 end
 endgenerate
@@ -538,11 +533,19 @@ endgenerate
 
 //Scalar functional units
 data_t scalar_int_alu_result, scalar_float_alu_result;
+logic scalar_fpu_valid;
 wire is_scalar_float_op = decoded_scalar_instruction[current_warp] && (decoded_alu_instruction[current_warp] >= FADD);
-wire is_scalar_int_op  = decoded_scalar_instruction[current_warp] && (decoded_alu_instruction[current_warp] < FADD);
+wire is_branch_or_jal = decoded_branch[current_warp] || (decoded_alu_instruction[current_warp] == JAL);
+wire is_regular_int_op = decoded_alu_instruction[current_warp] < FADD;
+
+// The ALU should be enabled if the current instruction is a scalar op that fits any of the above criteria.
+wire is_scalar_int_op = decoded_scalar_instruction[current_warp] && (is_regular_int_op || is_branch_or_jal);
 
 // Scalar ALU
 alu scalar_alu_inst(
+    .clk(clk),
+    .rst(rst),
+    .enable(is_scalar_int_op),
     .pc(pc[current_warp]),
     .ALUop1(scalar_op1),
     .ALUop2(scalar_op2),
@@ -555,12 +558,14 @@ alu scalar_alu_inst(
 
 // Scalar Floating ALU
 floating_alu scalar_fpu_inst(
+    .clk(clk),
+    .rst(rst),
+    .valid(scalar_fpu_valid),
     .op1(scalar_op1),
     .op2(scalar_op2),
     .instruction(decoded_alu_instruction[current_warp]),
 
     .result(scalar_float_alu_result)
-    // .EQ() // unused
 );
 
 logic more_fadd;
@@ -570,21 +575,6 @@ assign less_beqz = (decoded_alu_instruction[current_warp] < BEQZ);
 
 assign scalar_alu_out = (more_fadd & less_beqz) ? scalar_float_alu_result : scalar_int_alu_result;
 // assign scalar_alu_out = is_scalar_float_op ? scalar_float_alu_result : scalar_int_alu_result;
-
-always_comb begin
-    // $display("Scalar_op1: ", scalar_op1);
-    // $display("Scalar_op2: ", scalar_op2);
-    // for (int i =0; i<THREADS_PER_WARP; i++) begin 
-    //     $display("Decoded Scalar Flag: ", decoded_scalar_instruction[i]);
-    // end
-    // $display("Decoded Rs1 Address[2]: ", decoded_rs1_address[2]);
-    // $display("Decoded Rs1 Address[6]: ", decoded_rs1_address[6]);
-    // $display("Scalar LSU Out: ", scalar_lsu_out);
-    //$display("scalar alu out: ", scalar_alu_out);
-    //$display("decoded alu instr: ", decoded_alu_instruction[current_warp]);
-    
-end
-
 
 lsu scalar_lsu_inst(
     .clk(clk),
@@ -625,6 +615,9 @@ generate
 
         // Vector ALU
         alu vector_alu_inst(
+            .clk(clk),
+            .rst(rst),
+            .enable(is_vector_int_op),
             .pc(pc[current_warp]),
             .ALUop1(final_op1[i]),
             .ALUop2(final_op2[i]),
@@ -636,21 +629,18 @@ generate
         );
         // Vector Floating ALU
         floating_alu vector_fpu_inst(
+            .clk(clk),
+            .rst(rst),
+            .valid(vector_fpu_valid[i]),
             .op1(final_op1[i]),
             .op2(final_op2[i]),
             .instruction(decoded_alu_instruction[current_warp]),
 
             .result(vector_float_alu_result)
-            // .EQ() // unused
         );
 
         assign alu_out[i] = (decoded_alu_instruction[current_warp] >= FADD) ? vector_float_alu_result : vector_int_alu_result;
         
-
-        // always_comb begin 
-        //     $display("Final op1: ", final_op1[i]);
-        // end
-
         lsu lsu_inst(
             .clk(clk),
             .reset(reset),

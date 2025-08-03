@@ -1,4 +1,4 @@
-`default_nettype none
+
 `timescale 1ns/1ns
 `include "common.svh"
 
@@ -43,7 +43,7 @@ localparam int BLOCK_ID_REG     = 30;
 localparam int BLOCK_SIZE_REG   = 31;
 
 // Register file: each thread has its own set of 32 registers
-data_t registers [THREADS_PER_WARP][32];
+(* ram_style = "block" *) data_t registers [THREADS_PER_WARP][32];
 
 // Compute thread IDs per thread during reset
 data_t thread_ids [THREADS_PER_WARP];
@@ -88,8 +88,8 @@ always @(posedge clk) begin
         for (int i = 0; i < THREADS_PER_WARP; i++) begin
             if (thread_enable[i]) begin
                 if (warp_state == WARP_REQUEST) begin
-                    rs1[i] <= registers[i][decoded_rs1_address];
-                    rs2[i] <= registers[i][decoded_rs2_address];
+                    //rs1[i] <= registers[i][decoded_rs1_address];
+                    //rs2[i] <= registers[i][decoded_rs2_address];
                     // $display("rs1[i]:", rs1[i]);
                     // $display("rs2[i]:", rs2[i]);
                 end
@@ -115,4 +115,14 @@ always @(posedge clk) begin
         end
     end
 end
+
+generate
+    for (genvar i = 0; i < THREADS_PER_WARP; i++) begin : g_read_ports
+        // Asynchronous (combinational) read ports.
+        // The output rs1[i] will change immediately when decoded_rs1_address changes.
+        assign rs1[i] = (decoded_rs1_address == ZERO_REG) ? {DATA_WIDTH{1'b0}} : registers[i][decoded_rs1_address];
+        assign rs2[i] = (decoded_rs2_address == ZERO_REG) ? {DATA_WIDTH{1'b0}} : registers[i][decoded_rs2_address];
+    end
+endgenerate
+
 endmodule

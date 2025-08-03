@@ -1,4 +1,4 @@
-`default_nettype none
+
 `timescale 1ns/1ns
 
 `include "common.svh"
@@ -37,7 +37,7 @@ localparam int ZERO_REG = 0;
 localparam int EXECUTION_MASK_REG = 31;
 /* verilator lint_on UNUSED */
 
-data_t registers [32];
+(* ram_style = "block" *) data_t registers [32];
 
 always_comb begin
     warp_execution_mask = registers[EXECUTION_MASK_REG];

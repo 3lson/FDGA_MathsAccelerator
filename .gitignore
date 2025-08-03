@@ -1,6 +1,17 @@
+# macOS specific
 .DS_Store
-hardware/tb/
-tb/waveform.vcd
+
+# IDE and editor specific
 .vscode/
+
+# Build and simulation artifacts
+obj_dir/
+hardware/tb/waveform.vcd
+
+# Log and coverage files
+hardware/tb/logs/
+
+# General compiled output directories
+# (You already had these, they are good)
 bin/
 build/

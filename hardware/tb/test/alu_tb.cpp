@@ -21,38 +21,57 @@
 #define BEQZ        25
 #define JAL        26
 #define BEQ0        28
+#define NOP         31
 
 // Base class for testing the sequential ALU
 class ALUTestbench : public BaseTestbench {
 protected:
     void clockCycle() {
         // Falling edge
+        top->clk = 0;
         top->eval();
         // Rising edge
+        top->clk = 1;
         top->eval();
     }
 
     // This method is called by the test fixture setup
     void initializeInputs() override {
-        top->instruction = 0;
+        top->clk = 0;
+        top->rst = 1;
+        top->enable = 1;
+        top->instruction = NOP;
+        top->pc = 0;
         top->ALUop1 = 0;
         top->ALUop2 = 0;
         top->IMM = 0;
     }
 
-    // Helper to reset the DUT
     void resetDUT() {
-        clockCycle(); // Hold reset for one cycle
-        top->eval();    // Let reset go low
+        top->rst = 1;
+        clockCycle();
+        top->rst = 0;
+        top->eval();
+
+        clockCycle();
+
+        ASSERT_EQ(top->Result, 0);
     }
 
-    // A clean way to run a single ALU operation
     void run_operation(uint32_t instruction, int32_t op1, int32_t op2, int32_t imm = 0, uint32_t pc = 0) {
+        // Cycle N
         top->instruction = instruction;
-        top->pc = pc; // <-- ADD THIS LINE
+        top->pc = pc;
         top->ALUop1 = op1;
         top->ALUop2 = op2;
         top->IMM = imm;
+
+        // Cycle N+1: First clock edge
+        // inputs captured by the ALU's Stage 1 
+        clockCycle();
+
+        // Cycle N+2: Second clock edge
+        // correct resultc captured now in output register
         clockCycle();
     }
 };
@@ -216,4 +235,30 @@ TEST_F(ALUTestbench, BEQ0_ConditionFalse) {
     run_operation(BEQ0, op1_not_zero, 1);
 
     EXPECT_EQ(top->Result, 0) << "Result should be 0 when condition is false";
+}
+
+TEST_F(ALUTestbench, StallTest) {
+    resetDUT();
+
+    top->enable = 1;
+    top->instruction = ADD;
+    top->ALUop1 = 25;
+    top->ALUop2 = 50;
+    
+    clockCycle();
+    EXPECT_EQ(top->Result, 0);
+
+    top->enable = 0;
+    
+    clockCycle();
+    EXPECT_EQ(top->Result, 0) << "Result should not update when enable is low";
+
+    clockCycle();
+    EXPECT_EQ(top->Result, 0);
+
+    top->enable = 1;
+
+    clockCycle();
+    
+    EXPECT_EQ(top->Result, 75) << "Result should update once enable is high again";
 }

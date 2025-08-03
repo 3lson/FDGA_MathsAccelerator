@@ -17,7 +17,6 @@ protected:
     }
 };
 
-// Test: After reset, fetcher is idle and outputs are zeroed
 TEST_F(FetcherWrapperTestbench, ResetTest) {
     runSimulation(1);
     EXPECT_EQ(top->fetcher_state, 0); // FETCHER_IDLE
