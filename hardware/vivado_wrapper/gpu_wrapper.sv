@@ -45,7 +45,7 @@ module gpu_wrapper (
     logic [DATA_MEM_NUM_CHANNELS_PARAM-1:0]   dmem_write_ready_in = '1; // Always ready
     logic [`DATA_WIDTH-1:0]                   dmem_read_data_in   [DATA_MEM_NUM_CHANNELS_PARAM]; // Data can be X
 
-
+    (* dont_touch = "true" *)
     gpu #(
         .DATA_MEM_NUM_CHANNELS      (DATA_MEM_NUM_CHANNELS_PARAM),
         .INSTRUCTION_MEM_NUM_CHANNELS(INSTR_MEM_NUM_CHANNELS_PARAM),

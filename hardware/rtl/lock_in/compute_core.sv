@@ -396,7 +396,7 @@ for (genvar i = 0; i < WARPS_PER_CORE; i = i + 1) begin : g_warp
         .reset(reset),
         .enable((current_warp == i)), // Enable when current_warp matches and warp is active
 
-        .warp_execution_mask(warp_execution_mask[i]),
+        //.warp_execution_mask(warp_execution_mask[i]),
 
         .warp_state(warp_state[i]),
 
