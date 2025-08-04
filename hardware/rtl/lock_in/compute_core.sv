@@ -180,7 +180,6 @@ always @(posedge clk) begin
         done <= 0;
         for (int i = 0; i < WARPS_PER_CORE; i = i + 1) begin
             warp_state[i] <= WARP_IDLE;
-            fetcher_state[i] <= FETCHER_IDLE;
             pc[i] <= 0;
             next_pc[i] <= 0;
             current_warp <= 0;
@@ -218,14 +217,27 @@ always @(posedge clk) begin
         end
         done <= all_warps_done;
 
-        if (current_warp_state == WARP_UPDATE || current_warp_state == WARP_DONE || current_warp_state == WARP_WAIT) begin
+        if (current_warp_state == WARP_UPDATE || current_warp_state == WARP_DONE ||
+            current_warp_state == WARP_WAIT   || current_warp_state == WARP_ALU_WAIT ||
+            current_warp_state == WARP_INT_ALU_WAIT) begin
+
             int next_warp = (current_warp + 1) % num_warps;
+
             int found_warp = -1;
             $display("Block: %0d: Choosing next warp", block_id);
             for (int i = 0; i < WARPS_PER_CORE; i = i + 1) begin
-                int warp_index = (next_warp + i) % num_warps;
-                if ((warp_state[warp_index] != WARP_IDLE) && (warp_state[warp_index] != WARP_FETCH) && (warp_state[warp_index] != WARP_DONE)) begin
-                    found_warp = warp_index;
+                int warp_index = (next_warp + i);
+                if (num_warps > 0) begin
+                     warp_index = warp_index % num_warps;
+                end
+                if (i < num_warps) begin // Ensure we only check valid warps
+                    if ((warp_state[warp_index] != WARP_IDLE) &&
+                        (warp_state[warp_index] != WARP_FETCH) &&
+                        (warp_state[warp_index] != WARP_DONE))
+                    begin
+                        found_warp = warp_index;
+                        break;
+                    end
                 end
             end
             if (found_warp != -1) begin
