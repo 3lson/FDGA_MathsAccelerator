@@ -15,8 +15,6 @@ s.fsub.s fs3, fs2, fs1
 s.fsw fs3, 2(sp)
 s.fmul.s fs3, fs1, fs2
 s.fsw fs3, 3(sp)
-s.fdiv.s fs3, fs2, fs1
-s.fsw fs3, 4(sp)
 s.flt.s s3, fs1, fs2
 s.sw s3, 5(sp)
 s.fneg.s fs4, fs1

@@ -3,7 +3,7 @@
 `include "common.svh"
 // =================================================
 // A 32-bit Floating Point ALU
-// with ADD, SUB, MUL, DIV, EQ, NEQ, ABS and SLT
+// with ADD, SUB, MUL, EQ, NEQ, ABS and SLT
 // =================================================
 module floating_alu (
     input   logic       clk,
@@ -241,15 +241,6 @@ always_comb begin
             s2_final_sign = s2_op1_sign_bit ^ s2_op2_sign_bit;
         end
         
-        FDIV: begin
-            logic [47:0] numerator, denominator;
-            numerator = {s2_op1_significand, 24'd0};
-            denominator = {s2_op2_significand, 24'd0};
-            s2_quotient = numerator / denominator;
-            s2_final_exp = s2_op1_biased_exp - s2_op2_biased_exp + 8'd127;
-            s2_final_sign = s2_op1_sign_bit ^ s2_op2_sign_bit;
-        end
-        
         FCVT_W_S: begin
             logic [7:0] unbiased_exp;
             unbiased_exp = s2_op1_biased_exp - 8'd127;
@@ -391,32 +382,6 @@ always_comb begin
             s3_normalized_sign = s3_final_sign;
         end
         
-        FDIV: begin
-            // The quotient sig1/sig2 is in (0.5, 2.0).
-            // The fixed-point result s3_quotient = (sig1/sig2) * 2^24.
-            // So the MSB of the result is at bit 24 or 23.
-
-            if (s3_quotient[24]) begin // Result is of the form 1x.xxxxxxxx...
-                // The quotient is >= 1.0. We need to shift right by 1 to normalize.
-                // This is equivalent to taking the mantissa from a different position.
-                s3_normalized_mantissa = s3_quotient[24:1];
-                s3_normalized_exp = s3_final_exp + 1; // Exponent increases
-                s3_guard_bit = s3_quotient[0];
-                s3_round_bit = 1'b0; // No bits beyond the guard bit in this simple model
-                s3_sticky_bit = 1'b0;
-            end else begin // Result is of the form 01.xxxxxxxx... (MSB is at bit 23)
-                // The quotient is < 1.0. It's already normalized.
-                s3_normalized_mantissa = s3_quotient[23:0];
-                s3_normalized_exp = s3_final_exp; // Exponent is unchanged
-                // For a more precise model, you would need more bits from the divider
-                // to calculate rounding bits. For now, we can assume they are zero.
-                s3_guard_bit = 1'b0;
-                s3_round_bit = 1'b0;
-                s3_sticky_bit = 1'b0;
-            end
-            s3_normalized_sign = s3_final_sign;
-        end
-        
         FCVT_S_W: begin
             if (s3_abs_op1 == 32'd0) begin
                 s3_normalized_mantissa = 24'd0;
@@ -500,7 +465,7 @@ end
 always_comb begin
     result = 32'd0;    
     case (s4_instruction)
-        FADD, FSUB, FMUL, FDIV, FCVT_S_W: begin
+        FADD, FSUB, FMUL, FCVT_S_W: begin
             logic [23:0] final_mantissa;
             logic [7:0] final_exp;
             

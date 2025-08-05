@@ -4,16 +4,15 @@
 #include <bit>
 
 // Floating ALU Ops
-#define FALU_ADD        0b01110
-#define FALU_SUB        0b01111
-#define FALU_MUL        0b10000
-#define FALU_DIV        0b10001
-#define FALU_NEG        0b10011
-#define FALU_ABS        0b10110
-#define FALU_EQ         0b10100
-#define FALU_SLT        0b10010
-#define FALU_FCVT_WS    0b10111
-#define FALU_FCVT_SW    0b11000
+#define FALU_ADD    12
+#define FALU_SUB    13
+#define FALU_MUL    14
+#define FALU_SLT    15
+#define FALU_NEG    16
+#define FALU_EQ     17
+#define FALU_ABS    19
+#define FALU_FCVT_WS 20
+#define FALU_FCVT_SW 21
 
 
 class FloatingALUTestbench : public SyncTestbench {
@@ -67,20 +66,6 @@ TEST_F(FloatingALUTestbench, MulTest) {
     float expected = op1 * op2;
 
     top->instruction = FALU_MUL;
-    top->op1 = float_to_bits(op1);
-    top->op2 = float_to_bits(op2);
-
-    runSimulation(5);
-
-    EXPECT_FLOAT_EQ(bits_to_float(top->result), expected);
-}
-
-TEST_F(FloatingALUTestbench, DivTest) {
-    float op1 = 6.0f;
-    float op2 = 3.0f;
-    float expected = op1 / op2;
-
-    top->instruction = FALU_DIV;
     top->op1 = float_to_bits(op1);
     top->op2 = float_to_bits(op2);
 

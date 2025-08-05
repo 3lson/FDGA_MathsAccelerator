@@ -1,5 +1,6 @@
 # Elson-V ISA
 
+**Note:** Division Operators have been dropped in this version as the PS can execute the final part of the C code not in the kernelization
 
 ## Overview  
 The custom ISA is designed to efficiently execute K-means clustering algorithms on custom FPGA-based hardware.

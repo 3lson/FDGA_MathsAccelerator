@@ -84,9 +84,6 @@ module alu (
             BEQZ: Result_next = (ALUop1_s1 == 32'd0) ? 32'd1 : 32'd0;
             JAL:  Result_next = pc_s1 + IMM_s1;
             
-            DIV:  Result_next = ALUop1_s1 / ALUop2_s1;
-            DIVI: Result_next = ALUop1_s1 / IMM_s1;
-
             default: Result_next = 32'b0;
         endcase
     end

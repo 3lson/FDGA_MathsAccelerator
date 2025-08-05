@@ -8,8 +8,6 @@ s.sub s3, s1, s2
 s.sw s3, 2(sp)
 s.mul s3, s1, s2
 s.sw s3, 3(sp)
-s.div s3, s1, s2
-s.sw s3, 4(sp)
 s.slt s3, s1, s2
 s.sw s3, 5(sp)
 s.seq s3, s1, s2

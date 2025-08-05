@@ -18,31 +18,28 @@
 #define ADD     0
 #define SUB     1
 #define MUL     2
-#define DIV     3
-#define SLT     4
-#define SLL     5   // Added for completeness
-#define SEQ     6
-#define SNEZ    7
-#define MIN     8
-#define ABS     9
-#define ADDI    10
-#define MULI    11
-#define DIVI    12
-#define SLLI    13
-#define FADD    14
-#define FSUB    15
-#define FMUL    16
-#define FDIV    17
-#define FSLT    18 // Your enum has FLT, but decoder uses FSLT. Let's use FSLT.
-#define FNEG    19
-#define FEQ     20
-#define FMIN    21
-#define FABS    22
-#define FCVT_W_S 23
-#define FCVT_S_W 24
-#define BEQZ     25
-#define JAL      26
-#define SYNC     27 // Assuming SYNC has its own ALU code if needed
+#define SLT     3
+#define SLL     4   // Added for completeness
+#define SEQ     5
+#define SNEZ    6
+#define MIN     7
+#define ABS     8
+#define ADDI    9
+#define MULI    10
+#define SLLI    11
+#define FADD    12
+#define FSUB    13
+#define FMUL    14
+#define FSLT    15 // Your enum has FLT, but decoder uses FSLT. Let's use FSLT.
+#define FNEG    16
+#define FEQ     17
+#define FMIN    18
+#define FABS    19
+#define FCVT_W_S 20
+#define FCVT_S_W 21
+#define BEQZ     22
+#define JAL      23
+#define SYNC     26 // Assuming SYNC has its own ALU code if needed
 
 // Reg input mux encodings
 #define ALU_OUT         0
@@ -162,7 +159,6 @@ TEST_F(DecoderTestbench, RTypeInstructions) {
         {0b0000, ADD, "ADD"},
         {0b0001, SUB, "SUB"},
         {0b0010, MUL, "MUL"},
-        {0b0011, DIV, "DIV"},
         {0b0100, SLT, "SLT"},
         {0b0110, SEQ, "SEQ"},
         {0b0111, SNEZ, "SNEZ"},
@@ -196,7 +192,6 @@ TEST_F(DecoderTestbench, ITypeInstructions) {
     std::vector<TestCase> tests = {
         {0b0000, ADDI, "ADDI"},
         {0b0010, MULI, "MULI"},
-        {0b0011, DIVI, "DIVI"},
         {0b1010, SLLI, "SLLI"}
     };
 
@@ -230,7 +225,6 @@ TEST_F(DecoderTestbench, FTypeInstructions) {
         {0b0000, FADD, "FADD"},
         {0b0001, FSUB, "FSUB"},
         {0b0010, FMUL, "FMUL"},
-        {0b0011, FDIV, "FDIV"},
         {0b0100, FSLT, "FLT"},
         {0b0101, FNEG, "FNEG"},
         {0b0110, FEQ, "FEQ"},

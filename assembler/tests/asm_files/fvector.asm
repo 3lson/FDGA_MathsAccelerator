@@ -14,8 +14,6 @@ v.fsub.s fv3, fv2, fv1
 v.fsw fv3, 2(v5)
 v.fmul.s fv3, fv1, fv2
 v.fsw fv3, 3(v5)
-v.fdiv.s fv3, fv2, fv1
-v.fsw fv3, 4(v5)
 v.flt.s v3, fv1, fv2
 v.sw v3, 5(v5)
 v.fneg.s fv4, fv1

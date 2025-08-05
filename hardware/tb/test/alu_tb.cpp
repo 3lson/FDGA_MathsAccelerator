@@ -6,22 +6,20 @@
 #define ADD         0
 #define SUB         1
 #define MUL         2
-#define DIV         3
-#define SLT         4
-#define SLL         5
-#define SEQ         6
-#define SNEZ        7
-#define MIN         8
-#define ABS         9
-#define ADDI        10
-#define MULI        11
-#define DIVI        12
-#define SLLI        13
-#define SEQI        27
-#define BEQZ        25
-#define JAL        26
-#define BEQ0        28
-#define NOP         31
+#define SLT         3
+#define SLL         4
+#define SEQ         5
+#define SNEZ        6
+#define MIN         7
+#define ABS         8
+#define ADDI        9
+#define MULI        10
+#define SLLI        11
+#define SEQI        24
+#define BEQZ        22
+#define JAL        23
+#define BEQ0        25
+#define NOP         28
 
 // Base class for testing the sequential ALU
 class ALUTestbench : public BaseTestbench {
@@ -98,14 +96,6 @@ TEST_F(ALUTestbench, MulTest) {
     int32_t op2 = 6;
     run_operation(MUL, op1, op2);
     EXPECT_EQ(top->Result, op1 * op2);
-}
-
-TEST_F(ALUTestbench, DivTest) {
-    resetDUT();
-    int32_t op1 = 20;
-    int32_t op2 = 4;
-    run_operation(DIV, op1, op2);
-    EXPECT_EQ(top->Result, op1 / op2);
 }
 
 TEST_F(ALUTestbench, LessThanTestTrue) {

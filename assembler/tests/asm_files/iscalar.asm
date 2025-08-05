@@ -8,8 +8,6 @@ s.addi s3, s2, 10
 s.sw s3, 2(sp)
 s.muli s3, s2, 10
 s.sw s3, 3(sp)
-s.divi s3, s2, 10
-s.sw s3, 4(sp)
 s.slli s3, s2, 2
 s.sw s3, 5(sp)
 s.seqi s3, s1, 10
