@@ -96,6 +96,7 @@ typedef enum logic [3:0] {
     WARP_FETCH,
     WARP_DECODE,
     WARP_REQUEST,
+    WARP_REG_WAIT,
     WARP_WAIT,
     WARP_EXECUTE,
     WARP_ALU_WAIT,

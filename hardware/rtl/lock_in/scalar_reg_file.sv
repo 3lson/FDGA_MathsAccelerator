@@ -41,27 +41,7 @@ localparam int EXECUTION_MASK_REG = 31;
 
 always_comb begin
     warp_execution_mask = registers[EXECUTION_MASK_REG];
-    if (reset) begin
-        rs1 = 32'b0;
-        rs2 = 32'b0;
-    end else begin
-        rs1 = (decoded_rs1_address == ZERO_REG) ? {DATA_WIDTH{1'b0}} : registers[decoded_rs1_address];
-        rs2 = (decoded_rs2_address == ZERO_REG) ? {DATA_WIDTH{1'b0}} : registers[decoded_rs2_address];
-    end
 end
-// always_comb begin
-//     $display("RS1, RS2 from scalar_reg ", rs1, rs2);
-// end
-
-// Register file: each warp has its own set of 32 registers
-
-// always_comb begin
-//     if (enable) begin
-//         $display("Asynchronous read: ", rs1, rs2);
-//         rs1 <= registers[decoded_rs1_address];
-//         rs2 <= registers[decoded_rs2_address];
-//     end
-// end
 
 always @(posedge clk) begin
     // $display("Enable: ", warp_state == WARP_REQUEST);
@@ -71,12 +51,11 @@ always @(posedge clk) begin
             registers[i] <= {DATA_WIDTH{1'b0}};
         end
         registers[EXECUTION_MASK_REG] <= {DATA_WIDTH{1'b1}};
+        rs1 <= 32'b0;
+        rs2 <= 32'b0;
     end else if (enable) begin
-        // if (warp_state == WARP_REQUEST) begin
-        //     $display("Asynchronous read: ", rs1, rs2);
-        //     rs1 = registers[decoded_rs1_address];
-        //     rs2 = registers[decoded_rs2_address];
-        // end
+        rs1 <= (decoded_rs1_address == ZERO_REG) ? {DATA_WIDTH{1'b0}} : registers[decoded_rs1_address];
+        rs2 <= (decoded_rs2_address == ZERO_REG) ? {DATA_WIDTH{1'b0}} : registers[decoded_rs2_address];
 
         if (warp_state == WARP_UPDATE) begin
             if (decoded_reg_write_enable && decoded_rd_address > 0) begin

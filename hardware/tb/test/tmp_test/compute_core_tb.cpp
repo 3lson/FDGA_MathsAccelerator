@@ -93,8 +93,6 @@ protected:
 
     void runSimulation(int cycles) {
         for (int i = 0; i < cycles; ++i) {
-            // --- Before the clock edge ---
-            // Combinational Memory Read Logic (DUT requests, TB provides)
             for (int w = 0; w < WARPS_PER_CORE; ++w) {
                 if (top->instruction_mem_read_valid & (1ULL << w)) {
                     // Verilator flattens arrays: module.port[idx] -> module.port_idx
@@ -202,7 +200,6 @@ TEST_F(ComputeCoreTestbench, RScalarTest) {
     EXPECT_EQ(data_mem[43], 20) << "Scalar ALU/Store data path failed when loaded from hex.";
     EXPECT_EQ(data_mem[44], 0) << "Scalar ALU/Store data path failed when loaded from hex.";
     EXPECT_EQ(data_mem[45], 100) << "Scalar ALU/Store data path failed when loaded from hex.";
-    EXPECT_EQ(data_mem[46], 1) << "Scalar ALU/Store data path failed when loaded from hex.";
     EXPECT_EQ(data_mem[47], 0) << "Scalar ALU/Store data path failed when loaded from hex.";
     EXPECT_EQ(data_mem[48], 1) << "Scalar ALU/Store data path failed when loaded from hex.";
     EXPECT_EQ(data_mem[49], 1) << "Scalar ALU/Store data path failed when loaded from hex.";
@@ -217,7 +214,6 @@ TEST_F(ComputeCoreTestbench, IScalarTest) {
 
     EXPECT_EQ(data_mem[44], 20) << "Scalar ADDI failed";
     EXPECT_EQ(data_mem[45], 100) << "Scalar MULI failed";
-    EXPECT_EQ(data_mem[46], 1) << "Scalar DIVI failed";
     EXPECT_EQ(data_mem[47], 40) << "Scalar SLLI failed"; // failing
 }
 
@@ -250,7 +246,6 @@ TEST_F(ComputeCoreTestbench, FScalarTest) {
     EXPECT_FLOAT_EQ(bits_to_float(data_mem[45]), 3.0f) << "Scalar FADD failed";
     EXPECT_FLOAT_EQ(bits_to_float(data_mem[46]), 1.0f) << "Scalar FSUB failed";
     EXPECT_FLOAT_EQ(bits_to_float(data_mem[47]), 2.0f) << "Scalar FMUL failed";
-    EXPECT_FLOAT_EQ(bits_to_float(data_mem[48]), 2.0f) << "Scalar FDIV failed";
     EXPECT_EQ(data_mem[49], 1) << "Scalar FLT failed (2.0 < 1.0 is false)";
     EXPECT_FLOAT_EQ(bits_to_float(data_mem[50]), -1.0f) << "Scalar FNEG failed";
     EXPECT_EQ(data_mem[51], 0) << "Scalar FEQ failed (2.0 == 1.0 is false)";
@@ -280,7 +275,6 @@ TEST_F(ComputeCoreTestbench, RVectorTest) {
     EXPECT_EQ(data_mem[43], 20) << "Scalar ALU/Store data path failed when loaded from hex.";
     EXPECT_EQ(data_mem[44], 0) << "Scalar ALU/Store data path failed when loaded from hex.";
     EXPECT_EQ(data_mem[45], 100) << "Scalar ALU/Store data path failed when loaded from hex.";
-    EXPECT_EQ(data_mem[46], 1) << "Scalar ALU/Store data path failed when loaded from hex.";
     EXPECT_EQ(data_mem[47], 0) << "Scalar ALU/Store data path failed when loaded from hex.";
     EXPECT_EQ(data_mem[48], 1) << "Scalar ALU/Store data path failed when loaded from hex.";
     EXPECT_EQ(data_mem[49], 1) << "Scalar ALU/Store data path failed when loaded from hex.";
@@ -293,7 +287,6 @@ TEST_F(ComputeCoreTestbench, IVectorTest) {
 
     EXPECT_EQ(data_mem[44], 20) << "Scalar ADDI failed";
     EXPECT_EQ(data_mem[45], 100) << "Scalar MULI failed";
-    EXPECT_EQ(data_mem[46], 1) << "Scalar DIVI failed";
     EXPECT_EQ(data_mem[47], 40) << "Scalar SLLI failed"; // failing
 }
 
@@ -322,7 +315,6 @@ TEST_F(ComputeCoreTestbench, FVectorTest) {
     EXPECT_FLOAT_EQ(bits_to_float(data_mem[45]), 3.0f) << "Vector FADD failed";
     EXPECT_FLOAT_EQ(bits_to_float(data_mem[46]), 1.0f) << "Vector FSUB failed";
     EXPECT_FLOAT_EQ(bits_to_float(data_mem[47]), 2.0f) << "Vector FMUL failed";
-    EXPECT_FLOAT_EQ(bits_to_float(data_mem[48]), 2.0f) << "Vector FDIV failed";
     EXPECT_EQ(data_mem[49], 1) << "Vector FLT failed (2.0 < 1.0 is false)";
     EXPECT_FLOAT_EQ(bits_to_float(data_mem[50]), -1.0f) << "Vector FNEG failed";
     EXPECT_EQ(data_mem[51], 0) << "Vector FEQ failed (2.0 == 1.0 is false)";

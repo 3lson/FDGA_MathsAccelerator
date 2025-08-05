@@ -53,17 +53,6 @@ always_comb begin
     end
 end
 
-// always_comb begin
-//     for (int i = 0; i < THREADS_PER_WARP; i++) begin
-//             if (thread_enable[i]) begin
-//                     rs1[i] <= registers[i][decoded_rs1_address];
-//                     rs2[i] <= registers[i][decoded_rs2_address];
-//                     // $display("rs1[i]:", rs1[i]);
-//                     // $display("rs2[i]:", rs2[i]);
-//             end
-//     end
-// end
-
 // Initialize registers during reset and handle writes
 always @(posedge clk) begin
     // $display("reset: ", reset);
@@ -76,6 +65,8 @@ always @(posedge clk) begin
             for (int j = 1; j < 29; j++) begin
                 registers[i][j] <= {DATA_WIDTH{1'b0}};
             end
+            rs1[i] <= {DATA_WIDTH{1'b0}};
+            rs2[i] <= {DATA_WIDTH{1'b0}};
         end
     end else if (enable) begin
         for (int i = 0; i < THREADS_PER_WARP; i++) begin
@@ -87,12 +78,8 @@ always @(posedge clk) begin
 
         for (int i = 0; i < THREADS_PER_WARP; i++) begin
             if (thread_enable[i]) begin
-                if (warp_state == WARP_REQUEST) begin
-                    //rs1[i] <= registers[i][decoded_rs1_address];
-                    //rs2[i] <= registers[i][decoded_rs2_address];
-                    // $display("rs1[i]:", rs1[i]);
-                    // $display("rs2[i]:", rs2[i]);
-                end
+                rs1[i] <= (decoded_rs1_address == ZERO_REG) ? {DATA_WIDTH{1'b0}} : registers[i][decoded_rs1_address];
+                rs2[i] <= (decoded_rs2_address == ZERO_REG) ? {DATA_WIDTH{1'b0}} : registers[i][decoded_rs2_address];
 
                 if (warp_state == WARP_UPDATE) begin
                     // Prevent writes to read-only registers
@@ -115,14 +102,5 @@ always @(posedge clk) begin
         end
     end
 end
-
-generate
-    for (genvar i = 0; i < THREADS_PER_WARP; i++) begin : g_read_ports
-        // Asynchronous (combinational) read ports.
-        // The output rs1[i] will change immediately when decoded_rs1_address changes.
-        assign rs1[i] = (decoded_rs1_address == ZERO_REG) ? {DATA_WIDTH{1'b0}} : registers[i][decoded_rs1_address];
-        assign rs2[i] = (decoded_rs2_address == ZERO_REG) ? {DATA_WIDTH{1'b0}} : registers[i][decoded_rs2_address];
-    end
-endgenerate
 
 endmodule

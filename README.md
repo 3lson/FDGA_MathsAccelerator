@@ -2,6 +2,10 @@
 
 ## Project Overview
 
+## Tags
+- `full-gpgpu`: Complete GPGPU implementation (unoptimised for FPGA resource usage)
+- `vivado-optimised`: Minimal core design optimised for resource utilisation and pipeline complexity
+
 The Plan:
 
 1. Create a custom ISA to graph a K-means algorithm.

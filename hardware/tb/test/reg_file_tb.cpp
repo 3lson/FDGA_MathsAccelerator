@@ -17,15 +17,15 @@ enum class WarpState : uint8_t {
     FETCH = 1,
     DECODE = 2,
     REQUEST = 3,
-    WAIT = 4,
-    EXECUTE = 5,
-    ALU_WAIT = 6,
-    INT_ALU_WAIT = 7,
-    UPDATE = 8, // Correct value
-    SYNC_WAIT = 9,
-    DONE = 10
+    REG_WAIT = 4,
+    WAIT = 5,
+    EXECUTE = 6,
+    ALU_WAIT = 7,
+    INT_ALU_WAIT = 8,
+    UPDATE = 9,
+    SYNC_WAIT = 10,
+    DONE = 11
 };
-
 enum class RegInputMux : uint8_t {
     ALU_OUT = 0,
     LSU_OUT = 1,
@@ -115,14 +115,14 @@ TEST_F(RegFileTestbench, ResetAndSpecialRegisterRead) {
 
     // Test ZERO_REG
     top->decoded_rs1_address = ZERO_REG;
-    top->eval(); // Combinational read happens instantly
+    runSimulation(1);
     for (int i = 0; i < THREADS_PER_WARP; ++i) {
         EXPECT_EQ(top->rs1[i], 0) << "Thread " << i << ", ZERO_REG value mismatch.";
     }
 
     // Test THREAD_ID_REG
     top->decoded_rs1_address = THREAD_ID_REG;
-    top->eval(); // Propagate new address
+    runSimulation(1);
     for (int i = 0; i < THREADS_PER_WARP; ++i) {
         EXPECT_EQ(top->rs1[i], getExpectedThreadId(test_warp_id, i))
             << "Thread " << i << ", THREAD_ID_REG value mismatch.";
@@ -130,14 +130,14 @@ TEST_F(RegFileTestbench, ResetAndSpecialRegisterRead) {
 
     // Test BLOCK_ID_REG
     top->decoded_rs1_address = BLOCK_ID_REG;
-    top->eval();
+    runSimulation(1);
     for (int i = 0; i < THREADS_PER_WARP; ++i) {
         EXPECT_EQ(top->rs1[i], test_block_id) << "Thread " << i << ", BLOCK_ID_REG value mismatch.";
     }
 
     // Test BLOCK_SIZE_REG
     top->decoded_rs1_address = BLOCK_SIZE_REG;
-    top->eval();
+    runSimulation(1);
     for (int i = 0; i < THREADS_PER_WARP; ++i) {
         EXPECT_EQ(top->rs1[i], test_block_size) << "Thread " << i << ", BLOCK_SIZE_REG value mismatch.";
     }
@@ -168,7 +168,7 @@ TEST_F(RegFileTestbench, WriteReadGeneralPurpose) {
     top->decoded_rs1_address = test_reg_addr;
     top->decoded_rs2_address = test_reg_addr;
     
-    top->eval(); // Evaluate to propagate the read address change
+    runSimulation(1);
 
     for (int i = 0; i < THREADS_PER_WARP; ++i) {
         EXPECT_EQ(top->rs1[i], test_values[i]) << "Thread " << i << " rs1 read from r" << test_reg_addr;
@@ -205,7 +205,7 @@ TEST_F(RegFileTestbench, ThreadEnableMasking) {
     top->decoded_reg_write_enable = 0;
     top->decoded_rs1_address = test_reg_addr;
     
-    top->eval(); // Propagate combinational read
+    runSimulation(1);
 
     for (int i = 0; i < THREADS_PER_WARP; ++i) {
         if (i % 2 == 0) {
@@ -248,28 +248,27 @@ TEST_F(RegFileTestbench, WriteToSpecialRegisters) {
     top->decoded_rd_address = BLOCK_ID_REG;   runSimulation(1);
     top->decoded_rd_address = BLOCK_SIZE_REG; runSimulation(1);
 
-    // --- VERIFICATION PHASE ---
     top->decoded_reg_write_enable = 0; // Disable writes for safety
 
     // Verify all special registers retained their original values
     top->decoded_rs1_address = ZERO_REG;
-    top->eval();
+    runSimulation(1);
     EXPECT_EQ(top->rs1[0], 0) << "ZERO_REG should not be writable.";
 
     top->decoded_rs1_address = THREAD_ID_REG;
-    top->eval();
+    runSimulation(1);
     for (int i = 0; i < THREADS_PER_WARP; ++i) {
         EXPECT_EQ(top->rs1[i], initial_thread_ids[i]) << "Thread " << i << " THREAD_ID_REG should not be writable.";
     }
 
     top->decoded_rs1_address = BLOCK_ID_REG;
-    top->eval();
+    runSimulation(1);
     for (int i = 0; i < THREADS_PER_WARP; ++i) {
         EXPECT_EQ(top->rs1[i], BID) << "Thread " << i << " BLOCK_ID_REG should not be writable.";
     }
 
     top->decoded_rs1_address = BLOCK_SIZE_REG;
-    top->eval();
+    runSimulation(1);
     for (int i = 0; i < THREADS_PER_WARP; ++i) {
         EXPECT_EQ(top->rs1[i], BSZ) << "Thread " << i << " BLOCK_SIZE_REG should not be writable.";
     }

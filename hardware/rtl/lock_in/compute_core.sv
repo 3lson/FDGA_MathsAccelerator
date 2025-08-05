@@ -261,6 +261,9 @@ always @(posedge clk) begin
             end
             WARP_REQUEST: begin
                 // takes one cycle cause we are just changing the LSU state
+                warp_state[current_warp] <= WARP_REG_WAIT;
+            end
+            WARP_REG_WAIT: begin
                 warp_state[current_warp] <= WARP_WAIT;
             end
             WARP_WAIT: begin
@@ -618,7 +621,7 @@ lsu scalar_lsu_inst(
     .lsu_out(scalar_lsu_out)
 );
 
-//Vecotr functional units
+//Vecto4r functional units
 generate
     for (genvar i = 0; i < THREADS_PER_WARP; i = i + 1) begin : g_vector_units
         wire t_enable = current_warp_execution_mask[i] && !decoded_scalar_instruction[current_warp];
