@@ -6,20 +6,21 @@
 #define ADD         0
 #define SUB         1
 #define MUL         2
-#define SLT         3
-#define SLL         4
-#define SEQ         5
-#define SNEZ        6
-#define MIN         7
-#define ABS         8
-#define ADDI        9
-#define MULI        10
-#define SLLI        11
-#define SEQI        24
-#define BEQZ        22
-#define JAL        23
-#define BEQ0        25
-#define NOP         28
+#define NEG         3
+#define SLT         4
+#define SLL         5
+#define SEQ         6
+#define SNEZ        7
+#define MIN         8
+#define ABS         9
+#define ADDI        10
+#define MULI        11
+#define SLLI        12
+#define SEQI        25
+#define BEQZ        23
+#define JAL        24
+#define BEQ0        26
+#define NOP         29
 
 // Base class for testing the sequential ALU
 class ALUTestbench : public BaseTestbench {
@@ -251,4 +252,12 @@ TEST_F(ALUTestbench, StallTest) {
     clockCycle();
     
     EXPECT_EQ(top->Result, 75) << "Result should update once enable is high again";
+}
+
+TEST_F(ALUTestbench, NegTest) {
+    resetDUT();
+    int32_t op1 = 5;
+    int32_t op2 = 10; // Not used
+    run_operation(NEG, op1, op2);
+    EXPECT_EQ(top->Result, -op1);
 }

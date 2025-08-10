@@ -98,11 +98,11 @@ void ArrayIndexAccess::get_position(std::ostream &stream, Context &context, std:
 
     std::string var_reg;
 
-    if(Identbool){
-        const Identifier *variable = dynamic_cast<const Identifier *>(index_.get());
-        Variable var = context.get_variable(variable->GetId());
-        var_reg = var.get_reg();
-    }
+    // if(Identbool){
+    //     const Identifier *variable = dynamic_cast<const Identifier *>(index_.get());
+    //     Variable var = context.get_variable(variable->GetId());
+    //     var_reg = var.get_reg();
+    // }
 
     if(!Operand){
 
@@ -123,6 +123,9 @@ void ArrayIndexAccess::get_position(std::ostream &stream, Context &context, std:
         else{
 
             if(indexes.size() == 2){
+                if (dimension.size() < 2){
+                    throw std::runtime_error("Compile Internal Error: Attempted 2D index access on array but the compiler only recorded " + std::to_string(dimension.size()) + " dimension(s).");
+                }
                 int multiply = indexes[0] * dimension[1];
                 stream << asm_prefix.at(context.get_instruction_state()) <<"li " << dest_reg << ", " << multiply + 1 << std::endl;
                 stream << asm_prefix.at(context.get_instruction_state()) <<"add " << dest_reg << ", " << dest_reg << ", " << var_reg << std::endl;
@@ -193,6 +196,7 @@ std::vector<int> ArrayIndexAccess::get_linear_index(std::ostream& stream, Contex
             Variable var = context.get_variable(variable->GetId());
 
             if(var.get_reg() != ""){
+                stream << asm_prefix.at(context.get_instruction_state()) << "add " << dest_reg << ", " << var.get_reg() << ", zero" << std::endl;
                 indexes.push_back(-2);
             }
             else{

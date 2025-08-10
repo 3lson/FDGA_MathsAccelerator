@@ -66,6 +66,7 @@ module alu (
             ADD:  Result_next = ALUop1_s1 + ALUop2_s1;
             SUB:  Result_next = ALUop1_s1 - ALUop2_s1;
             MUL:  Result_next = ALUop1_s1 * ALUop2_s1; // This now uses registered inputs
+            NEG:  Result_next = (~ALUop1_s1) + 1'b1;
             ABS:  Result_next = (ALUop1_s1[31]) ? -ALUop1_s1 : ALUop1_s1;
             SLT:  Result_next = (ALUop1_s1 < ALUop2_s1) ? 32'd1 : 32'd0;
             SEQ:  Result_next = (ALUop1_s1 == ALUop2_s1) ? 32'd1 : 32'd0;

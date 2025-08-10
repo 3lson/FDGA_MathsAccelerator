@@ -129,6 +129,7 @@ module decoder(
                             4'b0000: decoded_alu_instruction <= ADD;
                             4'b0001: decoded_alu_instruction <= SUB;
                             4'b0010: decoded_alu_instruction <= MUL;
+                            4'b1011: decoded_alu_instruction <= NEG;
                             4'b0100: decoded_alu_instruction <= SLT;
                             4'b0101: decoded_alu_instruction <= SLL;
                             4'b0110: decoded_alu_instruction <= SEQ;

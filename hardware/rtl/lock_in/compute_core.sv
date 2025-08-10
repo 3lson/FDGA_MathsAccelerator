@@ -561,7 +561,7 @@ wire is_scalar_int_op = decoded_scalar_instruction[current_warp] && (is_regular_
 // Scalar ALU
 alu scalar_alu_inst(
     .clk(clk),
-    .rst(rst),
+    .rst(reset),
     .enable(is_scalar_int_op),
     .pc(pc[current_warp]),
     .ALUop1(scalar_op1),

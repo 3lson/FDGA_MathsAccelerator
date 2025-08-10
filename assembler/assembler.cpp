@@ -596,45 +596,48 @@ uint32_t encodeXType(string op, const vector<string>& args) {
     return (opcode << 29) | (rs2 << 14) | (funct4 << 10) | (rs1 << 5) | rd;
 }
 
-int main(int argc, char* argv[]) {
+// Solely for running the test_assembler.py
+//int argc, char* argv[]
+int main() {
     initregisterMap();
     //ifstream input("bin/output/algotests/for/for.s"); // Example test file
     // -- USED for generating new tests ----
-    // ifstream input("assembler/tests/asm_files/sx_slt.asm");
-    // ofstream instrOut("assembler/tests/expected_output/sx_slt.instr.hex");
-    // ofstream dataOut("assembler/tests/expected_output/sx_slt.data.hex");
+    ifstream input("assembler/compiler_output/kernel.asm");
+    ofstream instrOut("assembler/compiler_output/kernel.instr.hex");
+    ofstream dataOut("assembler/compiler_output/kernel.data.hex");
 
-    // -- To handle automated testings of assembler --
-    if (argc != 4) {
-        cerr << "Usage: " << argv[0] << " <input.asm> <output.instr.hex> <output.data.hex>" << endl;
-        return 1; // Return a non-zero code to indicate an error
-    }
+    // Solely for running the test_assembler.py
+    // // -- To handle automated testings of assembler --
+    // if (argc != 4) {
+    //     cerr << "Usage: " << argv[0] << " <input.asm> <output.instr.hex> <output.data.hex>" << endl;
+    //     return 1; // Return a non-zero code to indicate an error
+    // }
 
-    string input_filename = argv[1];
-    string instr_out_filename = argv[2];
-    string data_out_filename = argv[3];
-    // --- End of new code ---
+    // string input_filename = argv[1];
+    // string instr_out_filename = argv[2];
+    // string data_out_filename = argv[3];
+    // // --- End of new code ---
 
-    initregisterMap();
+    // initregisterMap();
 
-    // Use the filenames from the command line
-    ifstream input(input_filename);
-    if (!input.is_open()) {
-        cerr << "Error: Could not open input file: " << input_filename << endl;
-        return 1;
-    }
+    // // Use the filenames from the command line
+    // ifstream input(input_filename);
+    // if (!input.is_open()) {
+    //     cerr << "Error: Could not open input file: " << input_filename << endl;
+    //     return 1;
+    // }
 
-    ofstream instrOut(instr_out_filename);
-    if (!instrOut.is_open()) {
-        cerr << "Error: Could not open instruction output file: " << instr_out_filename << endl;
-        return 1;
-    }
+    // ofstream instrOut(instr_out_filename);
+    // if (!instrOut.is_open()) {
+    //     cerr << "Error: Could not open instruction output file: " << instr_out_filename << endl;
+    //     return 1;
+    // }
 
-    ofstream dataOut(data_out_filename);
-    if (!dataOut.is_open()) {
-        cerr << "Error: Could not open data output file: " << data_out_filename << endl;
-        return 1;
-    }
+    // ofstream dataOut(data_out_filename);
+    // if (!dataOut.is_open()) {
+    //     cerr << "Error: Could not open data output file: " << data_out_filename << endl;
+    //     return 1;
+    // }
 
     vector<pair<int, string>> instructions;
     vector<pair<int, uint32_t>> data;
@@ -826,8 +829,7 @@ int main(int argc, char* argv[]) {
         dataOut << hex << setw(8) << setfill('0') << value << endl;
         dataOut.flush();
     }
-
-
+    
     input.close();
     instrOut.close();
     dataOut.close();

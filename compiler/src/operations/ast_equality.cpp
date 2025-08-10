@@ -56,16 +56,18 @@ void EqualityExpression::EmitElsonV(std::ostream &stream, Context &context, std:
 
     std::string operation = GetOperation(type);
 
+    std::string temp_reg = context.get_register(Type::_INT);
+    std::string prefix = asm_prefix.at(context.get_instruction_state());
+
     if(is_float){
         stream << operation << " " << dest_reg << ", " << left_register << ", " << right_register << std::endl;
 
         if (op_ == EqualityOp::NOT_EQUAL){
-            stream << "xori " << dest_reg << ", " <<dest_reg << ", 1" <<std::endl;
+            stream << prefix << "xori " << dest_reg << ", " <<dest_reg << ", 1" <<std::endl;
         }
     }
     else {
-        stream << "xor " << dest_reg << ", " << left_register << ", " << right_register << std::endl;
-        stream << operation << " " << dest_reg << ", " << dest_reg << std::endl;
+        stream << prefix << "seq " << dest_reg << ", " << left_register << ", " << right_register << std::endl;
     }
 
     context.deallocate_register(right_register);

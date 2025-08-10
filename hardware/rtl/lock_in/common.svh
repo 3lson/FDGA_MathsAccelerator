@@ -53,6 +53,7 @@ typedef enum logic [4:0] {
     ADD, // 00000
     SUB, // 00001
     MUL, // 00010
+    NEG, // 00011
     SLT, // 00100
     SLL, // 00101
     SEQ, // 00110

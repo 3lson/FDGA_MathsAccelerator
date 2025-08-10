@@ -103,7 +103,7 @@ void KernelStatement::EmitWarpSwitchLogic(std::ostream& stream, Context& context
         InitializeWarp(stream, context, warp_file[i]);
         
         // Jump back to kernel execution
-        stream << "s.jalr zero, s25, 0" << std::endl;
+        stream << "s.j " << kernel_start_label << std::endl;
     }
     
     // === NO MORE WARPS - GO TO CLEANUP ===
@@ -311,11 +311,6 @@ void KernelStatement::InitializeFirstWarp(std::ostream& stream, Context& context
     stream << asm_prefix.at(context.get_instruction_state()) << "li " << offset_reg << ", " << address << std::endl;
     stream << asm_prefix.at(context.get_instruction_state()) << "lw s24, " << 0 << "(" << offset_reg << ")" << std::endl;
 
-    //load s25 (PC value)
-    address = warp_offset - ((25+1)*4);
-    stream << asm_prefix.at(context.get_instruction_state()) << "li " << offset_reg << ", " << address << std::endl;
-    stream << asm_prefix.at(context.get_instruction_state()) << "lw s25, " << 0 << "(" << offset_reg << ")" << std::endl;
-
     //load s26 execution mask
     address = warp_offset - ((26+1)*4);
     stream << asm_prefix.at(context.get_instruction_state()) << "li " << offset_reg << ", " << address << std::endl;
@@ -360,6 +355,7 @@ void KernelStatement::InitializeFirstWarp(std::ostream& stream, Context& context
 
 
 void KernelStatement::InitializeKernel(std::string start_kernel_label, std::ostream& stream, Context& context) const{
+    (void) start_kernel_label;
     const IntConstant *threads = dynamic_cast <const IntConstant *>(threads_.get());
     int thread_total = threads->get_val();
     int warp_size = context.get_warp_size();
@@ -522,17 +518,6 @@ void KernelStatement::InitializeKernel(std::string start_kernel_label, std::ostr
             stream << asm_prefix.at(context.get_instruction_state()) << "li " << address_reg << ", " << reg_address << std::endl;
             stream << asm_prefix.at(context.get_instruction_state()) << "sw s0, " << 0 << "(" << address_reg << ")" << std::endl; 
         }
-        
-    }
-
-    //preserving PC value of kernel_start
-    for(auto& warp: warp_file){
-        int warp_offset = warp.get_warp_offset();
-        int address = warp_offset - (30+1)*4;
-
-        stream << "sync " << start_kernel_label << std::endl; //stores the PC value in s25
-        stream << asm_prefix.at(context.get_instruction_state()) << "li " << address_reg << ", " << address << std::endl;
-        stream << asm_prefix.at(context.get_instruction_state()) << "sw s25, " << 0 << "(" << address_reg << ")" << std::endl; 
         
     }
 
