@@ -67,7 +67,7 @@ always @(posedge clk) begin
                     allow_write = 1'b1;
                 end
                 if (allow_write) begin
-                    $display("Scalar Reg File: Writing to register %d", decoded_rd_address, " with the value from alu ", alu_out);
+                    $display("Scalar Reg File: Writing to register %d", decoded_rd_address, " with the value from alu %d", alu_out);
                     case (decoded_reg_input_mux)
                         ALU_OUT:    registers[decoded_rd_address] <= alu_out;
                         LSU_OUT:    registers[decoded_rd_address] <= lsu_out;
