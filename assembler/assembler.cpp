@@ -602,9 +602,9 @@ int main() {
     initregisterMap();
     //ifstream input("bin/output/algotests/for/for.s"); // Example test file
     // -- USED for generating new tests ----
-    ifstream input("assembler/compiler_output/kernel.asm");
-    ofstream instrOut("assembler/compiler_output/kernel.instr.hex");
-    ofstream dataOut("assembler/compiler_output/kernel.data.hex");
+    ifstream input("assembler/incremental_testing/smaller.s");
+    ofstream instrOut("assembler/incremental_testing/test1.instr.hex");
+    ofstream dataOut("assembler/incremental_testing/test1.data.hex");
 
     // Solely for running the test_assembler.py
     // // -- To handle automated testings of assembler --
@@ -752,7 +752,7 @@ int main() {
                 // This instruction is fully handled. Print and continue to the next one.
                 cout << "0x" << hex << setw(8) << setfill('0') << instr << dec << endl;
                 instrOut << hex << setw(8) << setfill('0') << instr << endl;
-                continue; // <<< --- THE FIX
+                continue;
             } else {
                 cerr << "Unknown instruction: " << op_with_prefix << endl;
                 continue;

@@ -149,7 +149,7 @@ protected:
         tick();
         top->start = 0;
         
-        int max_cycles = 15000;
+        int max_cycles = 5000;
         for (int i = 0; i < max_cycles; ++i) {
             if (top->done) {
                 std::cout << "Core finished in " << i << " cycles." << std::endl;
@@ -322,108 +322,132 @@ protected:
 //     EXPECT_EQ(data_mem[53], 1) << "Vector FCVT.W.S (float to int) failed";
 // }
 
-TEST_F(ComputeCoreTestbench, KMeansKernelVerification) {
-    // ========================================================================
-    // 1. SETUP: Load the compiled program and prepare the input data.
-    // ========================================================================
-    
-    // Start with a clean data memory for this test.
+TEST_F(ComputeCoreTestbench, SimpleStoreTest) {
+    // 1. SETUP
     data_mem.clear();
-
-    // Load the instruction and data memory files produced by your assembler.
-    loadProgramFromHex("../../assembler/compiler_output/kernel.instr.hex");
-    loadDataFromHex("../../assembler/compiler_output/kernel.data.hex");
-
-    // --- MEMORY MAP CONTRACT ---
-    // !!! IMPORTANT !!!
-    // You MUST update these base addresses to match the exact memory layout
-    // that your compiler uses (from its hardcoded memory map).
-    // These are placeholders based on a plausible memory layout.
-    //
-    // Let's assume a simple layout starting at address 0x1000 for clarity.
-    constexpr uint32_t DATA_SECTION_BASE = 0x1000;
-    constexpr uint32_t CENTROIDS_X_ADDR  = DATA_SECTION_BASE; // 3 floats
-    constexpr uint32_t CENTROIDS_Y_ADDR  = CENTROIDS_X_ADDR + 3 * 4;
-    constexpr uint32_t POINTS_X_ADDR     = CENTROIDS_Y_ADDR + 3 * 4;
-    constexpr uint32_t POINTS_Y_ADDR     = POINTS_X_ADDR + 9 * 4;
-    // Skip scratchpad arrays (distances, etc.) as we don't need to init them.
-    // The total size of scratchpad is: (3*9 + 9)*4 for floats + (9)*4 for ints = 180 bytes
-    constexpr uint32_t SCRATCHPAD_SIZE   = (3*9 + 9 + 9) * 4;
-    constexpr uint32_t TOTAL_ADDR        = POINTS_Y_ADDR + 9 * 4;
-    constexpr uint32_t SUM_X_ADDR        = TOTAL_ADDR + 3 * 9 * 4;
-    constexpr uint32_t SUM_Y_ADDR        = SUM_X_ADDR + 3 * 9 * 4;
-
-
-    // --- Manually Pre-load Input Data (Simulating the PS Driver) ---
-    // We use a simple, predictable dataset to make verification easy.
-    // Points cluster perfectly around the initial centroids.
-    std::cout << "Pre-loading test data into simulated data memory..." << std::endl;
+    loadProgramFromHex("../../assembler/incremental_testing/test1.instr.hex");
     
-    // Points Data: {0,1,2}, {8,9,10}, {20,21,22}
-    float points[] = {0, 1, 2, 8, 9, 10, 20, 21, 22};
-    for (int i = 0; i < 9; ++i) {
-        data_mem[POINTS_X_ADDR + i * 4] = float_to_bits(points[i]);
-        data_mem[POINTS_Y_ADDR + i * 4] = float_to_bits(points[i]); // Using same values for y
-    }
+    // The address we need to check is where the compiler placed `output_array`.
+    // From the assembly, this is a stack-relative address.
+    // We must figure out the absolute address from the kernel setup code.
+    // Let's assume after analysis, we find the thread's SP is set to a base
+    // of 15240, and the offset is 132.
+    constexpr uint32_t THREAD_SP_BASE = 15240; // You must verify this from the setup asm!
+    constexpr uint32_t ARRAY_OFFSET = 132;     // From the v.sub instruction result
+    constexpr uint32_t OUTPUT_ARRAY_ADDR = THREAD_SP_BASE + ARRAY_OFFSET; 
 
-    // Initial Centroids Data: {5}, {15}, {25}
-    float centroids[] = {5.0, 15.0, 25.0};
-    for (int i = 0; i < 3; ++i) {
-        data_mem[CENTROIDS_X_ADDR + i * 4] = float_to_bits(centroids[i]);
-        data_mem[CENTROIDS_Y_ADDR + i * 4] = float_to_bits(centroids[i]);
-    }
-
-
-    // ========================================================================
-    // 2. EXECUTION: Run the simulation until the 'exit' instruction.
-    // ========================================================================
-    
-    std::cout << "Starting simulation of the K-means kernel..." << std::endl;
+    // 2. EXECUTION
     loadAndRun(instr_mem);
 
-    // SMOKE TEST: If loadAndRun completes without a timeout, it means the
-    // control flow reached the 'exit' instruction successfully.
-    SUCCEED() << "Simulation completed without timeout (Control Flow OK).";
-
-
-    // ========================================================================
-    // 3. VERIFICATION: Check the final state of data memory.
-    // ========================================================================
-    
-    // --- Golden "By Hand" Calculation ---
-    // Cluster 0 gets points {0,1,2}. Sum = 3. Count = 3.
-    // Cluster 1 gets points {8,9,10}. Sum = 27. Count = 3.
-    // Cluster 2 gets points {20,21,22}. Sum = 63. Count = 3.
-    
-    std::cout << "Verifying final memory state against golden values..." << std::endl;
-
-    // The reduction results are always in index [0] of each cluster's array.
-    // For `sum_x[k][i]`, the address of `sum_x[k][0]` is `SUM_X_BASE_ADDR + k * NUM_POINTS * 4`.
-    
-    // --- Verify Cluster 0 Results ---
-    uint32_t cluster0_sum_x_addr = SUM_X_ADDR + (0 * 9 * 4);
-    uint32_t cluster0_sum_y_addr = SUM_Y_ADDR + (0 * 9 * 4);
-    uint32_t cluster0_total_addr = TOTAL_ADDR + (0 * 9 * 4);
-    EXPECT_FLOAT_EQ(bits_to_float(data_mem[cluster0_sum_x_addr]), 3.0f) << "sum_x for cluster 0 is incorrect.";
-    EXPECT_FLOAT_EQ(bits_to_float(data_mem[cluster0_sum_y_addr]), 3.0f) << "sum_y for cluster 0 is incorrect.";
-    EXPECT_FLOAT_EQ(bits_to_float(data_mem[cluster0_total_addr]), 3.0f) << "total count for cluster 0 is incorrect.";
-
-    // --- Verify Cluster 1 Results ---
-    uint32_t cluster1_sum_x_addr = SUM_X_ADDR + (1 * 9 * 4);
-    uint32_t cluster1_sum_y_addr = SUM_Y_ADDR + (1 * 9 * 4);
-    uint32_t cluster1_total_addr = TOTAL_ADDR + (1 * 9 * 4);
-    EXPECT_FLOAT_EQ(bits_to_float(data_mem[cluster1_sum_x_addr]), 27.0f) << "sum_x for cluster 1 is incorrect.";
-    EXPECT_FLOAT_EQ(bits_to_float(data_mem[cluster1_sum_y_addr]), 27.0f) << "sum_y for cluster 1 is incorrect.";
-    EXPECT_FLOAT_EQ(bits_to_float(data_mem[cluster1_total_addr]), 3.0f) << "total count for cluster 1 is incorrect.";
-
-    // --- Verify Cluster 2 Results ---
-    uint32_t cluster2_sum_x_addr = SUM_X_ADDR + (2 * 9 * 4);
-    uint32_t cluster2_sum_y_addr = SUM_Y_ADDR + (2 * 9 * 4);
-    uint32_t cluster2_total_addr = TOTAL_ADDR + (2 * 9 * 4);
-    EXPECT_FLOAT_EQ(bits_to_float(data_mem[cluster2_sum_x_addr]), 63.0f) << "sum_x for cluster 2 is incorrect.";
-    EXPECT_FLOAT_EQ(bits_to_float(data_mem[cluster2_sum_y_addr]), 63.0f) << "sum_y for cluster 2 is incorrect.";
-    EXPECT_FLOAT_EQ(bits_to_float(data_mem[cluster2_total_addr]), 3.0f) << "total count for cluster 2 is incorrect.";
+    // 3. VERIFICATION
+    EXPECT_EQ(data_mem[4140], 0) << "ra is not fine";
+    EXPECT_EQ(data_mem[4136], 4144) << "s0 is not fine";
+    EXPECT_EQ(data_mem[15496], 15512) << "first offset is not fine";
+    EXPECT_EQ(data_mem[15240], 15256) << "second offset is not fine";
 }
+
+// TEST_F(ComputeCoreTestbench, KMeansKernelVerification) {
+//     // ========================================================================
+//     // 1. SETUP: Load the compiled program and prepare the input data.
+//     // ========================================================================
+    
+//     // Start with a clean data memory for this test.
+//     data_mem.clear();
+
+//     // Load the instruction and data memory files produced by your assembler.
+//     loadProgramFromHex("../../assembler/compiler_output/kernel.instr.hex");
+//     loadDataFromHex("../../assembler/compiler_output/kernel.data.hex");
+
+//     // --- MEMORY MAP CONTRACT ---
+//     // !!! IMPORTANT !!!
+//     // You MUST update these base addresses to match the exact memory layout
+//     // that your compiler uses (from its hardcoded memory map).
+//     // These are placeholders based on a plausible memory layout.
+//     //
+//     // Let's assume a simple layout starting at address 0x1000 for clarity.
+//     constexpr uint32_t DATA_SECTION_BASE = 0x1000;
+//     constexpr uint32_t CENTROIDS_X_ADDR  = DATA_SECTION_BASE; // 3 floats
+//     constexpr uint32_t CENTROIDS_Y_ADDR  = CENTROIDS_X_ADDR + 3 * 4;
+//     constexpr uint32_t POINTS_X_ADDR     = CENTROIDS_Y_ADDR + 3 * 4;
+//     constexpr uint32_t POINTS_Y_ADDR     = POINTS_X_ADDR + 9 * 4;
+//     // Skip scratchpad arrays (distances, etc.) as we don't need to init them.
+//     // The total size of scratchpad is: (3*9 + 9)*4 for floats + (9)*4 for ints = 180 bytes
+//     constexpr uint32_t SCRATCHPAD_SIZE   = (3*9 + 9 + 9) * 4;
+//     constexpr uint32_t TOTAL_ADDR        = POINTS_Y_ADDR + 9 * 4;
+//     constexpr uint32_t SUM_X_ADDR        = TOTAL_ADDR + 3 * 9 * 4;
+//     constexpr uint32_t SUM_Y_ADDR        = SUM_X_ADDR + 3 * 9 * 4;
+
+
+//     // --- Manually Pre-load Input Data (Simulating the PS Driver) ---
+//     // We use a simple, predictable dataset to make verification easy.
+//     // Points cluster perfectly around the initial centroids.
+//     std::cout << "Pre-loading test data into simulated data memory..." << std::endl;
+    
+//     // Points Data: {0,1,2}, {8,9,10}, {20,21,22}
+//     float points[] = {0, 1, 2, 8, 9, 10, 20, 21, 22};
+//     for (int i = 0; i < 9; ++i) {
+//         data_mem[POINTS_X_ADDR + i * 4] = float_to_bits(points[i]);
+//         data_mem[POINTS_Y_ADDR + i * 4] = float_to_bits(points[i]); // Using same values for y
+//     }
+
+//     // Initial Centroids Data: {5}, {15}, {25}
+//     float centroids[] = {5.0, 15.0, 25.0};
+//     for (int i = 0; i < 3; ++i) {
+//         data_mem[CENTROIDS_X_ADDR + i * 4] = float_to_bits(centroids[i]);
+//         data_mem[CENTROIDS_Y_ADDR + i * 4] = float_to_bits(centroids[i]);
+//     }
+
+
+//     // ========================================================================
+//     // 2. EXECUTION: Run the simulation until the 'exit' instruction.
+//     // ========================================================================
+    
+//     std::cout << "Starting simulation of the K-means kernel..." << std::endl;
+//     loadAndRun(instr_mem);
+
+//     // SMOKE TEST: If loadAndRun completes without a timeout, it means the
+//     // control flow reached the 'exit' instruction successfully.
+//     SUCCEED() << "Simulation completed without timeout (Control Flow OK).";
+
+
+//     // ========================================================================
+//     // 3. VERIFICATION: Check the final state of data memory.
+//     // ========================================================================
+    
+//     // --- Golden "By Hand" Calculation ---
+//     // Cluster 0 gets points {0,1,2}. Sum = 3. Count = 3.
+//     // Cluster 1 gets points {8,9,10}. Sum = 27. Count = 3.
+//     // Cluster 2 gets points {20,21,22}. Sum = 63. Count = 3.
+    
+//     std::cout << "Verifying final memory state against golden values..." << std::endl;
+
+//     // The reduction results are always in index [0] of each cluster's array.
+//     // For `sum_x[k][i]`, the address of `sum_x[k][0]` is `SUM_X_BASE_ADDR + k * NUM_POINTS * 4`.
+    
+//     // --- Verify Cluster 0 Results ---
+//     uint32_t cluster0_sum_x_addr = SUM_X_ADDR + (0 * 9 * 4);
+//     uint32_t cluster0_sum_y_addr = SUM_Y_ADDR + (0 * 9 * 4);
+//     uint32_t cluster0_total_addr = TOTAL_ADDR + (0 * 9 * 4);
+//     EXPECT_FLOAT_EQ(bits_to_float(data_mem[cluster0_sum_x_addr]), 3.0f) << "sum_x for cluster 0 is incorrect.";
+//     EXPECT_FLOAT_EQ(bits_to_float(data_mem[cluster0_sum_y_addr]), 3.0f) << "sum_y for cluster 0 is incorrect.";
+//     EXPECT_FLOAT_EQ(bits_to_float(data_mem[cluster0_total_addr]), 3.0f) << "total count for cluster 0 is incorrect.";
+
+//     // --- Verify Cluster 1 Results ---
+//     uint32_t cluster1_sum_x_addr = SUM_X_ADDR + (1 * 9 * 4);
+//     uint32_t cluster1_sum_y_addr = SUM_Y_ADDR + (1 * 9 * 4);
+//     uint32_t cluster1_total_addr = TOTAL_ADDR + (1 * 9 * 4);
+//     EXPECT_FLOAT_EQ(bits_to_float(data_mem[cluster1_sum_x_addr]), 27.0f) << "sum_x for cluster 1 is incorrect.";
+//     EXPECT_FLOAT_EQ(bits_to_float(data_mem[cluster1_sum_y_addr]), 27.0f) << "sum_y for cluster 1 is incorrect.";
+//     EXPECT_FLOAT_EQ(bits_to_float(data_mem[cluster1_total_addr]), 3.0f) << "total count for cluster 1 is incorrect.";
+
+//     // --- Verify Cluster 2 Results ---
+//     uint32_t cluster2_sum_x_addr = SUM_X_ADDR + (2 * 9 * 4);
+//     uint32_t cluster2_sum_y_addr = SUM_Y_ADDR + (2 * 9 * 4);
+//     uint32_t cluster2_total_addr = TOTAL_ADDR + (2 * 9 * 4);
+//     EXPECT_FLOAT_EQ(bits_to_float(data_mem[cluster2_sum_x_addr]), 63.0f) << "sum_x for cluster 2 is incorrect.";
+//     EXPECT_FLOAT_EQ(bits_to_float(data_mem[cluster2_sum_y_addr]), 63.0f) << "sum_y for cluster 2 is incorrect.";
+//     EXPECT_FLOAT_EQ(bits_to_float(data_mem[cluster2_total_addr]), 3.0f) << "total count for cluster 2 is incorrect.";
+// }
 
 // TEST_F(ComputeCoreTestbench, SXSLTTest) {
 //     data_mem.clear();

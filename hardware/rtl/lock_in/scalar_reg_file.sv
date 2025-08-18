@@ -59,19 +59,30 @@ always @(posedge clk) begin
 
         if (warp_state == WARP_UPDATE) begin
             if (decoded_reg_write_enable && decoded_rd_address > 0) begin
-                $display("Scalar Reg File: Writing to register %d", decoded_rd_address);
-                case (decoded_reg_input_mux)
-                    ALU_OUT:    registers[decoded_rd_address] <= alu_out;
-                    LSU_OUT:    registers[decoded_rd_address] <= lsu_out;
-                    IMMEDIATE:  registers[decoded_rd_address] <= decoded_immediate;
-                    PC_PLUS_1:  registers[decoded_rd_address] <= pc + 1;
-                    VECTOR_TO_SCALAR: begin
-                        $display("Scalar Reg File: Writing vector_to_scalar_data to register %d", decoded_rd_address);
-                        // $display("vector_to_scalar_data: ", vector_to_scalar_data);
-                        registers[decoded_rd_address] <= vector_to_scalar_data;
-                    end
-                    default: $error("Invalid decoded_reg_input_mux value");
-                endcase
+                logic allow_write;
+
+                if (decoded_rd_address == EXECUTION_MASK_REG) begin
+                    allow_write = (decoded_reg_input_mux == VECTOR_TO_SCALAR);
+                end else begin
+                    allow_write = 1'b1;
+                end
+                if (allow_write) begin
+                    $display("Scalar Reg File: Writing to register %d", decoded_rd_address, " with the value from alu ", alu_out);
+                    case (decoded_reg_input_mux)
+                        ALU_OUT:    registers[decoded_rd_address] <= alu_out;
+                        LSU_OUT:    registers[decoded_rd_address] <= lsu_out;
+                        IMMEDIATE:  registers[decoded_rd_address] <= decoded_immediate;
+                        PC_PLUS_1:  registers[decoded_rd_address] <= pc + 1;
+                        VECTOR_TO_SCALAR: begin
+                            $display("Scalar Reg File: Writing vector_to_scalar_data to register %d", decoded_rd_address);
+                            // $display("vector_to_scalar_data: ", vector_to_scalar_data);
+                            registers[decoded_rd_address] <= vector_to_scalar_data;
+                        end
+                        default: $error("Invalid decoded_reg_input_mux value");
+                    endcase
+                end else begin
+                    $display("Scalar Reg File: Write to protected EXECUTION_MASK_REG (%d) was blocked.", decoded_rd_address);
+                end
             end
         end
     end
