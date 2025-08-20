@@ -4,7 +4,9 @@
 
 module reg_file #(
     parameter int THREADS_PER_WARP = 16,
-    parameter int DATA_WIDTH = `DATA_WIDTH
+    parameter int DATA_WIDTH = `DATA_WIDTH,
+    // parameter to tell whether it should initialize the special registers -> left out for floats
+    parameter logic HAS_SPECIAL_REGS = 1
 ) (
     input   wire                            clk,
     input   wire                            reset,
@@ -58,22 +60,28 @@ always @(posedge clk) begin
     // $display("reset: ", reset);
     if (reset) begin
         for (int i = 0; i < THREADS_PER_WARP; i++) begin
-            registers[i][ZERO_REG]      <= {DATA_WIDTH{1'b0}};
-            registers[i][THREAD_ID_REG] <= thread_ids[i];
-            registers[i][BLOCK_ID_REG]  <= block_id;
-            registers[i][BLOCK_SIZE_REG]<= block_size;
-            for (int j = 1; j < 29; j++) begin
+            registers[i][ZERO_REG] <= {DATA_WIDTH{1'b0}};
+            for (int j = 1; j < 32; j++) begin
                 registers[i][j] <= {DATA_WIDTH{1'b0}};
             end
+
+            if (HAS_SPECIAL_REGS) begin
+                registers[i][THREAD_ID_REG] <= thread_ids[i];
+                registers[i][BLOCK_ID_REG]  <= block_id;
+                registers[i][BLOCK_SIZE_REG]<= block_size;
+            end
+
             rs1[i] <= {DATA_WIDTH{1'b0}};
             rs2[i] <= {DATA_WIDTH{1'b0}};
         end
     end else if (enable) begin
-        for (int i = 0; i < THREADS_PER_WARP; i++) begin
-            registers[i][ZERO_REG]      <= {DATA_WIDTH{1'b0}};
-            registers[i][THREAD_ID_REG] <= thread_ids[i];
-            registers[i][BLOCK_ID_REG]  <= block_id;
-            registers[i][BLOCK_SIZE_REG]<= block_size;
+        if (HAS_SPECIAL_REGS) begin
+            for (int i = 0; i < THREADS_PER_WARP; i++) begin
+                registers[i][ZERO_REG]      <= {DATA_WIDTH{1'b0}};
+                registers[i][THREAD_ID_REG] <= thread_ids[i];
+                registers[i][BLOCK_ID_REG]  <= block_id;
+                registers[i][BLOCK_SIZE_REG]<= block_size;
+            end
         end
 
         for (int i = 0; i < THREADS_PER_WARP; i++) begin
@@ -83,7 +91,13 @@ always @(posedge clk) begin
 
                 if (warp_state == WARP_UPDATE) begin
                     // Prevent writes to read-only registers
-                    if (decoded_reg_write_enable && decoded_rd_address > 0 && decoded_rd_address < 29 ) begin
+                    logic allow_write = 1'b1;
+                    if (HAS_SPECIAL_REGS) begin
+                        if (decoded_rd_address >= 29) begin
+                           allow_write = 1'b0; // Don't allow writes to any special reg
+                        end
+                    end
+                    if (decoded_reg_write_enable && decoded_rd_address > 0 && allow_write) begin
                         case (decoded_reg_input_mux)
                             ALU_OUT: begin
                                 registers[i][decoded_rd_address] <= alu_out[i];

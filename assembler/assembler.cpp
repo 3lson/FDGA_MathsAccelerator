@@ -7,20 +7,18 @@
 #include <iomanip>
 #include <filesystem>
 #include <map>
-#include <string_view> // NEW: For efficient prefix checking
+#include <string_view>
 
 using namespace std;
 
 // The assembler works by breaking down the instr sw ra, 268(sp)
 // args[0] = sw, args[1] = ra, args[2] = 268(sp)
 
-// MODIFIED: Renamed maps for clarity
 unordered_map<string, int> int_scalar_registerMap;
 unordered_map<string, int> float_scalar_registerMap;
 unordered_map<string, int> int_vector_registerMap;
 unordered_map<string, int> float_vector_registerMap;
 
-// MODIFIED: No need for opcode in the value, it's determined by the map name
 unordered_map<string, int> rTypeFunctMap = {
     {"add", 0b0000}, {"sub", 0b0001}, {"mul", 0b0010},
     {"div", 0b0011}, {"slt", 0b0100}, {"sll", 0b0101},
@@ -160,21 +158,10 @@ uint32_t encodeIType(string op, const vector<string>& args, bool is_scalar) {
     uint32_t imm = 0;
 
     if (op == "slli") {
-        // slli takes a 5-bit unsigned immediate
         imm = imm_val & 0x1F; 
-         // The 5-bit immediate for SLLI is typically in the IMM[4:0] field,
-         // but the ISA table says IMM[13:0]. This is a conflict.
-         // Assuming the ISA table is correct and it uses IMM[13:0] where only bits 4:0 are relevant.
-         // If it means uimm[4:0] *in* the IMM[13:0] field, that's odd.
-         // RISC-V RV32I SLLI uses imm[4:0] in the rs2 field (bits 19:15).
-         // Your ISA puts IMM[13:0] in bits [27:14]. Let's place the 5-bit uimm there.
-         imm = (imm_val & 0x1F); // This seems wrong based on IMM[13:0] mapping...
-         // Re-reading the I-type table: IMM [13:0] (14 bits) is bits [27:14].
-         // The note "uimm means 5-bit unsigned immediate (i.e IMM[4:0])" suggests only the lower 5 bits of this 14-bit field matter for SLLI.
-         // So we mask the immediate to 5 bits, and place it in the lower part of the 14-bit field.
-         imm = (imm_val & 0x1F); // Keep only lower 5 bits
-         // The rest of the IMM[13:0] field (bits 13:5) should be 0 for SLLI according to RISC-V UIMM convention
-         imm = (imm & 0x1F); // Use only bits 4:0, bits 13:5 are implicitly 0 within the 14-bit field
+         imm = (imm_val & 0x1F);
+         imm = (imm_val & 0x1F);
+         imm = (imm & 0x1F);
 
     } else {
         // Other I-types take a 14-bit signed immediate
@@ -546,10 +533,28 @@ uint32_t encodeLUI(const vector<string>& args, bool is_scalar) {
     return (opcode << 29) | (upimm << 9) | (0 << 6) | (scalar_bit_pos5 << 5) | rd;
 }
 
-uint32_t encodePseudoLI(const vector<string>& args, bool is_scalar) {
-    if (args.size() != 3) { cerr << "Error: Pseudo-instruction 'li' expects register and immediate." << endl; return 0; }
-    // A li is just an addi from zero. The register type is determined by the prefix (and passed down).
-    return encodeIType("addi", {args[1], "zero", args[2]}, is_scalar); // li rd, imm -> addi rd, zero, imm
+vector<uint32_t> encodePseudoLI(const vector<string>& tokens, bool is_scalar) {
+    // This function now returns a vector of machine codes, as 'li' can expand to 1 or 2 instructions
+    if (tokens.size() != 3) { 
+        cerr << "Error: Pseudo-instruction 'li' expects register and immediate." << endl;
+        return {};
+    }
+
+    string rd_reg = tokens[1];
+    int32_t immediate = getImm(tokens[2]);
+
+    // Check if the immediate fits into the 14-bit signed immediate field of ADDI (14 bits)
+    if (immediate >= -8192 && immediate <= 8191) {
+        uint32_t addi_instr = encodeIType("addi", {rd_reg, "zero", tokens[2]}, is_scalar);
+        return { addi_instr };
+    } else {
+        int32_t upper = (immediate + 0x800) >> 12;
+        int32_t lower = immediate - (upper << 12);
+        
+        uint32_t lui_instr = encodeLUI({rd_reg, to_string(upper)}, is_scalar);
+        uint32_t addi_instr = encodeIType("addi", {rd_reg, rd_reg, to_string(lower)}, is_scalar);
+        return { lui_instr, addi_instr };
+    }
 }
 
 
@@ -594,6 +599,30 @@ uint32_t encodeXType(string op, const vector<string>& args) {
     // | 31-29  | 28-19   | 18-14 | 13-10 | 9-5   | 4-0   |
     // | OPCODE | 10(x)   | RS2   | Funct4| RS1   | RD    |
     return (opcode << 29) | (rs2 << 14) | (funct4 << 10) | (rs1 << 5) | rd;
+}
+
+int getInstructionSize(const vector<string>& tokens){
+    if(tokens.empty()){
+        return 0;
+    }
+    string op = tokens[0];
+    if (op == "li"){
+        if (tokens.size() != 3){
+            return 4;
+        }
+        string immStr = tokens[2];
+        try {
+            int32_t immediate = stoi(immStr);
+            if(immediate >= -8192 && immediate  <= 8191){
+                return 4;
+            } else {
+                return 8;
+            }
+        } catch (const std::invalid_argument& ia){
+            return 4;
+        }
+    }
+    return 4;
 }
 
 // Solely for running the test_assembler.py
@@ -720,7 +749,18 @@ int main() {
         } else if (current_section == ".text") {
             // Anything left on the line is an instruction
             instructions.emplace_back(instr_pc, line);
-            instr_pc += 4;
+            vector<string> tokens = tokenize(line);
+            if (!tokens.empty()){
+                string op_with_prefix = tokens[0];
+                string op;
+                if (op_with_prefix.rfind("s.", 0) == 0 || op_with_prefix.rfind("v.", 0) == 0){
+                    op = op_with_prefix.substr(2);
+                } else{
+                    op = op_with_prefix;
+                }
+                tokens[0] = op;
+                instr_pc += getInstructionSize(tokens);
+            }
         }
     }
     // End of first pass section
@@ -735,30 +775,12 @@ int main() {
     for (auto& [pc_addr, line] : instructions) {
         vector<string> tokens = tokenize(line);
         if (tokens.empty()) continue;
-        
+
         string op_with_prefix = tokens[0];
-        uint32_t instr = 0;
-        
-        // NEW: Handle s. and v. prefixes
-        bool is_scalar = true; // Default to scalar if no prefix? Or require prefix? Let's require prefix.
         string op;
+        bool is_scalar = true; // Default to scalar
 
-        //cout << "PC 0x" << hex << pc_addr << ": " << line << " -> ";
-
-        if (op_with_prefix.rfind("sx.", 0) == 0) {
-            op = op_with_prefix.substr(3);
-            if (xTypeFunctMap.count(op)) {
-                instr = encodeXType(op, {tokens[1], tokens[2], tokens[3]});
-                // This instruction is fully handled. Print and continue to the next one.
-                cout << "0x" << hex << setw(8) << setfill('0') << instr << dec << endl;
-                instrOut << hex << setw(8) << setfill('0') << instr << endl;
-                continue;
-            } else {
-                cerr << "Unknown instruction: " << op_with_prefix << endl;
-                continue;
-            }
-        }
-
+        // --- Step 1: Reliably determine the opcode and scalar/vector nature ---
         if (op_with_prefix.rfind("s.", 0) == 0) {
             is_scalar = true;
             op = op_with_prefix.substr(2);
@@ -766,60 +788,60 @@ int main() {
             is_scalar = false;
             op = op_with_prefix.substr(2);
         } else {
-            // Handle instructions that *don't* use the scalar bit (control flow, lui, li)
-             op = op_with_prefix;
-             // Need to check if it's a control flow instruction explicitly here
-             if (!cTypeFunctMap.count(op) && op != "lui" && op != "li" && op != "sync" && op != "exit") {
-                cerr << "Error: Instruction '" << op_with_prefix << "' at PC 0x" << hex << pc_addr << dec << " is missing 's.' or 'v.' prefix." << endl;
-                continue; // Skip encoding this instruction
-             }
-
-             if (cTypeFunctMap.count(op) || op == "sync" || op == "exit") {
-                 is_scalar = true; // Control flow, sync, exit are fundamentally scalar
-             } else if (op == "lui" || op == "li") {
-                 // For lui/li, check the destination register to determine scalar/vector
-                 if (tokens.size() > 1) {
-                     string rd_str = tokens[1];
-                     if (int_scalar_registerMap.count(rd_str) || float_scalar_registerMap.count(rd_str)) {
-                         is_scalar = true;
-                     } else if (int_vector_registerMap.count(rd_str) || float_vector_registerMap.count(rd_str)) {
-                         is_scalar = false;
-                     } else {
-                         cerr << "Error: Invalid register '" << rd_str << "' for instruction '" << op << "' at PC 0x" << hex << pc_addr << dec << "." << endl;
-                         continue;
-                     }
-                 } else {
-                     cerr << "Error: Instruction '" << op << "' requires a destination register at PC 0x" << hex << pc_addr << dec << "." << endl;
-                     continue;
-                 }
-             } else {
-                 // This case should not be reached due to the check above, but as a safeguard:
-                 cerr << "Internal Error: Unhandled instruction prefix logic for '" << op_with_prefix << "'" << endl;
-                 continue;
-             }
+            op = op_with_prefix;
+            // For unprefixed instructions like 'lui' or 'li', infer from register name
+            if ((op == "lui" || op == "li") && tokens.size() > 1) {
+                is_scalar = int_scalar_registerMap.count(tokens[1]);
+            }
         }
-
-        tokens[0] = op; // Update token with stripped opcode (or original if no prefix)
         
-        cout << "PC 0x" << hex << pc_addr << ": " << line << " -> ";
-        if (rTypeFunctMap.count(op)) instr = encodeRType(op, {tokens[1], tokens[2], tokens[3]}, is_scalar);
-        else if (iTypeFunctMap.count(op)) instr = encodeIType(op, {tokens[1], tokens[2], tokens[3]}, is_scalar);
-        else if (fTypeFunctMap.count(op)) instr = encodeFType(op, tokens, is_scalar); // F-type takes full tokens vector
-        else if (op == "lw" || op == "flw") instr = encodeLoad(op, {tokens[1], tokens[2]}, is_scalar);
-        else if (op == "sw" || op == "fsw") instr = encodeStore(op, {tokens[1], tokens[2]}, is_scalar);
-        else if (cTypeFunctMap.count(op) || op == "exit") {
-            instr = encodeControl(op, tokens, pc_addr); // Control flow is always encoded as scalar operation
-        }
-        else if (op == "lui") instr = encodeLUI({tokens[1], tokens[2]}, is_scalar);
-        else if (op == "li") instr = encodePseudoLI(tokens, is_scalar); // li takes full tokens vector
-        else {
-            cerr << "Unknown instruction: " << op << " (after potential prefix removal)" << endl;
-            continue;
-        }
+        tokens[0] = op; // Update token for the encoder functions
 
-        cout << "0x" << hex << setw(8) << setfill('0') << instr << dec << endl;
-        instrOut << hex << setw(8) << setfill('0') << instr << endl;
-        instrOut.flush();
+        cout << "PC 0x" << hex << pc_addr << ": " << line << " -> ";
+
+        // --- Step 2: Assemble the instruction using a clean if/else if/else chain ---
+        if (op == "li") {
+            // --- Special Case: `li` pseudo-instruction ---
+            vector<uint32_t> machine_codes = encodePseudoLI(tokens, is_scalar);
+            
+            if (machine_codes.size() > 1) {
+                cout << "(expanded to " << machine_codes.size() << " instructions)" << endl;
+            }
+
+            for (size_t i = 0; i < machine_codes.size(); ++i) {
+                if (i > 0) cout << "          (cont.) -> ";
+                cout << "0x" << hex << setw(8) << setfill('0') << machine_codes[i] << dec << endl;
+                instrOut << hex << setw(8) << setfill('0') << machine_codes[i] << endl;
+            }
+        } else {
+            // --- Default Case: All other instructions that produce one machine code ---
+            uint32_t instr = 0; // Initialize to 0
+
+            if (rTypeFunctMap.count(op)) {
+                instr = encodeRType(op, {tokens[1], tokens[2], tokens[3]}, is_scalar);
+            } else if (iTypeFunctMap.count(op)) {
+                instr = encodeIType(op, {tokens[1], tokens[2], tokens[3]}, is_scalar);
+            } else if (fTypeFunctMap.count(op)) {
+                instr = encodeFType(op, tokens, is_scalar);
+            } else if (op == "lw" || op == "flw") {
+                instr = encodeLoad(op, {tokens[1], tokens[2]}, is_scalar);
+            } else if (op == "sw" || op == "fsw") {
+                instr = encodeStore(op, {tokens[1], tokens[2]}, is_scalar);
+            } else if (cTypeFunctMap.count(op) || op == "exit") {
+                instr = encodeControl(op, tokens, pc_addr);
+            } else if (op == "lui") {
+                instr = encodeLUI({tokens[1], tokens[2]}, is_scalar);
+            } else {
+                cerr << "Unknown instruction: " << op << endl;
+            }
+            
+            // Only print/write if an instruction was successfully encoded
+            if (instr != 0) {
+                cout << "0x" << hex << setw(8) << setfill('0') << instr << dec << endl;
+                instrOut << hex << setw(8) << setfill('0') << instr << endl;
+            }
+        }
+        instrOut.flush(); // Flush after each line of assembly is processed
     }
 
     // Output data section

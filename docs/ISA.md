@@ -1,6 +1,6 @@
 # Elson-V ISA
 
-**Note:** Division Operators have been dropped in this version as the PS can execute the final part of the C code not in the kernelization
+**Note:** Division Operators have been dropped in the rtl as the PS can execute the final part of the C code not in the kernelization
 
 ## Overview  
 The custom ISA is designed to efficiently execute K-means clustering algorithms on custom FPGA-based hardware.
@@ -142,6 +142,8 @@ E.g.
 
 `li t0, 100` 
 This is a pseudo-instr that underlying would perform `addi t0, zero, 100`
+
+However if the value is over the 14-bit signed limit of 8191 to -8192, it will be converted into lui + addi instruction (done in the assembler)
 
 `lui rd upimm`
 

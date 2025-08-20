@@ -44,19 +44,24 @@ void KernelStatement::EmitWarpSwitchLogic(std::ostream& stream, Context& context
     std::vector<Warp>& warp_file = context.get_warp_file();
     
     // Store current warp's state
-    std::string current_warp_reg = context.get_register(Type::_INT);
     std::string next_warp_label = context.create_label("load_next_warp");
     std::string check_completion_label = context.create_label("check_completion");
     
     // Set to scalar mode for warp management
     context.set_instruction_state(Kernel::_SCALAR);
-    
+
+    if (!warp_file.empty()) {
+        context.assign_reg_manager(warp_file[0].get_warp_file());
+    }
     // Find and store the currently active warp
     for(size_t i = 0; i < warp_file.size(); i++) {
         std::string warp_check_label = context.create_label("warp_check");
         
+        std::string current_warp_reg = context.get_register(Type::_INT);
         stream << "s.seqi " << current_warp_reg << ", s24, " << i << std::endl;
         stream << "s.beqz " << current_warp_reg << ", " << warp_check_label << std::endl;
+
+        context.deallocate_register(current_warp_reg);
         
         // Store current warp (warp i)
         StoreWarpRegisters(stream, context, warp_file[i]);
@@ -66,8 +71,14 @@ void KernelStatement::EmitWarpSwitchLogic(std::ostream& stream, Context& context
         stream << "s.j " << next_warp_label << std::endl;
         stream << warp_check_label << ":" << std::endl;
     }
+
+    // The previous call to StoreWarpRegisters left the context's register
+    // manager pointing to a vector file. We must restore it to the scalar
+    // file before generating more scalar code.
+    if (!warp_file.empty()) {
+        context.assign_reg_manager(warp_file[0].get_warp_file());
+    }
     
-    context.deallocate_register(current_warp_reg);
     
     // === LOAD NEXT WARP ===
     stream << next_warp_label << ":" << std::endl;
@@ -144,37 +155,65 @@ void KernelStatement::StoreWarpRegisters(std::ostream& stream, Context& context,
     ScalarRegisterFile& reg_file = warp.get_warp_file();
     context.assign_reg_manager(reg_file);
     
-    std::string addr = context.get_register(Type::_INT);
+    // We use the second one if the first one conflicts
+    std::string addr_reg1 = context.get_register(Type::_INT);
+    std::string addr_reg2 = context.get_register(Type::_INT);
+    std::string addr_to_use;
 
     // Store completion flag first (at offset 32)
     int completion_address = warp.get_warp_offset() - (32+1)*4;
-    stream << asm_prefix.at(context.get_instruction_state()) << "li " << addr << ", " << completion_address << std::endl;
-    stream << asm_prefix.at(context.get_instruction_state()) << "li t0, 1" << std::endl; // 1 = completed
-    stream << asm_prefix.at(context.get_instruction_state()) << "sw t0, 0(" << addr << ")" << std::endl;
+    stream << asm_prefix.at(context.get_instruction_state()) << "li " << addr_reg1 << ", " << completion_address << std::endl;
+    std::string temp_reg = context.get_register(Type::_INT);
+    stream << asm_prefix.at(context.get_instruction_state()) << "li " << temp_reg << ", 1" << std::endl; // 1 = completed
+    stream << asm_prefix.at(context.get_instruction_state()) << "sw " << temp_reg << ", 0(" << addr_reg1 << ")" << std::endl;
+
+    context.deallocate_register(temp_reg);
 
     // Store scalar registers (0-31) to warp stack
     for(int i = 0; i < 32; i++){
+
+        // Skip the reserved scalar register x31 (s26)
+        if (i == 31) continue;
+
         if(!reg_file.get_register_by_id(i).isAvailable()){
             int address = warp.get_warp_offset() - (i+1)*4;
-            std::string tmp_name = reg_file.get_register_name(i);
+            std::string reg_to_save = reg_file.get_register_name(i);
+
+            // Check for conflict
+            if (reg_to_save == addr_reg1){
+                addr_to_use = addr_reg2;
+            } else{
+                addr_to_use = addr_reg1;
+            }
             
-            stream << asm_prefix.at(context.get_instruction_state()) << "li " << addr << ", " << address << std::endl;
-            stream << asm_prefix.at(context.get_instruction_state()) << "sw " << tmp_name << ", 0(" << addr << ")" << std::endl;
+            stream << asm_prefix.at(context.get_instruction_state()) << "li " << addr_to_use << ", " << address << std::endl;
+            stream << asm_prefix.at(context.get_instruction_state()) << "sw " << reg_to_save << ", 0(" << addr_to_use << ")" << std::endl;
         }
     }
 
     // Store floating-point registers (33-63) to warp stack
     for(int i = 33; i < 64; i++){
+        // Skip the reserved float register x31 (fs31)
+        if (i == 63) continue;
+
         if(!reg_file.get_register_by_id(i).isAvailable()){
             int address = warp.get_warp_offset() - (i+1)*4;
-            std::string tmp_name = reg_file.get_register_name(i);
+            std::string reg_to_save = reg_file.get_register_name(i);
+
+            // Check for conflict
+            if (reg_to_save == addr_reg1){
+                addr_to_use = addr_reg2;
+            } else{
+                addr_to_use = addr_reg1;
+            }
             
-            stream << asm_prefix.at(context.get_instruction_state()) << "li " << addr << ", " << address << std::endl;
-            stream << asm_prefix.at(context.get_instruction_state()) << "fsw " << tmp_name << ", 0(" << addr << ")" << std::endl;
+            stream << asm_prefix.at(context.get_instruction_state()) << "li " << addr_to_use << ", " << address << std::endl;
+            stream << asm_prefix.at(context.get_instruction_state()) << "fsw " << reg_to_save << ", 0(" << addr_to_use << ")" << std::endl;
         } 
     }
 
-    context.deallocate_register(addr);
+    context.deallocate_register(addr_reg1);
+    context.deallocate_register(addr_reg2);
 
     // Switch to vector mode for thread operations
     context.set_instruction_state(Kernel::_VECTOR);
@@ -189,20 +228,24 @@ void KernelStatement::StoreWarpRegisters(std::ostream& stream, Context& context,
 
         // Store integer vector registers (0-31)
         for(int reg_idx = 0; reg_idx < 32; reg_idx++){
+
+            // Skips the special hardware registers v29(threadIdx), v30(blockIdx),
+            // and v31(block_size). Assembler maps v24, v25, v26 to these.
+            if (reg_idx >= 29) continue;
             int address = thread.get_offset() - (reg_idx+1)*4;
-            std::string tmp_name = thread_file.get_register_name(reg_idx);
+            std::string reg_to_save = thread_file.get_register_name(reg_idx);
             
             stream << asm_prefix.at(context.get_instruction_state()) << "li " << thread_addr << ", " << address << std::endl;
-            stream << asm_prefix.at(context.get_instruction_state()) << "sw " << tmp_name << ", 0(" << thread_addr << ")" << std::endl;
+            stream << asm_prefix.at(context.get_instruction_state()) << "sw " << reg_to_save << ", 0(" << thread_addr << ")" << std::endl;
         }
 
         // Store floating-point vector registers (32-63)
         for(int reg_idx = 32; reg_idx < 64; reg_idx++){
             int address = thread.get_offset() - (reg_idx+1)*4;
-            std::string tmp_name = thread_file.get_register_name(reg_idx);
+            std::string reg_to_save = thread_file.get_register_name(reg_idx);
 
             stream << asm_prefix.at(context.get_instruction_state()) << "li " << thread_addr << ", " << address << std::endl;
-            stream << asm_prefix.at(context.get_instruction_state()) << "fsw " << tmp_name << ", 0(" << thread_addr << ")" << std::endl;
+            stream << asm_prefix.at(context.get_instruction_state()) << "fsw " << reg_to_save << ", 0(" << thread_addr << ")" << std::endl;
         }
 
         context.deallocate_register(thread_addr);
@@ -219,6 +262,10 @@ void KernelStatement::InitializeWarp(std::ostream& stream, Context& context, War
 
     // Load scalar registers (0-31) from warp stack
     for(int i = 0; i < 32; i++){
+
+        // Skip the reserved scalar register x31 (s26)
+        if (i == 31) continue;
+
         if(!reg_file.get_register_by_id(i).isAvailable()){
             int address = warp.get_warp_offset() - (i+1)*4;
             std::string tmp_name = reg_file.get_register_name(i);
@@ -230,6 +277,10 @@ void KernelStatement::InitializeWarp(std::ostream& stream, Context& context, War
 
     // Load floating-point registers (33-63) from warp stack
     for(int i = 33; i < 64; i++){
+
+        // Skip the reserved scalar register x31 (fs31)
+        if (i == 63) continue;
+
         if(!reg_file.get_register_by_id(i).isAvailable()){
             int address = warp.get_warp_offset() - (i+1)*4;
             std::string tmp_name = reg_file.get_register_name(i);
@@ -254,6 +305,11 @@ void KernelStatement::InitializeWarp(std::ostream& stream, Context& context, War
 
         // Load integer vector registers (0-31)
         for(int reg_idx = 0; reg_idx < 32; reg_idx++){
+
+            // Skips the special hardware registers v29(threadIdx), v30(blockIdx),
+            // and v31(block_size). Your assembler maps v24, v25, v26 to these.
+            if (reg_idx >= 29) continue;
+
             int address = thread.get_offset() - (reg_idx+1)*4;
             std::string tmp_name = thread_file.get_register_name(reg_idx);
             

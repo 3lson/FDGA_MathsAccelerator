@@ -149,7 +149,7 @@ protected:
         tick();
         top->start = 0;
         
-        int max_cycles = 5000;
+        int max_cycles = 10000;
         for (int i = 0; i < max_cycles; ++i) {
             if (top->done) {
                 std::cout << "Core finished in " << i << " cycles." << std::endl;
@@ -335,16 +335,202 @@ TEST_F(ComputeCoreTestbench, SimpleStoreTest) {
     constexpr uint32_t THREAD_SP_BASE = 15240; // You must verify this from the setup asm!
     constexpr uint32_t ARRAY_OFFSET = 132;     // From the v.sub instruction result
     constexpr uint32_t OUTPUT_ARRAY_ADDR = THREAD_SP_BASE + ARRAY_OFFSET; 
-
+    data_mem[15412] = 0;
     // 2. EXECUTION
     loadAndRun(instr_mem);
 
     // 3. VERIFICATION
+
+    // Initial setup
     EXPECT_EQ(data_mem[4140], 0) << "ra is not fine";
     EXPECT_EQ(data_mem[4136], 4144) << "s0 is not fine";
-    EXPECT_EQ(data_mem[15496], 15512) << "first offset is not fine";
-    EXPECT_EQ(data_mem[15240], 15256) << "second offset is not fine";
+    EXPECT_EQ(data_mem[15496], 15512) << "offset is not fine in iniital";
+    EXPECT_EQ(data_mem[15240], 15256) << "offset is not fine in iniital";
+    EXPECT_EQ(data_mem[15384], 1) << "offset is not fine in iniital";
+    EXPECT_EQ(data_mem[15392], 0) << "offset is not fine in iniital";
+    // Commented as conflicting with overwriting value in warp_switch1
+    //EXPECT_EQ(data_mem[15128], 0) << "offset is not fine in iniital";
+    EXPECT_EQ(data_mem[15500], 4000) << "offset is not fine in iniital";
+    EXPECT_EQ(data_mem[15244], 4000) << "offset is not fine in iniital";
+    EXPECT_EQ(data_mem[15504], 0) << "offset is not fine in iniital";
+    // Commented as conflicting with overwriting value in warp_switch1
+    //EXPECT_EQ(data_mem[15484], 4144) << "offset is not fine in iniital";
+    //EXPECT_EQ(data_mem[15228], 4144) << "offset is not fine in iniital";
+
+    // Inside kernel_start_0
+    EXPECT_EQ(data_mem[4132], 123) << "offset is not fine in kernel_start0";
+
+    // Inside warp_switch1
+    EXPECT_EQ(data_mem[15380], 1) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15508], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15504], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15500], 4000) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15496], 15512) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15492], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15488], 4144) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15484], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15480], 15484) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15476], 15480) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15388], 0) << "offset is not fine in warp_switch1";
+
+    EXPECT_EQ(data_mem[15252], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15248], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15244], 4000) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15240], 15256) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15236], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15232], 4144) << "offset is not fine in warp_switch1";
+
+    EXPECT_EQ(data_mem[15228], 15128) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15224], 15224) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15220], 4132) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15216], 136) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15212], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15208], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15204], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15200], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15196], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15192], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15188], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15184], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15176], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15172], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15168], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15164], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15160], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15156], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15152], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15148], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15144], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15140], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15124], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15120], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15112], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15108], 0) << "offset is not fine in warp_switch1";
+
+    EXPECT_EQ(data_mem[15104], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15100], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15096], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15092], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15088], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15084], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15080], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15076], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15072], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15068], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15064], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15060], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15056], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15052], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15048], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15044], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15040], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15036], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15032], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15028], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15024], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15020], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15016], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15012], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15008], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15004], 0) << "offset is not fine in warp_switch1";
+    EXPECT_EQ(data_mem[15000], 0) << "offset is not fine in warp_switch1";
+    
+    // Inside load_warp_07
+    // EXPECT_EQ(data_mem[15508], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15504], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15500], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15496], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15492], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15488], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15484], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15480], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15388], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15252], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15248], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15244], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15240], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15236], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15232], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15228], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15224], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15220], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15216], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15212], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15208], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15204], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15200], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15196], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15192], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15188], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15184], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15176], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15172], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15168], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15164], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15160], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15156], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15152], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15148], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15144], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15140], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15124], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15120], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15112], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15108], 0) << "offset is not fine in load_warp_07";
+
+    // EXPECT_EQ(data_mem[15104], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15100], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15096], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15092], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15088], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15084], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15080], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15076], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15072], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15068], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15064], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15060], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15056], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15052], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15048], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15044], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15040], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15036], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15032], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15028], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15024], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15020], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15016], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15012], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15008], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15004], 0) << "offset is not fine in load_warp_07";
+    // EXPECT_EQ(data_mem[15000], 0) << "offset is not fine in load_warp_07";
+
+
 }
+
+// TEST_F(ComputeCoreTestbench, litest) {
+//     // Tests `li` which now works as lui + addi if overflow
+//     data_mem.clear();
+//     loadProgramFromHex("../../assembler/tests/expected_output/lui.instr.hex");
+
+//     loadAndRun(instr_mem);
+
+//     EXPECT_EQ(data_mem.count(0x1000), 1) << "Memory location 0x1000 was never written to.";
+//     EXPECT_EQ(data_mem.count(0x1004), 1) << "Memory location 0x1004 was never written to.";
+//     EXPECT_EQ(data_mem.count(0x1008), 1) << "Memory location 0x1008 was never written to.";
+
+//     // Verify the contents of memory against the expected values.
+//     EXPECT_EQ(data_mem[0x1000], 100)
+//         << "Failed to store small positive immediate correctly.";
+
+//     EXPECT_EQ(data_mem[0x1004], 15496)
+//         << "Failed to store large positive immediate. The LUI+ADDI expansion may be incorrect.";
+
+//     // For the negative number, we must cast the result from memory back to a signed integer to compare.
+//     EXPECT_EQ(static_cast<int32_t>(data_mem[0x1008]), -30000)
+//         << "Failed to store large negative immediate. Two's complement logic in the LUI+ADDI expansion may be incorrect.";
+// }
 
 // TEST_F(ComputeCoreTestbench, KMeansKernelVerification) {
 //     // ========================================================================

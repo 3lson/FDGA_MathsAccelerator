@@ -475,7 +475,8 @@ for (genvar i = 0; i < WARPS_PER_CORE; i = i + 1) begin : g_warp
     );
     // Vector float register file
     reg_file #(
-            .THREADS_PER_WARP(THREADS_PER_WARP)
+            .THREADS_PER_WARP(THREADS_PER_WARP),
+            .HAS_SPECIAL_REGS(0)
         ) floating_reg_file_inst (
             .clk(clk),
             .reset(reset),
