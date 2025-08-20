@@ -5,77 +5,56 @@
     <img src="https://img.shields.io/badge/HDL-SystemVerilog-1DBA5A?style=for-the-badge&logo=verilog" alt="Hardware Description Language">
   </a>
   <a href="https://www.cplusplus.com/">
-    <img src="https://img.shields.io/badge/Software-C++ Toolchain-00599C?style=for-the-badge&logo=c%2B%2B" alt="Software">
+    <img src="https://img.shields.io/badge/Toolchain-C++-00599C?style=for-the-badge&logo=c%2B%2B" alt="Software Toolchain">
   </a>
   <a href="https://www.xilinx.com/products/silicon-devices/soc/zynq-7000.html">
-    <img src="https://img.shields.io/badge/Platform-Xilinx%20PYNQ--Z1-F26222?style=for-the-badge&logo=xilinx" alt="Platform">
+    <img src="https://img.shields.io/badge/Target%20Platform-PYNQ--Z1%20FPGA-F26222?style=for-the-badge&logo=xilinx" alt="Platform">
   </a>
-  <a href="https://www.xilinx.com/products/design-tools/vivado.html">
-    <img src="https://img.shields.io/badge/Tools-Vivado%20%7C%20Verilator%20%7C%20GTest-76b900?style=for-the-badge" alt="Toolchain">
+  <a href="https://www.veripool.org/verilator/">
+    <img src="https://img.shields.io/badge/Verification-Verilator%20%26%20GTest-76b900?style=for-the-badge" alt="Verification Tools">
   </a>
 </p>
 
 ## Project Overview
 
-This repository contains the complete design and software stack for a high-performance, hardware-accelerated K-means clustering engine implemented on a Xilinx PYNQ-Z1 FPGA. The project demonstrates a full-stack approach to hardware acceleration, encompassing custom processor design, a bespoke ISA, a C++ compiler toolchain, and system-level performance optimization.
+This repository documents the creation of a complete hardware/software co-design project featuring a custom 32-bit GPGPU and its C++ toolchain, specifically engineered to accelerate K-Means clustering on an FPGA. This project demonstrates a full-stack approach to custom computing, from designing a bespoke Instruction Set Architecture (ISA) to developing a compiler and deploying the final design on a Xilinx PYNQ-Z1 board.
 
-The final design achieved a **~12x performance uplift** over a standard single-threaded C++ implementation.
+## Core Components & Workflow
 
-## System Architecture
+The system is built on a hardware/software co-design philosophy, partitioning tasks between the PYNQ's ARM Processing System (PS) and a custom accelerator on the Programmable Logic (PL).
 
-The accelerator leverages a hardware/software co-design methodology, using the PYNQ's ARM Processing System (PS) for control and sequential tasks, while offloading the massively parallel computations to a custom-designed SIMD processor fabric on the Programmable Logic (PL).
+1.  **Custom C Kernel:** The parallel part of the K-Means algorithm is written in a C-like syntax.
+2.  **C++ Compiler:** An AST-based compiler parses the kernel, performs register allocation, and generates assembly code for the custom ISA.
+3.  **C++ Assembler:** Converts the human-readable assembly into 32-bit machine code.
+4.  **SystemVerilog GPGPU:** The machine code is loaded onto the custom-designed GPGPU core on the FPGA, which executes the massively parallel distance calculations.
+5.  **ARM PS Control:** The ARM core manages the overall process, including data movement and the final centroid update calculations, which are not suitable for the parallel fabric.
 
-![High-Level Architecture Diagram](https://i.imgur.com/your_diagram_url.png)
+## Key Architectural Features
 
-**TO BE ADDED**
+*   **Custom SIMT Core:** A 16-lane GPGPU core designed in SystemVerilog, operating on the Single Instruction, Multiple Threads (SIMT) paradigm. A single instruction is fetched and decoded, then executed in parallel across all 16 thread lanes.
+*   **Bespoke RISC-style ISA:** A custom 32-bit instruction set designed to be dense and efficient for GPGPU workloads. It includes vector integer, vector floating-point, and scalar control flow instructions.
+    *   **[View the Full Elson-V ISA Specification here](./docs/ISA.md)**
+*   **Resource-Efficient Pipelined Design:** The core features a 5-stage pipeline (Fetch, Decode, Register Read, Execute, Writeback) with a full forwarding unit to mitigate data hazards. To optimize for the PYNQ-Z1's resource constraints, the 16-thread warp shares a single, deeply pipelined FPU and Integer ALU, dramatically reducing area usage while maintaining high throughput.
+*   **Complete C++ Toolchain:** A custom-built software toolchain enables a high-level programming model, abstracting away the hardware specifics and allowing for rapid algorithm development and iteration.
 
-> **Diagram:** A high-level overview showing the PYNQ's ARM PS running the main Python application, which configures and controls the K-Means Accelerator IP on the PL via an AXI interface. The accelerator reads input data (points, centroids) from and writes results (sums) back to shared DDR memory.
+## Branch Guide: Project Evolution
 
-## Key Features
+This repository captures the project's journey from an initial proof-of-concept to a final, deployed FPGA accelerator. The key development stages are preserved in the following branches:
 
-*   **Custom SIMD Processor Core:** A 16-lane SIMD processor designed from the ground up in SystemVerilog, tailored specifically for the K-means algorithm's computational patterns.
-*   **Bespoke RISC-V Style ISA:** A custom 32-bit instruction set architecture featuring specialized vector and floating-point instructions to maximize efficiency for the target workload.
-*   **Pipelined Microarchitecture:** The processor core features a 5-stage pipeline (Fetch, Decode, Register Read, Execute, Writeback) with a full forwarding unit to mitigate data hazards.
-*   **C++ Compiler & Assembler:** A complete software toolchain built in C++ that compiles a C-like kernel language down to the custom machine code, enabling rapid development and algorithm optimization.
-*   **Hardware/Software Co-design:** Intelligent partitioning of the K-means algorithm, where the parallel distance calculations are accelerated on the FPGA fabric, while final centroid division and control flow are handled by the ARM processor in Python.
+*   **`main`**: **Final Deployed Version.** This branch represents the fully optimized, end-to-end PYNQ implementation. All hardware and software components are tailored for performance, timing closure, and resource utilization on the PYNQ-Z1 board.
 
-## Branch Guide
+*   **`testing/full-pipeline`**: **Active Development Branch.** This is the primary integration and testing branch for the full GPGPU pipeline. It contains the latest features and bug fixes for the compiler, assembler, and RTL, and represents the current state of ongoing work.
 
-This repository captures the project at several key stages of development. To understand the project's evolution from a CPU-based simulator to a final, optimized FPGA implementation, please refer to the following branches:
+*   **`arch/full-feature-gpu`**: **Pre-Optimization Hardware.** This branch contains a more feature-rich version of the GPGPU and ISA. It was used as a verification target before features were streamlined or offloaded to software to meet the strict timing and area constraints required for the final PYNQ-Z1 deployment.
 
-*   **`main`**: This is the primary branch and represents the **final, deployed version** of the project. It contains the end-to-end PYNQ implementation with all hardware and software components, fully optimized for performance, timing closure, and resource utilization on the target FPGA. This branch reflects the hardware/software co-design principles discussed in this README.
+*   **`feature/opencv-ui`**: **Experimental UI Integration.** This branch explores a real-time user interface using OpenCV to visualize the K-Means clustering process. It serves as a demonstration of how the accelerator could be integrated into a larger, interactive application.
 
-*   **`gpgpu-isa-version`**: This branch represents the **fully-featured ISA implementation** before final optimizations. It contains a more expansive set of hardware features and instructions that were later streamlined or offloaded to software to meet the strict timing and resource constraints of the PYNQ-Z1 platform.
+*   **`proof-of-concept/toolchain-cpu-simulator`**: **Initial Proof of Concept.** This is an early-stage, CPU-only simulator. It contains the complete compiler and assembler toolchain targeting a single-threaded C model of the custom processor. This version was crucial for validating the ISA and software toolchain *before* beginning hardware development.
 
-*   **`ui`**: This is an experimental feature branch containing the work for a real-time **user interface using OpenCV**. It demonstrates how the accelerator could be integrated into a larger, interactive application.
+## Acknowledged Resources
 
-*   **`v0.0`**: This branch is an early-stage **proof-of-concept and CPU-only simulator**. It contains the complete compiler-assembler toolchain and a C++ model of the custom CPU running in a single-threaded environment. This version was crucial for validating the custom ISA and toolchain *before* committing to hardware development.
+This project was heavily influenced by the foundational principles of computer architecture and digital design. The following texts were invaluable references throughout the development process:
 
-## Deep Dive: Core Components
-
-### 1. The SIMD Processor Core & Execution Model
-
-The heart of the accelerator is a custom-designed processor core that acts as the controller for a warp of 16 threads.
-
-*   **Execution Model:** The architecture follows a Single Instruction, Multiple Thread (SIMT) model. The main core fetches and decodes a single instruction which is then executed by the 16 lanes in parallel.
-*   **Resource-Efficient Design:** A key architectural decision was to instantiate a single, shared **pipelined FPU and Integer ALU** for the entire warp. While each thread has its own register file, they are scheduled onto the shared execution units. This approach dramatically reduces resource utilization compared to instantiating 16 full ALUs, enabling the design to fit on a smaller FPGA while maintaining high throughput.
-*   **Custom ISA:** The ISA was designed to be dense and efficient for the K-means workload. Key instructions include:
-    *   `VFADD`, `VFSUB`: Vector floating-point add/subtract for distance calculations.
-    *   `VABS`: Vector absolute value.
-    *   `VSLT`: Vector float less-than to find the minimum distance.
-    *   `VLD`/`VST`: Vector load/store with immediate offsets to access point and centroid data.
-    *   `BEQZ`: Scalar branch-if-equal-to-zero for control flow.
-
-### 2. C++ Compiler and Assembler
-
-A significant part of this project was developing the software to target the custom hardware. The toolchain operates in two stages:
-
-1.  **Compiler:** Parses a simplified, C-like kernel syntax. It performs register allocation and translates high-level operations (e.g., `centroids[0] - points[i]`) into a sequence of assembly instructions for the custom ISA.
-2.  **Assembler:** Converts the human-readable assembly instructions into their final 32-bit binary machine code representation, which is then loaded into the FPGA's memory for execution.
-
-This toolchain was fundamental to the project's success, allowing for quick iteration on the K-means algorithm without needing to write machine code by hand.
-
-## Relevant resources:
 [FPGA-based implementation of signal processing systems; Second editon.
 Roger Woods, John McAllister, Gaye Lightbody, Ying Yi.](https://library-search.imperial.ac.uk/discovery/fulldisplay?docid=alma991000933953101591&context=L&vid=44IMP_INST:ICL_VU1&lang=en&search_scope=MyInst_and_CI&adaptor=Local%20Search%20Engine&tab=Everything&query=any,contains,Digital%20Signal%20Processing%20with%20FPGAs)
 
