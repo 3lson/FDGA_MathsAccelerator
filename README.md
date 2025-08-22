@@ -37,11 +37,39 @@ The system is built on a hardware/software co-design philosophy, partitioning ta
 *   **Resource-Efficient Pipelined Design:** The core features a 5-stage pipeline (Fetch, Decode, Register Read, Execute, Writeback) with a full forwarding unit to mitigate data hazards. To optimize for the PYNQ-Z1's resource constraints, the 16-thread warp shares a single, deeply pipelined FPU and Integer ALU, dramatically reducing area usage while maintaining high throughput.
 *   **Complete C++ Toolchain:** A custom-built software toolchain enables a high-level programming model, abstracting away the hardware specifics and allowing for rapid algorithm development and iteration.
 
+---
+
+## Performance & Implementation Results
+
+The final implementation, synthesized for the Xilinx Zynq-7000 SoC on the PYNQ-Z1 board, **successfully met all timing constraints at 100 MHz**. The design was carefully optimized to balance performance with the resource limitations of the target device.
+
+### Resource Utilization
+
+![Utilization Summary](docs/img/utilisation.png)
+
+### Timing Summary
+
+The design successfully met all setup and hold time constraints, achieving timing closure with a **Worst Negative Slack (WNS) of 10.431ns**.
+
+![Timing Summary](./docs/img/timingreport.png)
+
+### Final Block Design
+
+The Elson-V GPGPU was integrated as a custom IP block into the PYNQ's processing system using the AXI protocol for communication and memory-mapped control.
+
+![Vivado Block Design](./docs/img/BlockDesign.png)
+
+*For more detailed reports, see the [`/docs/vivado_reports/`](./docs/vivado_reports/) directory.*
+
+---
+
 ## Branch Guide: Project Evolution
 
 This repository captures the project's journey from an initial proof-of-concept to a final, deployed FPGA accelerator. The key development stages are preserved in the following branches:
 
 *   **`main`**: **Final Deployed Version.** This branch represents the fully optimized, end-to-end PYNQ implementation. All hardware and software components are tailored for performance, timing closure, and resource utilization on the PYNQ-Z1 board.
+
+*   **`vivado-verifies`**: **Source for Deployed Version.** This branch contains the exact SystemVerilog source code, constraints, and scripts that were used to generate the final, timing-closed bitstream found on the `main` branch.
 
 *   **`testing/full-pipeline`**: **Active Development Branch.** This is the primary integration and testing branch for the full GPGPU pipeline. It contains the latest features and bug fixes for the compiler, assembler, and RTL, and represents the current state of ongoing work.
 
