@@ -1,4 +1,3 @@
-
 `timescale 1ns/1ns
 
 `include "common.svh"
@@ -8,7 +7,7 @@ module gpu #(
     parameter int INSTRUCTION_MEM_NUM_CHANNELS /*verilator public*/ = 8,     // Number of concurrent channels for sending requests to data memory
     parameter int NUM_CORES /*verilator public*/ = 1,                 // Number of cores to include in this GPU
     parameter int WARPS_PER_CORE /*verilator public*/ = 1,            // Number of warps to in each core
-    parameter int THREADS_PER_WARP /*verilator public*/ = 16          // Number of threads per warp (max 32)
+    parameter int THREADS_PER_WARP /*verilator public*/ = 8          // Number of threads per warp (max 32)
 ) (
     input wire clk,
     input wire reset,
@@ -25,24 +24,49 @@ module gpu #(
 
     // Program Memory
     output wire [INSTRUCTION_MEM_NUM_CHANNELS-1:0] instruction_mem_read_valid,
-    output instruction_memory_address_t instruction_mem_read_address [INSTRUCTION_MEM_NUM_CHANNELS],
-    input wire [INSTRUCTION_MEM_NUM_CHANNELS-1:0] instruction_mem_read_ready,
-    input instruction_t instruction_mem_read_data [INSTRUCTION_MEM_NUM_CHANNELS],
+    output instruction_memory_address_packed instruction_mem_read_address,
+    // input wire [INSTRUCTION_MEM_NUM_CHANNELS-1:0] instruction_mem_read_ready,
+    input instruction_packed instruction_mem_read_data,
 
     // Data Memory
     output wire [DATA_MEM_NUM_CHANNELS-1:0] data_mem_read_valid,
-    output data_memory_address_t data_mem_read_address [DATA_MEM_NUM_CHANNELS],
-    input wire [DATA_MEM_NUM_CHANNELS-1:0] data_mem_read_ready,
-    input data_memory_address_t data_mem_read_data [DATA_MEM_NUM_CHANNELS],
+    output data_memory_address_packed data_mem_read_address,
+    // input wire [DATA_MEM_NUM_CHANNELS-1:0] data_mem_read_ready,
+    input data_memory_address_packed data_mem_read_data,
     output wire [DATA_MEM_NUM_CHANNELS-1:0] data_mem_write_valid,
-    output data_memory_address_t data_mem_write_address [DATA_MEM_NUM_CHANNELS],
-    output data_t data_mem_write_data [DATA_MEM_NUM_CHANNELS],
-    input wire [DATA_MEM_NUM_CHANNELS-1:0] data_mem_write_ready
+    output data_memory_address_packed data_mem_write_address,
+    output data_packed data_mem_write_data
+    // input wire [DATA_MEM_NUM_CHANNELS-1:0] data_mem_write_ready
 );
+
+// Unpacked signals
+instruction_memory_address_t instruction_mem_read_address_array [INSTRUCTION_MEM_NUM_CHANNELS];
+instruction_t instruction_mem_read_data_array [INSTRUCTION_MEM_NUM_CHANNELS];
+data_memory_address_t data_mem_read_address_array [DATA_MEM_NUM_CHANNELS];
+data_memory_address_t data_mem_read_data_array [DATA_MEM_NUM_CHANNELS];
+data_memory_address_t data_mem_write_address_array [DATA_MEM_NUM_CHANNELS];
+data_t data_mem_write_data_array [DATA_MEM_NUM_CHANNELS];
+
+// Pack/unpack assignments using generate loops
+generate
+    for (genvar i = 0; i < INSTRUCTION_MEM_NUM_CHANNELS; i++) begin : g_instr_pack
+        assign instruction_mem_read_address[i*`INSTRUCTION_MEMORY_ADDRESS_WIDTH +: `INSTRUCTION_MEMORY_ADDRESS_WIDTH] = instruction_mem_read_address_array[i];
+        assign instruction_mem_read_data_array[i] = instruction_mem_read_data[i*`INSTRUCTION_WIDTH +: `INSTRUCTION_WIDTH];
+    end
+    
+    for (genvar i = 0; i < DATA_MEM_NUM_CHANNELS; i++) begin : g_data_pack
+        assign data_mem_read_address[i*`DATA_MEMORY_ADDRESS_WIDTH +: `DATA_MEMORY_ADDRESS_WIDTH] = data_mem_read_address_array[i];
+        assign data_mem_read_data_array[i] = data_mem_read_data[i*`DATA_MEMORY_ADDRESS_WIDTH +: `DATA_MEMORY_ADDRESS_WIDTH];
+        assign data_mem_write_address[i*`DATA_MEMORY_ADDRESS_WIDTH +: `DATA_MEMORY_ADDRESS_WIDTH] = data_mem_write_address_array[i];
+        assign data_mem_write_data[i*`DATA_WIDTH +: `DATA_WIDTH] = data_mem_write_data_array[i];
+    end
+endgenerate
 
 kernel_config_t kernel_config_reg;
 
 logic start_execution; // EDA: Unimportant hack used because of EDA tooling
+wire [INSTRUCTION_MEM_NUM_CHANNELS-1:0] instruction_mem_read_valid;
+wire [DATA_MEM_NUM_CHANNELS-1:0] data_mem_read_valid;
 
 // save kernel config on execution start to avoid losing data when the kernel is running
 always @(posedge clk) begin
@@ -134,14 +158,14 @@ mem_controller #(
         .consumer_write_ready(lsu_write_ready),
 
         .mem_read_valid(data_mem_read_valid),
-        .mem_read_address(data_mem_read_address),
-        .mem_read_ready(data_mem_read_ready),
-        .mem_read_data(data_mem_read_data),
+        .mem_read_address(data_mem_read_address_array),
+        .mem_read_ready(8'b11111111),
+        .mem_read_data(data_mem_read_data_array),
 
         .mem_write_valid(data_mem_write_valid),
-        .mem_write_address(data_mem_write_address),
-        .mem_write_data(data_mem_write_data),
-        .mem_write_ready(data_mem_write_ready)
+        .mem_write_address(data_mem_write_address_array),
+        .mem_write_data(data_mem_write_data_array),
+        .mem_write_ready(8'b11111111)
     );
 
 
@@ -180,9 +204,9 @@ mem_controller #(
     .consumer_write_ready(d_consumer_write_ready),
 
     .mem_read_valid(instruction_mem_read_valid),
-    .mem_read_address(instruction_mem_read_address),
-    .mem_read_ready(instruction_mem_read_ready),
-    .mem_read_data(instruction_mem_read_data),
+    .mem_read_address(instruction_mem_read_address_array),
+    .mem_read_ready(8'b11111111),
+    .mem_read_data(instruction_mem_read_data_array),
 
     .mem_write_valid(d_mem_write_valid),
     .mem_write_address(d_mem_write_address),
@@ -212,12 +236,12 @@ generate
         genvar j;
         for (j = 0; j < NUM_LSUS_PER_CORE; j = j + 1) begin : g_lsu_connect
             localparam lsu_index = i * NUM_LSUS_PER_CORE + j;
-            always @(posedge clk) begin
+            always@(posedge clk) begin
                 lsu_read_valid[lsu_index] <= core_lsu_read_valid[j];
                 lsu_read_address[lsu_index] <= core_lsu_read_address[j];
 
                 lsu_write_valid[lsu_index] <= core_lsu_write_valid[j];
-                lsu_write_address[lsu_index] <= core_lsu_write_address[j];
+                lsu_write_address[lsu_index]<= core_lsu_write_address[j];
                 lsu_write_data[lsu_index] <= core_lsu_write_data[j];
 
                 core_lsu_read_ready[j] <= lsu_read_ready[lsu_index];
@@ -226,11 +250,9 @@ generate
             end
         end
 
-        localparam fetcher_index = i * WARPS_PER_CORE;
 
         // Compute Core
         compute_core #(
-            .WARPS_PER_CORE(WARPS_PER_CORE),
             .THREADS_PER_WARP(THREADS_PER_WARP)
         ) core_instance (
             .clk(clk),
@@ -242,10 +264,10 @@ generate
             .block_id(core_block_id[i]),
             .kernel_config(kernel_config_reg),
 
-            .instruction_mem_read_valid(fetcher_read_valid[fetcher_index +: WARPS_PER_CORE]),
-            .instruction_mem_read_address(fetcher_read_address[fetcher_index +: WARPS_PER_CORE]),
-            .instruction_mem_read_ready(fetcher_read_ready[fetcher_index +: WARPS_PER_CORE]),
-            .instruction_mem_read_data(fetcher_read_data[fetcher_index +: WARPS_PER_CORE]),
+            .instruction_mem_read_valid(fetcher_read_valid[i]),
+            .instruction_mem_read_address(fetcher_read_address[i]),
+            .instruction_mem_read_ready(fetcher_read_ready[i]),
+            .instruction_mem_read_data(fetcher_read_data[i]),
 
             .data_mem_read_valid(core_lsu_read_valid),
             .data_mem_read_address(core_lsu_read_address),

@@ -66,7 +66,6 @@ module alu (
             ADD:  Result_next = ALUop1_s1 + ALUop2_s1;
             SUB:  Result_next = ALUop1_s1 - ALUop2_s1;
             MUL:  Result_next = ALUop1_s1 * ALUop2_s1; // This now uses registered inputs
-            NEG:  Result_next = (~ALUop1_s1) + 1'b1;
             ABS:  Result_next = (ALUop1_s1[31]) ? -ALUop1_s1 : ALUop1_s1;
             SLT:  Result_next = (ALUop1_s1 < ALUop2_s1) ? 32'd1 : 32'd0;
             SEQ:  Result_next = (ALUop1_s1 == ALUop2_s1) ? 32'd1 : 32'd0;
@@ -85,6 +84,14 @@ module alu (
             BEQZ: Result_next = (ALUop1_s1 == 32'd0) ? 32'd1 : 32'd0;
             JAL:  Result_next = pc_s1 + IMM_s1;
             
+            // --- CRITICAL WARNING ON DIVISION ---
+            // The '/' operator creates extremely large and slow logic that will
+            // likely FAIL timing, even in this pipelined structure. For a real
+            // FPGA design, you MUST replace this with a dedicated multi-cycle
+            // Divider IP Core from the Vivado IP Catalog.
+            DIV:  Result_next = ALUop1_s1 / ALUop2_s1;
+            DIVI: Result_next = ALUop1_s1 / IMM_s1;
+
             default: Result_next = 32'b0;
         endcase
     end

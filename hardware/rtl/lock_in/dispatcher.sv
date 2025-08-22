@@ -1,4 +1,3 @@
-
 `timescale 1ns/1ns
 
 `include "common.svh"
@@ -39,11 +38,9 @@ always @(posedge clk) begin
         blocks_done <= 0;
         start_execution <= 0;
 
-        for (int i = 0; i < NUM_CORES; i++) begin
-            core_start[i] <= 0;
-            core_reset[i] <= 1;
-            core_block_id[i] <= 0;
-        end
+        core_start[0] <= 0;
+        core_reset[0] <= 1;
+        core_block_id[0] <= 0;
     end else begin // <<<<<<< CHANGE 1: REMOVE 'if (start)'
 
         // This is the trigger logic. It only runs when a new kernel is requested.
@@ -52,9 +49,7 @@ always @(posedge clk) begin
             start_execution <= 1;
 
             // When a new kernel starts, reset all cores to get them into a ready state.
-            for (int i = 0; i < NUM_CORES; i++) begin
-                core_reset[i] <= 1;
-            end
+            core_reset[0] <= 1;
         end
 
         // This is the main state machine logic. It runs as long as a kernel is active.
@@ -67,28 +62,23 @@ always @(posedge clk) begin
                 done <= 1;
                 start_execution <= 0; // Stop the state machine, kernel is finished.
             end
-
             // Dispatching logic: find a ready core and give it a block.
-            for (int i = 0; i < NUM_CORES; i++) begin
-                if (core_reset[i]) begin
-                    core_reset[i] <= 0;
-                    if (blocks_dispatched < total_blocks) begin
-                        $display("Dispatcher: Dispatching block %d to core %d", blocks_dispatched, i);
-                        core_start[i] <= 1;
-                        core_block_id[i] <= blocks_dispatched;
-                        blocks_dispatched <= blocks_dispatched + 1;
-                    end
+            if (core_reset[0]) begin
+                core_reset[0] <= 0;
+                if (blocks_dispatched < total_blocks) begin
+                    $display("Dispatcher: Dispatching block %d to core %d", blocks_dispatched, i);
+                    core_start[0] <= 1;
+                    core_block_id[0] <= blocks_dispatched;
+                    blocks_dispatched <= blocks_dispatched + 1;
                 end
             end
 
             // Completion logic: check if any running cores have finished their block.
-            for (int i = 0; i < NUM_CORES; i++) begin
-                if (core_start[i] && core_done[i]) begin
-                    $display("Dispatcher: Core %d finished block %d", i, core_block_id[i]);
-                    core_reset[i] <= 1; // Reset the core so it's ready for another block
-                    core_start[i] <= 0;
-                    blocks_done <= blocks_done + 1;
-                end
+            if (core_start[0] && core_done[0]) begin
+                $display("Dispatcher: Core %d finished block %d", 0, core_block_id[0]);
+                core_reset[0] <= 1; // Reset the core so it's ready for another block
+                core_start[0] <= 0;
+                blocks_done <= blocks_done + 1;
             end
         end
     end

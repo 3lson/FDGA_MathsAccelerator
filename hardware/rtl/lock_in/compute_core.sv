@@ -1,11 +1,15 @@
 `timescale 1ns/1ns
 
-// This simulates the execution of a block of warps which contains multiple threads
+// Pipelined compute core with 5-stage pipeline:
+// 1. FETCH - Instruction fetch
+// 2. DECODE - Instruction decode and register read
+// 3. EXECUTE - ALU/LSU operation
+// 4. MEMORY - Memory access completion
+// 5. WRITEBACK - Register writeback
 
 `include "common.svh"
 
 module compute_core#(
-    parameter int WARPS_PER_CORE = 4,            // Number of warps to in each core
     parameter int THREADS_PER_WARP = 16          // Number of threads per warp (max 32)
     )(
     input   wire                            clk,
@@ -18,10 +22,10 @@ module compute_core#(
     input   kernel_config_t                 kernel_config,
 
     // Instruction Memory
-    input   logic   [WARPS_PER_CORE-1:0]    instruction_mem_read_ready,
-    input   instruction_t                   instruction_mem_read_data       [WARPS_PER_CORE],
-    output  logic   [WARPS_PER_CORE-1:0]    instruction_mem_read_valid,
-    output  instruction_memory_address_t    instruction_mem_read_address    [WARPS_PER_CORE],
+    input   logic       instruction_mem_read_ready,
+    input   instruction_t                   instruction_mem_read_data       ,
+    output  logic       instruction_mem_read_valid,
+    output  instruction_memory_address_t    instruction_mem_read_address    ,
 
     // Data Memory
     output  logic   [NUM_LSUS-1:0]          data_mem_read_valid,
@@ -36,578 +40,488 @@ module compute_core#(
 
 typedef logic [THREADS_PER_WARP-1:0] warp_mask_t;
 localparam int NUM_LSUS = THREADS_PER_WARP + 1;
-localparam int WARP_INDEX_WIDTH = (WARPS_PER_CORE > 1) ? $clog2(WARPS_PER_CORE) : 1;
 
-// Warp State and Control
-logic [WARP_INDEX_WIDTH-1:0] current_warp;
-warp_state_t warp_state [WARPS_PER_CORE];
-fetcher_state_t fetcher_state [WARPS_PER_CORE];
-warp_state_t current_warp_state;
-assign current_warp_state = warp_state[current_warp];
-instruction_t fetched_instruction [WARPS_PER_CORE];
+// Pipeline stage valid signals
+logic fetch_valid, decode_valid, execute_valid, memory_valid, writeback_valid;
+logic fetch_ready, decode_ready, execute_ready, memory_ready, writeback_ready;
+logic fetch_stall, decode_stall, execute_stall, memory_stall;
 
-instruction_memory_address_t pc [WARPS_PER_CORE];
-instruction_memory_address_t next_pc [WARPS_PER_CORE];
+// ========== FETCH STAGE ==========
+typedef struct packed {
+    instruction_memory_address_t pc;
+    logic warp_id;
+    warp_mask_t execution_mask;
+} fetch_stage_t;
 
-logic start_execution; // EDA: Unimportant hack used because of EDA tooling
+fetch_stage_t fetch_stage_reg, fetch_stage_next;
+instruction_t fetched_instruction;
+fetcher_state_t fetcher_state;
 
-data_t num_warps;
-assign num_warps = kernel_config.num_warps_per_block;
+// ========== DECODE STAGE ==========
+typedef struct packed {
+    instruction_t instruction;
+    instruction_memory_address_t pc;
+    logic warp_id;
+    warp_mask_t execution_mask;
+} decode_stage_t;
 
-// Decoded instruction fields per warp
-logic decoded_reg_write_enable [WARPS_PER_CORE];
-reg_input_mux_t decoded_reg_input_mux [WARPS_PER_CORE];
-data_t decoded_immediate [WARPS_PER_CORE];
-logic decoded_branch [WARPS_PER_CORE];
-logic decoded_scalar_instruction [WARPS_PER_CORE];
-logic [4:0] decoded_rd_address [WARPS_PER_CORE];
-logic [4:0] decoded_rs1_address [WARPS_PER_CORE];
-logic [4:0] decoded_rs2_address [WARPS_PER_CORE];
-logic [4:0] decoded_alu_instruction [WARPS_PER_CORE];
-logic decoded_halt [WARPS_PER_CORE];
-logic [1:0] floatingRead_flag [WARPS_PER_CORE];
-logic floatingWrite_flag [WARPS_PER_CORE];
+decode_stage_t decode_stage_reg, decode_stage_next;
 
-// Signals are per-warp control not pre-thread
-logic decoded_mem_read_enable_per_warp [WARPS_PER_CORE];
-logic decoded_mem_write_enable_per_warp [WARPS_PER_CORE];
-// logic decoded_mem_read_enable [THREADS_PER_WARP];
-// logic decoded_mem_write_enable [THREADS_PER_WARP];
+// Decoded instruction fields
+logic decoded_reg_write_enable;
+reg_input_mux_t decoded_reg_input_mux;
+data_t decoded_immediate;
+logic decoded_branch;
+logic decoded_scalar_instruction;
+logic [4:0] decoded_rd_address;
+logic [4:0] decoded_rs1_address;
+logic [4:0] decoded_rs2_address;
+logic [4:0] decoded_alu_instruction;
+logic decoded_halt;
+logic [1:0] floatingRead_flag;
+logic floatingWrite_flag;
+logic decoded_mem_read_enable_per_warp;
+logic decoded_mem_write_enable_per_warp;
 
-// Register File Outputs (per warp)
-data_t scalar_int_rs1 [WARPS_PER_CORE];
-data_t scalar_int_rs2 [WARPS_PER_CORE];
-data_t scalar_float_rs1 [WARPS_PER_CORE];
-data_t scalar_float_rs2 [WARPS_PER_CORE];
+// Register file outputs
+data_t scalar_int_rs1, scalar_int_rs2;
+data_t scalar_float_rs1, scalar_float_rs2;
+data_t vector_int_rs1 [THREADS_PER_WARP];
+data_t vector_int_rs2 [THREADS_PER_WARP];
+data_t vector_float_rs1 [THREADS_PER_WARP];
+data_t vector_float_rs2 [THREADS_PER_WARP];
 
-data_t vector_int_rs1 [WARPS_PER_CORE][THREADS_PER_WARP];
-data_t vector_int_rs2 [WARPS_PER_CORE][THREADS_PER_WARP];
-data_t vector_float_rs1 [WARPS_PER_CORE][THREADS_PER_WARP];
-data_t vector_float_rs2 [WARPS_PER_CORE][THREADS_PER_WARP];
+// ========== EXECUTE STAGE ==========
+typedef struct packed {
+    instruction_t instruction;
+    instruction_memory_address_t pc;
+    logic warp_id;
+    warp_mask_t execution_mask;
+    logic reg_write_enable;
+    reg_input_mux_t reg_input_mux;
+    data_t immediate;
+    logic branch;
+    logic scalar_instruction;
+    logic [4:0] rd_address;
+    logic [4:0] rs1_address;
+    logic [4:0] rs2_address;
+    logic [4:0] alu_instruction;
+    logic halt;
+    logic [1:0] floatingRead_flag;
+    logic floatingWrite_flag;
+    logic mem_read_enable;
+    logic mem_write_enable;
+} execute_stage_t;
 
-warp_mask_t warp_execution_mask [WARPS_PER_CORE];
+execute_stage_t execute_stage_reg, execute_stage_next;
 
-logic all_warps_done = 1'b1;
-
-// ALU/LSU Operands and Results
+// Execute stage operands and results
 data_t final_op1 [THREADS_PER_WARP];
 data_t final_op2 [THREADS_PER_WARP];
+data_t scalar_op1, scalar_op2;
 data_t alu_out [THREADS_PER_WARP];
 data_t scalar_alu_out;
+
+// ========== MEMORY STAGE ==========
+typedef struct packed {
+    instruction_t instruction;
+    instruction_memory_address_t pc;
+    logic warp_id;
+    warp_mask_t execution_mask;
+    logic reg_write_enable;
+    reg_input_mux_t reg_input_mux;
+    data_t immediate;
+    logic branch;
+    logic scalar_instruction;
+    logic [4:0] rd_address;
+    logic halt;
+    logic floatingWrite_flag;
+    data_t scalar_alu_result;
+} memory_stage_t;
+
+memory_stage_t memory_stage_reg, memory_stage_next;
+data_t alu_results_reg [THREADS_PER_WARP], alu_results_next [THREADS_PER_WARP];
+
 data_t lsu_out [THREADS_PER_WARP];
 lsu_state_t lsu_state [THREADS_PER_WARP];
 data_t scalar_lsu_out;
 lsu_state_t scalar_lsu_state;
-data_t vector_to_scalar_data [WARPS_PER_CORE];
-logic vector_fpu_valid [THREADS_PER_WARP];
-logic all_vector_fpus_done;
 
-// Operand Muxing Logic
-warp_mask_t current_warp_execution_mask;
-assign current_warp_execution_mask = warp_execution_mask[current_warp];
-data_t scalar_op1;
-data_t scalar_op2;
+// ========== WRITEBACK STAGE ==========
+typedef struct packed {
+    instruction_t instruction;
+    instruction_memory_address_t pc;
+    logic warp_id;
+    warp_mask_t execution_mask;
+    logic reg_write_enable;
+    reg_input_mux_t reg_input_mux;
+    data_t immediate;
+    logic branch;
+    logic scalar_instruction;
+    logic [4:0] rd_address;
+    logic halt;
+    logic floatingWrite_flag;
+    data_t scalar_final_result;
+} writeback_stage_t;
 
-// Combinational Mux for Scalar Operands
+data_t final_results_reg [THREADS_PER_WARP];
+data_t final_results_next [THREADS_PER_WARP];
+
+writeback_stage_t writeback_stage_reg, writeback_stage_next;
+
+// Pipeline control and hazard detection
+logic branch_taken;
+instruction_memory_address_t branch_target;
+data_t vector_to_scalar_data;
+
+// Warp scheduling and control
+logic current_warp;
+warp_state_t warp_state;
+data_t num_warps;
+logic start_execution;
+logic all_warps_done;
+instruction_memory_address_t pc, next_pc;
+
+assign num_warps = kernel_config.num_warps_per_block;
+
+// ========== PIPELINE CONTROL LOGIC ==========
+
+// Stall conditions
 always_comb begin
-    // $display("FloatingRead ", floatingRead_flag[current_warp]);
-    // $display("Scalar_op1 ", scalar_op1);
-    // $display("Scalar_op2 ", scalar_op2);
-    // $display("Scalar_int1 ", scalar_int_rs1[current_warp]);
-    // $display("Scalar_float2 ", scalar_float_rs2[current_warp]);
-    case(floatingRead_flag[current_warp])
-        2'b00: {scalar_op1, scalar_op2} = {scalar_int_rs1[current_warp], scalar_int_rs2[current_warp]};
-        2'b01: {scalar_op1, scalar_op2} = {scalar_float_rs1[current_warp], scalar_int_rs2[current_warp]};
-        2'b10: {scalar_op1, scalar_op2} = {scalar_int_rs1[current_warp], scalar_float_rs2[current_warp]};
-        2'b11: {scalar_op1, scalar_op2} = {scalar_float_rs1[current_warp], scalar_float_rs2[current_warp]};
-        default: {scalar_op1, scalar_op2} = {scalar_int_rs1[current_warp], scalar_int_rs2[current_warp]};
+    // Memory stage stalls if LSUs are still processing
+    memory_stall = 1'b0;
+    for (int i = 0; i < THREADS_PER_WARP; i++) begin
+        if (lsu_state[i] == LSU_REQUESTING || lsu_state[i] == LSU_WAITING) begin
+            memory_stall = 1'b1;
+            break;
+        end
+    end
+    if (scalar_lsu_state == LSU_REQUESTING || scalar_lsu_state == LSU_WAITING) begin
+        memory_stall = 1'b1;
+    end
+    
+    // Execute stage stalls if memory stage is stalled
+    execute_stall = memory_stall && memory_valid;
+    
+    // Decode stage stalls if execute stage is stalled
+    decode_stall = execute_stall && execute_valid;
+    
+    // Fetch stage stalls if decode stage is stalled
+    fetch_stall = decode_stall && decode_valid;
+end
+
+// Ready signals (inverse of stall)
+assign fetch_ready = !fetch_stall;
+assign decode_ready = !decode_stall;
+assign execute_ready = !execute_stall;
+assign memory_ready = !memory_stall;
+assign writeback_ready = 1'b1; // Writeback is always ready
+
+// ========== FETCH STAGE LOGIC ==========
+always_comb begin
+    fetch_stage_next = fetch_stage_reg;
+    
+    if (fetch_ready && warp_state == WARP_FETCH) begin
+        fetch_stage_next.pc = pc;
+        fetch_stage_next.warp_id = current_warp;
+        // Set execution mask based on warp scheduling logic
+        fetch_stage_next.execution_mask = {THREADS_PER_WARP{1'b1}}; // Simplified for now
+    end
+end
+
+// Instruction fetcher
+fetcher fetcher_inst(
+    .clk(clk),
+    .reset(reset),
+    .warp_state(warp_state),
+    .pc(fetch_stage_reg.pc),
+    .instruction_mem_read_ready(instruction_mem_read_ready),
+    .instruction_mem_read_data(instruction_mem_read_data),
+    .instruction_mem_read_valid(instruction_mem_read_valid),
+    .instruction_mem_read_address(instruction_mem_read_address),
+    .fetcher_state(fetcher_state),
+    .instruction(fetched_instruction)
+);
+
+// ========== DECODE STAGE LOGIC ==========
+always_comb begin
+    decode_stage_next = decode_stage_reg;
+    
+    if (decode_ready && fetch_valid && fetcher_state == FETCHER_DONE) begin
+        decode_stage_next.instruction = fetched_instruction;
+        decode_stage_next.pc = fetch_stage_reg.pc;
+        decode_stage_next.warp_id = fetch_stage_reg.warp_id;
+        decode_stage_next.execution_mask = fetch_stage_reg.execution_mask;
+    end
+end
+
+// Instruction decoder
+decoder decoder_inst(
+    .clk(clk),
+    .reset(reset),
+    .warp_state(decode_valid ? WARP_DECODE : WARP_IDLE),
+    .instruction(decode_stage_reg.instruction),
+    .decoded_reg_write_enable(decoded_reg_write_enable),
+    .decoded_mem_write_enable(decoded_mem_write_enable_per_warp),
+    .decoded_mem_read_enable(decoded_mem_read_enable_per_warp),
+    .decoded_branch(decoded_branch),
+    .decoded_scalar_instruction(decoded_scalar_instruction),
+    .decoded_reg_input_mux(decoded_reg_input_mux),
+    .decoded_immediate(decoded_immediate),
+    .decoded_rd_address(decoded_rd_address),
+    .decoded_rs1_address(decoded_rs1_address),
+    .decoded_rs2_address(decoded_rs2_address),
+    .decoded_alu_instruction(decoded_alu_instruction),
+    .decoded_halt(decoded_halt),
+    .floatingRead(floatingRead_flag),
+    .floatingWrite(floatingWrite_flag)
+);
+
+// ========== EXECUTE STAGE LOGIC ==========
+always_comb begin
+    execute_stage_next = execute_stage_reg;
+    
+    if (execute_ready && decode_valid) begin
+        execute_stage_next.instruction = decode_stage_reg.instruction;
+        execute_stage_next.pc = decode_stage_reg.pc;
+        execute_stage_next.warp_id = decode_stage_reg.warp_id;
+        execute_stage_next.execution_mask = decode_stage_reg.execution_mask;
+        execute_stage_next.reg_write_enable = decoded_reg_write_enable;
+        execute_stage_next.reg_input_mux = decoded_reg_input_mux;
+        execute_stage_next.immediate = decoded_immediate;
+        execute_stage_next.branch = decoded_branch;
+        execute_stage_next.scalar_instruction = decoded_scalar_instruction;
+        execute_stage_next.rd_address = decoded_rd_address;
+        execute_stage_next.rs1_address = decoded_rs1_address;
+        execute_stage_next.rs2_address = decoded_rs2_address;
+        execute_stage_next.alu_instruction = decoded_alu_instruction;
+        execute_stage_next.halt = decoded_halt;
+        execute_stage_next.floatingRead_flag = floatingRead_flag;
+        execute_stage_next.floatingWrite_flag = floatingWrite_flag;
+        execute_stage_next.mem_read_enable = decoded_mem_read_enable_per_warp;
+        execute_stage_next.mem_write_enable = decoded_mem_write_enable_per_warp;
+    end
+end
+
+// Operand muxing (same as original but using execute stage signals)
+always_comb begin
+    case(execute_stage_reg.floatingRead_flag)
+        2'b00: {scalar_op1, scalar_op2} = {scalar_int_rs1, scalar_int_rs2};
+        2'b01: {scalar_op1, scalar_op2} = {scalar_float_rs1, scalar_int_rs2};
+        2'b10: {scalar_op1, scalar_op2} = {scalar_int_rs1, scalar_float_rs2};
+        2'b11: {scalar_op1, scalar_op2} = {scalar_float_rs1, scalar_float_rs2};
+        default: {scalar_op1, scalar_op2} = {scalar_int_rs1, scalar_int_rs2};
     endcase
 end
 
-//Generate Muxing logic for each of the Vector SIMT lanes
 generate
 for (genvar i = 0; i < THREADS_PER_WARP; i++) begin: g_operand_mux
-    logic [31:0] vector_op1;
-    logic [31:0] vector_op2;
-
-    // Combinational Mux for Vector Operand for thread 'i'
-    // This block now correctly selects from the 2D register file output arrays.
+    logic [31:0] vector_op1, vector_op2;
+    
     always_comb begin
-        case(floatingRead_flag[current_warp])
-            2'b00: {vector_op1, vector_op2} = {vector_int_rs1[current_warp][i],   vector_int_rs2[current_warp][i]};
-            2'b01: {vector_op1, vector_op2} = {vector_float_rs1[current_warp][i], vector_int_rs2[current_warp][i]};
-            2'b10: {vector_op1, vector_op2} = {vector_int_rs1[current_warp][i],   vector_float_rs2[current_warp][i]};
-            2'b11: {vector_op1, vector_op2} = {vector_float_rs1[current_warp][i], vector_float_rs2[current_warp][i]};
-            default: {vector_op1, vector_op2} = {vector_int_rs1[current_warp][i], vector_int_rs2[current_warp][i]};
+        case(execute_stage_reg.floatingRead_flag)
+            2'b00: {vector_op1, vector_op2} = {vector_int_rs1[i],   vector_int_rs2[i]};
+            2'b01: {vector_op1, vector_op2} = {vector_float_rs1[i], vector_int_rs2[i]};
+            2'b10: {vector_op1, vector_op2} = {vector_int_rs1[i],   vector_float_rs2[i]};
+            2'b11: {vector_op1, vector_op2} = {vector_float_rs1[i], vector_float_rs2[i]};
+            default: {vector_op1, vector_op2} = {vector_int_rs1[i], vector_int_rs2[i]};
         endcase
-        // $display("Scalar flag: ", decoded_scalar_instruction[current_warp]);
-        // $display("Vector int rs1: ", vector_int_rs1[i]);
-        // $display("Vector op2: ", vector_op2);
     end
-
-    assign final_op1[i] = decoded_scalar_instruction[current_warp] ? scalar_op1 : vector_op1;
-    assign final_op2[i] = decoded_scalar_instruction[current_warp] ? scalar_op2 : vector_op2;
+    
+    assign final_op1[i] = execute_stage_reg.scalar_instruction ? scalar_op1 : vector_op1;
+    assign final_op2[i] = execute_stage_reg.scalar_instruction ? scalar_op2 : vector_op2;
 end
 endgenerate
 
+// ========== MEMORY STAGE LOGIC ==========
 always_comb begin
-    all_warps_done = 1'b1;
-    for (int i = 0; i < WARPS_PER_CORE; i = i + 1) begin
-        if (i < num_warps) begin
-            if (warp_state[i] != WARP_DONE) begin
-                all_warps_done = 1'b0;
-            end
-        end
+    memory_stage_next = memory_stage_reg;
+    alu_results_next = alu_results_reg;
+    
+    if (memory_ready && execute_valid) begin
+        memory_stage_next.instruction = execute_stage_reg.instruction;
+        memory_stage_next.pc = execute_stage_reg.pc;
+        memory_stage_next.warp_id = execute_stage_reg.warp_id;
+        memory_stage_next.execution_mask = execute_stage_reg.execution_mask;
+        memory_stage_next.reg_write_enable = execute_stage_reg.reg_write_enable;
+        memory_stage_next.reg_input_mux = execute_stage_reg.reg_input_mux;
+        memory_stage_next.immediate = execute_stage_reg.immediate;
+        memory_stage_next.branch = execute_stage_reg.branch;
+        memory_stage_next.scalar_instruction = execute_stage_reg.scalar_instruction;
+        memory_stage_next.rd_address = execute_stage_reg.rd_address;
+        memory_stage_next.halt = execute_stage_reg.halt;
+        memory_stage_next.floatingWrite_flag = execute_stage_reg.floatingWrite_flag;
+        
+        // Pass ALU results
+        alu_results_next = alu_out;
+        memory_stage_next.scalar_alu_result = scalar_alu_out;
     end
 end
 
+// ========== WRITEBACK STAGE LOGIC ==========
 always_comb begin
-    all_vector_fpus_done = 1'b1;
-    for (int i = 0; i < THREADS_PER_WARP; i++) begin
-        if (current_warp_execution_mask[i] && !vector_fpu_valid[i]) begin
-            all_vector_fpus_done=1'b0;
+    writeback_stage_next = writeback_stage_reg;
+    final_results_next = final_results_reg;
+    
+    if (writeback_ready && memory_valid && !memory_stall) begin
+        writeback_stage_next.instruction = memory_stage_reg.instruction;
+        writeback_stage_next.pc = memory_stage_reg.pc;
+        writeback_stage_next.warp_id = memory_stage_reg.warp_id;
+        writeback_stage_next.execution_mask = memory_stage_reg.execution_mask;
+        writeback_stage_next.reg_write_enable = memory_stage_reg.reg_write_enable;
+        writeback_stage_next.reg_input_mux = memory_stage_reg.reg_input_mux;
+        writeback_stage_next.immediate = memory_stage_reg.immediate;
+        writeback_stage_next.branch = memory_stage_reg.branch;
+        writeback_stage_next.scalar_instruction = memory_stage_reg.scalar_instruction;
+        writeback_stage_next.rd_address = memory_stage_reg.rd_address;
+        writeback_stage_next.halt = memory_stage_reg.halt;
+        writeback_stage_next.floatingWrite_flag = memory_stage_reg.floatingWrite_flag;
+        
+        // Combine ALU and LSU results
+        for (int i = 0; i < THREADS_PER_WARP; i++) begin
+            final_results_next[i] = (memory_stage_reg.reg_input_mux == LSU_OUT) ? 
+                                                   lsu_out[i] : alu_results_reg[i];
         end
+        writeback_stage_next.scalar_final_result = (memory_stage_reg.reg_input_mux == LSU_OUT) ? 
+                                                  scalar_lsu_out : memory_stage_reg.scalar_alu_result;
     end
 end
 
-//State machine and Scheduler Logic
-always @(posedge clk) begin
-    // $display("Start execution: ", start_execution);
-    // $display("Reset: ", reset);
+// ========== PIPELINE REGISTER UPDATES ==========
+always_ff @(posedge clk) begin
     if (reset) begin
-        //$display("Resetting core %0d", block_id);
-        start_execution <= 0;
-        done <= 0;
-        for (int i = 0; i < WARPS_PER_CORE; i = i + 1) begin
-            warp_state[i] <= WARP_IDLE;
-            pc[i] <= 0;
-            next_pc[i] <= 0;
-            current_warp <= 0;
+        fetch_valid <= 1'b0;
+        decode_valid <= 1'b0;
+        execute_valid <= 1'b0;
+        memory_valid <= 1'b0;
+        writeback_valid <= 1'b0;
+        
+        fetch_stage_reg <= '0;
+        decode_stage_reg <= '0;
+        execute_stage_reg <= '0;
+        memory_stage_reg <= '0;
+        writeback_stage_reg <= '0;
+
+        for (int i = 0; i < THREADS_PER_WARP; i = i + 1) begin
+            final_results_reg[i] <= '0;
         end
-
-    end else if (!start_execution) begin
-        if (start) begin
-            $display("Starting execution of block %d", block_id);
-            $display("GPU: Kernel configuration (latched):");
-            $display("     - Base instruction address: %h", kernel_config.base_instructions_address);
-            $display("     - Base data address: %h", kernel_config.base_data_address);
-            $display("     - Num %d blocks", kernel_config.num_blocks);
-            $display("     - Number of warps per block: %d", kernel_config.num_warps_per_block);
-            // Set all warps to fetch state on start
-            start_execution <= 1;
-            current_warp <= 0;
-            for (int i = 0; i < WARPS_PER_CORE; i = i + 1) begin
-                if (i < num_warps) begin
-                    warp_state[i] = WARP_FETCH;
-                    fetcher_state[i] = FETCHER_IDLE;
-                    pc[i] = kernel_config.base_instructions_address;
-                    next_pc[i] = kernel_config.base_instructions_address;
-                end
-            end
-        end
-    end else begin
-        // In parallel, check if fetchers are done, and if so, move to decode
-        for (int i = 0; i < WARPS_PER_CORE; i = i + 1) begin
-            if ( i < num_warps ) begin
-                if (warp_state[i] == WARP_FETCH && fetcher_state[i] == FETCHER_DONE) begin
-                    $display("Block: %0d: Warp %0d: Fetched instruction %h at address %h", block_id, i, fetched_instruction[i], pc[i]);
-                    warp_state[i] = WARP_DECODE;
-                end
-            end
-        end
-        done <= all_warps_done;
-
-        if (current_warp_state == WARP_UPDATE || current_warp_state == WARP_DONE ||
-            current_warp_state == WARP_WAIT   || current_warp_state == WARP_ALU_WAIT ||
-            current_warp_state == WARP_INT_ALU_WAIT) begin
-
-            int next_warp = (current_warp + 1) % num_warps;
-
-            int found_warp = -1;
-            $display("Block: %0d: Choosing next warp", block_id);
-            for (int i = 0; i < WARPS_PER_CORE; i = i + 1) begin
-                int warp_index = (next_warp + i);
-                if (num_warps > 0) begin
-                     warp_index = warp_index % num_warps;
-                end
-                if (i < num_warps) begin // Ensure we only check valid warps
-                    if ((warp_state[warp_index] != WARP_IDLE) &&
-                        (warp_state[warp_index] != WARP_FETCH) &&
-                        (warp_state[warp_index] != WARP_DONE))
-                    begin
-                        found_warp = warp_index;
-                        break;
-                    end
-                end
-            end
-            if (found_warp != -1) begin
-                current_warp <= found_warp;
-            end else begin
-                current_warp <= current_warp;
-            end
-        end
-
-        case (current_warp_state)
-            WARP_IDLE: begin
-                $display("Block: %0d: Warp %0d: Idle", block_id, current_warp);
-            end
-            WARP_FETCH: begin
-                // not possible to choose a warp that is fetching cause
-                // fetching is done in parallel
-            end
-            WARP_DECODE: begin
-                // decoding takes one cycle
-                warp_state[current_warp] <= WARP_REQUEST;
-            end
-            WARP_REQUEST: begin
-                // takes one cycle cause we are just changing the LSU state
-                warp_state[current_warp] <= WARP_REG_WAIT;
-            end
-            WARP_REG_WAIT: begin
-                warp_state[current_warp] <= WARP_WAIT;
-            end
-            WARP_WAIT: begin
-                reg any_lsu_waiting = 1'b0;
-                for (int i = 0; i < THREADS_PER_WARP; i++) begin
-                    // Make sure no lsu_state = REQUESTING or WAITING
-                    if (lsu_state[i] == LSU_REQUESTING || lsu_state[i] == LSU_WAITING) begin
-                        any_lsu_waiting = 1'b1;
-                        break;
-                    end
-                end
-
-                if (scalar_lsu_state == LSU_REQUESTING || scalar_lsu_state == LSU_WAITING) begin
-                    any_lsu_waiting = 1'b1;
-                end
-
-                // If no LSU is waiting for a response, move onto the next stage
-                if (!any_lsu_waiting) begin
-                    warp_state[current_warp] <= WARP_EXECUTE;
-                end
-            end
-            WARP_EXECUTE: begin
-                $display("===================================");
-                $display("Mask: %32b", warp_execution_mask[current_warp]);
-                $display("Block: %0d: Warp %0d: Executing instruction %h at address %h", block_id, current_warp, fetched_instruction[current_warp], pc[current_warp]);
-                //$display("Instruction opcode: %b", fetched_instruction[current_warp][31:29]);
-                //$display("Block: %0d: Warp %0d: Executing instruction %h", block_id, current_warp, fetched_instruction[current_warp]);
                 
-                // Determine the next state based on the instruction type
-                if (decoded_alu_instruction[current_warp] >= FADD && decoded_alu_instruction[current_warp] < BEQZ) begin
-                    // It's a Floating Point instruction, go to the FPU wait state
-                    warp_state[current_warp] <= WARP_ALU_WAIT;
-                end else if ((decoded_alu_instruction[current_warp] < FADD) || decoded_branch[current_warp] || (decoded_alu_instruction[current_warp] == JAL)) begin
-                    warp_state[current_warp] <= WARP_INT_ALU_WAIT;
-                end else begin
-                    warp_state[current_warp] <= WARP_UPDATE;
-                end
-
-                // Handle vector-to-scalar write setup
-                if (decoded_reg_input_mux[current_warp] == VECTOR_TO_SCALAR) begin
-                    data_t scalar_write_value;
-                    scalar_write_value = {`DATA_WIDTH{1'b0}};
-                    for (int i = 0; i < THREADS_PER_WARP; i++) begin
-                        scalar_write_value[i] = alu_out[i][0];
-                    end
-                    vector_to_scalar_data[current_warp] <= scalar_write_value;
-                end else begin
-                    vector_to_scalar_data[current_warp] <= {`DATA_WIDTH{1'b0}};
+        start_execution <= 1'b0;
+        done <= 1'b0;
+        warp_state <= WARP_IDLE;
+        pc <= 0;
+        next_pc <= 0;
+        current_warp <= 0;
+    end else begin
+        // Update pipeline stages
+        if (fetch_ready) begin
+            fetch_stage_reg <= fetch_stage_next;
+            fetch_valid <= (warp_state == WARP_FETCH);
+        end
+        
+        if (decode_ready) begin
+            decode_stage_reg <= decode_stage_next;
+            decode_valid <= fetch_valid && (fetcher_state == FETCHER_DONE);
+        end
+        
+        if (execute_ready) begin
+            execute_stage_reg <= execute_stage_next;
+            execute_valid <= decode_valid;
+        end
+        
+        if (memory_ready) begin
+            memory_stage_reg <= memory_stage_next;
+            memory_valid <= execute_valid;
+        end
+        
+        if (writeback_ready) begin
+            writeback_stage_reg <= writeback_stage_next;
+            final_results_reg <= final_results_next;
+            writeback_valid <= memory_valid && !memory_stall;
+        end
+        
+        // Warp scheduling and control (simplified)
+        if (!start_execution) begin
+            if (start) begin
+                start_execution <= 1'b1;
+                current_warp <= 0;
+                if (num_warps > 0) begin
+                    warp_state <= WARP_FETCH;
+                    pc <= kernel_config.base_instructions_address;
+                    next_pc <= kernel_config.base_instructions_address;
                 end
             end
-
-            WARP_INT_ALU_WAIT: begin
-                // This state is just a one-cycle delay for the 2-stage ALU.
-                warp_state[current_warp] <= WARP_UPDATE;
-            end
-
-            WARP_ALU_WAIT: begin
-                // This state remains the same, for the FPU
-                if (decoded_scalar_instruction[current_warp]) begin
-                    if(scalar_fpu_valid) begin
-                        warp_state[current_warp] <= WARP_UPDATE;
-                    end
+        end else begin
+            // Handle branch and PC updates
+            if (writeback_valid && writeback_stage_reg.branch) begin
+                if (writeback_stage_reg.scalar_final_result == 1) begin
+                    next_pc <= writeback_stage_reg.pc + writeback_stage_reg.immediate;
                 end else begin
-                    if(all_vector_fpus_done) begin
-                        warp_state[current_warp] <= WARP_UPDATE;
-                    end
+                    next_pc <= writeback_stage_reg.pc + 1;
                 end
+            end else if (writeback_valid && !writeback_stage_reg.halt) begin
+                next_pc <= writeback_stage_reg.pc + 1;
             end
             
-            WARP_UPDATE: begin
-                if (decoded_halt[current_warp]) begin
-                    $display("Block: %0d: Warp %0d: Finished executing instruction %h", block_id, current_warp, fetched_instruction[current_warp]);
-                    warp_state[current_warp] <= WARP_DONE;
-                end else begin
-                    logic [`INSTRUCTION_MEMORY_ADDRESS_WIDTH-1:0] resolved_next_pc = pc[current_warp] + 1;
-
-                    if (decoded_branch[current_warp] && (scalar_alu_out == 1)) begin
-                        resolved_next_pc = pc[current_warp] + decoded_immediate[current_warp];
-                    end
-                    else if (decoded_alu_instruction[current_warp] == JAL) begin
-                        resolved_next_pc = scalar_alu_out;
-                    end
-                    
-                    pc[current_warp] <= resolved_next_pc;
-                    warp_state[current_warp] <= WARP_FETCH;
-                end
+            // Update PC when fetch stage is ready
+            if (fetch_ready && warp_state == WARP_FETCH) begin
+                pc <= next_pc;
             end
-
-            WARP_DONE: begin
-                // we chillin
+            
+            // Handle halt condition
+            if (writeback_valid && writeback_stage_reg.halt) begin
+                warp_state <= WARP_DONE;
+                done <= 1'b1;
             end
-        endcase
-    end
-end
-
-// This block generates warp control circuitry
-generate
-for (genvar i = 0; i < WARPS_PER_CORE; i = i + 1) begin : g_warp
-    fetcher fetcher_inst(
-        .clk(clk),
-        .reset(reset),
-
-        .warp_state(warp_state[i]),
-        .pc(pc[i]),
-
-        // Instruction Memory
-        .instruction_mem_read_ready(instruction_mem_read_ready[i]),
-        .instruction_mem_read_data(instruction_mem_read_data[i]),
-        .instruction_mem_read_valid(instruction_mem_read_valid[i]),
-        .instruction_mem_read_address(instruction_mem_read_address[i]),
-
-        // Fetcher output
-        .fetcher_state(fetcher_state[i]),
-        .instruction(fetched_instruction[i])
-    );
-
-    decoder decoder_inst(
-        .clk(clk),
-        .reset(reset),
-        .warp_state(warp_state[i]),
-
-        .instruction(fetched_instruction[i]),
-
-        .decoded_reg_write_enable(decoded_reg_write_enable[i]),
-        .decoded_mem_write_enable(decoded_mem_write_enable_per_warp[i]),
-        .decoded_mem_read_enable(decoded_mem_read_enable_per_warp[i]),
-        .decoded_branch(decoded_branch[i]),
-        .decoded_scalar_instruction(decoded_scalar_instruction[i]),
-        .decoded_reg_input_mux(decoded_reg_input_mux[i]),
-        .decoded_immediate(decoded_immediate[i]),
-        .decoded_rd_address(decoded_rd_address[i]),
-        .decoded_rs1_address(decoded_rs1_address[i]),
-        .decoded_rs2_address(decoded_rs2_address[i]),
-        .decoded_alu_instruction(decoded_alu_instruction[i]),
-
-        .decoded_halt(decoded_halt[i]),
-        .floatingRead(floatingRead_flag[i]),
-        .floatingWrite(floatingWrite_flag[i])
-    );
-    // Scalar float register file
-    scalar_reg_file #(
-        .DATA_WIDTH(32)
-    ) floating_scalar_reg_file_inst (
-        .clk(clk),
-        .reset(reset),
-        .enable((current_warp == i)), // Enable when current_warp matches and warp is active
-
-        //.warp_execution_mask(warp_execution_mask[i]),
-
-        .warp_state(warp_state[i]),
-
-        .decoded_reg_write_enable(decoded_reg_write_enable[i] && decoded_scalar_instruction[i] && floatingWrite_flag[i]),
-        .decoded_reg_input_mux(decoded_reg_input_mux[i]),
-        .decoded_immediate(decoded_immediate[i]),
-        .decoded_rd_address(decoded_rd_address[i]),
-        .decoded_rs1_address(decoded_rs1_address[i]),
-        .decoded_rs2_address(decoded_rs2_address[i]),
-
-        .alu_out(scalar_alu_out),
-        .lsu_out(scalar_lsu_out),
-        .pc(pc[i]),
-        .vector_to_scalar_data(vector_to_scalar_data[i]),
-
-        .rs1(scalar_float_rs1[i]),
-        .rs2(scalar_float_rs2[i])
-    );
-
-    always_comb begin
-        if (current_warp == i) begin
-            //$display("Enable: ", current_warp == i);
-            //$display("Warp State: ", warp_state[i]);
-            //$display("Decoded_rs1: ", decoded_rs1_address[i]);
-            //$display("Decoded_rs2: ", decoded_rs2_address[i]);
-            //$display("ALU out", scalar_alu_out);
-            //$display("ALU out", scalar_alu_out);
-            //$display("Scalar_lsu: ", scalar_lsu_out);
-            //$display("Scalar_float_rs1: ", scalar_float_rs1[i]);
-            //$display("Scalar_float_rs2: ", scalar_float_rs2[i]);
-            //$display("Floating Write Flag", floatingWrite_flag[i]);
         end
     end
-
-    //Scalar integer register file
-    scalar_reg_file #(
-        .DATA_WIDTH(32)
-    ) scalar_reg_file_inst (
-        .clk(clk),
-        .reset(reset),
-        .enable((current_warp == i)), // Enable when current_warp matches and warp is active
-
-        .warp_execution_mask(warp_execution_mask[i]),
-
-        .warp_state(warp_state[i]),
-
-        .decoded_reg_write_enable(decoded_reg_write_enable[i] && ((decoded_scalar_instruction[i] && !floatingWrite_flag[i]) ||(decoded_reg_input_mux[i] == VECTOR_TO_SCALAR))),
-        .decoded_reg_input_mux(decoded_reg_input_mux[i]),
-        .decoded_immediate(decoded_immediate[i]),
-        .decoded_rd_address(decoded_rd_address[i]),
-        .decoded_rs1_address(decoded_rs1_address[i]),
-        .decoded_rs2_address(decoded_rs2_address[i]),
-
-        .alu_out(scalar_alu_out),
-        .lsu_out(scalar_lsu_out),
-        .pc(pc[i]),
-        .vector_to_scalar_data(vector_to_scalar_data[i]),
-
-        .rs1(scalar_int_rs1[i]),
-        .rs2(scalar_int_rs2[i])
-    );
-    // Vector float register file
-    reg_file #(
-            .THREADS_PER_WARP(THREADS_PER_WARP)
-        ) floating_reg_file_inst (
-            .clk(clk),
-            .reset(reset),
-            .enable((current_warp == i)), // Enable when current_warp matches and warp is active
-
-            // Thread enable signals (execution mask)
-            .thread_enable(warp_execution_mask[i]),
-
-            // Warp and block identifiers
-            .warp_id(i),
-            .block_id(block_id),
-            .block_size(kernel_config.num_warps_per_block * THREADS_PER_WARP),
-            .warp_state(warp_state[i]),
-
-            // Decoded instruction fields for this warp
-            .decoded_reg_write_enable(decoded_reg_write_enable[i] && !decoded_scalar_instruction[i] && floatingWrite_flag[i]),
-            .decoded_reg_input_mux(decoded_reg_input_mux[i]),
-            .decoded_immediate(decoded_immediate[i]),
-            .decoded_rd_address(decoded_rd_address[i]),
-            .decoded_rs1_address(decoded_rs1_address[i]),
-            .decoded_rs2_address(decoded_rs2_address[i]),
-
-            // Inputs from ALU and LSU per thread
-            .alu_out(alu_out), // ALU outputs for all threads
-            .lsu_out(lsu_out),
-
-            // Outputs per thread
-            .rs1(vector_float_rs1[i]),
-            .rs2(vector_float_rs2[i])
-        );
-
-
-    // Vector integer register file
-    reg_file #(
-            .THREADS_PER_WARP(THREADS_PER_WARP)
-        ) reg_file_inst (
-            .clk(clk),
-            .reset(reset),
-            .enable((current_warp == i)), // Enable when current_warp matches and warp is active
-
-            // Thread enable signals (execution mask)
-            .thread_enable(warp_execution_mask[i]),
-
-            // Warp and block identifiers
-            .warp_id(i),
-            .block_id(block_id),
-            .block_size(kernel_config.num_warps_per_block * THREADS_PER_WARP),
-            .warp_state(warp_state[i]),
-
-            // Decoded instruction fields for this warp
-            .decoded_reg_write_enable(decoded_reg_write_enable[i] && !decoded_scalar_instruction[i] && !floatingWrite_flag[i]),
-            .decoded_reg_input_mux(decoded_reg_input_mux[i]),
-            .decoded_immediate(decoded_immediate[i]),
-            .decoded_rd_address(decoded_rd_address[i]),
-            .decoded_rs1_address(decoded_rs1_address[i]),
-            .decoded_rs2_address(decoded_rs2_address[i]),
-
-            // Inputs from ALU and LSU per thread
-            .alu_out(alu_out), // ALU outputs for all threads
-            .lsu_out(lsu_out),
-
-            // Outputs per thread
-            .rs1(vector_int_rs1[i]),
-            .rs2(vector_int_rs2[i])
-        );
-    
 end
-endgenerate
 
-
-// This block generates shared core resources (ALUs, LSUs)
-
-//Scalar functional units
-data_t scalar_int_alu_result, scalar_float_alu_result;
-logic scalar_fpu_valid;
-wire is_scalar_float_op = decoded_scalar_instruction[current_warp] && (decoded_alu_instruction[current_warp] >= FADD);
-wire is_branch_or_jal = decoded_branch[current_warp] || (decoded_alu_instruction[current_warp] == JAL);
-wire is_regular_int_op = decoded_alu_instruction[current_warp] < FADD;
-
-// The ALU should be enabled if the current instruction is a scalar op that fits any of the above criteria.
-wire is_scalar_int_op = decoded_scalar_instruction[current_warp] && (is_regular_int_op || is_branch_or_jal);
+// ========== FUNCTIONAL UNITS (same as original) ==========
 
 // Scalar ALU
+data_t scalar_int_alu_result, scalar_float_alu_result;
+logic alu_enable, alu_valid;
+assign alu_enable = execute_valid;
+assign alu_valid = execute_valid;
+
 alu scalar_alu_inst(
     .clk(clk),
     .rst(reset),
-    .enable(is_scalar_int_op),
-    .pc(pc[current_warp]),
+    .enable(alu_enable),
+    .pc(execute_stage_reg.pc),
     .ALUop1(scalar_op1),
     .ALUop2(scalar_op2),
-    .IMM(decoded_immediate[current_warp]),
-    .instruction(decoded_alu_instruction[current_warp]),
-
+    .IMM(execute_stage_reg.immediate),
+    .instruction(execute_stage_reg.alu_instruction),
     .Result(scalar_int_alu_result)
-    // .EQ() // unused
 );
 
-// Scalar Floating ALU
 floating_alu scalar_fpu_inst(
     .clk(clk),
-    .rst(rst),
-    .valid(scalar_fpu_valid),
+    .rst(reset),
+    .enable(alu_enable),
+    .valid(alu_valid),
     .op1(scalar_op1),
     .op2(scalar_op2),
-    .instruction(decoded_alu_instruction[current_warp]),
-
+    .instruction(execute_stage_reg.alu_instruction),
     .result(scalar_float_alu_result)
 );
 
-logic more_fadd;
-assign more_fadd = (decoded_alu_instruction[current_warp] >= FADD);
-logic less_beqz;
-assign less_beqz = (decoded_alu_instruction[current_warp] < BEQZ);
+assign scalar_alu_out = (execute_stage_reg.alu_instruction >= FADD) ? 
+                       scalar_float_alu_result : scalar_int_alu_result;
 
-assign scalar_alu_out = (more_fadd & less_beqz) ? scalar_float_alu_result : scalar_int_alu_result;
-// assign scalar_alu_out = is_scalar_float_op ? scalar_float_alu_result : scalar_int_alu_result;
-
+// Scalar LSU
 lsu scalar_lsu_inst(
     .clk(clk),
     .reset(reset),
-    .enable(decoded_scalar_instruction[current_warp]),
-
-    .warp_state(warp_state[current_warp]),
-
-    .decoded_mem_read_enable(decoded_mem_read_enable_per_warp[current_warp]),
-    .decoded_mem_write_enable(decoded_mem_write_enable_per_warp[current_warp]),
-
+    .enable(execute_stage_reg.scalar_instruction),
+    .warp_state(memory_valid ? WARP_WAIT : WARP_IDLE),
+    .decoded_mem_read_enable(execute_stage_reg.mem_read_enable),
+    .decoded_mem_write_enable(execute_stage_reg.mem_write_enable),
     .rs1(scalar_op1),
     .rs2(scalar_op2),
-    .imm(decoded_immediate[current_warp]),
-
-    // Data Memory connections
+    .imm(execute_stage_reg.immediate),
     .mem_read_valid(data_mem_read_valid[THREADS_PER_WARP]),
     .mem_read_address(data_mem_read_address[THREADS_PER_WARP]),
     .mem_read_ready(data_mem_read_ready[THREADS_PER_WARP]),
@@ -616,63 +530,53 @@ lsu scalar_lsu_inst(
     .mem_write_address(data_mem_write_address[THREADS_PER_WARP]),
     .mem_write_data(data_mem_write_data[THREADS_PER_WARP]),
     .mem_write_ready(data_mem_write_ready[THREADS_PER_WARP]),
-
     .lsu_state(scalar_lsu_state),
     .lsu_out(scalar_lsu_out)
 );
 
-//Vecto4r functional units
+// Vector functional units
 generate
     for (genvar i = 0; i < THREADS_PER_WARP; i = i + 1) begin : g_vector_units
-        wire t_enable = current_warp_execution_mask[i] && !decoded_scalar_instruction[current_warp];
-        wire is_vector_float_op = t_enable && (decoded_alu_instruction[current_warp] >= FADD);
-        wire is_vector_int_op  = t_enable && (decoded_alu_instruction[current_warp] < FADD);
+        wire t_enable = execute_stage_reg.execution_mask[i] && !execute_stage_reg.scalar_instruction && execute_valid;
        
         data_t vector_int_alu_result, vector_float_alu_result;
 
-        // Vector ALU
         alu vector_alu_inst(
             .clk(clk),
-            .rst(rst),
-            .enable(is_vector_int_op),
-            .pc(pc[current_warp]),
+            .rst(reset),
+            .enable(alu_enable),
+            .pc(execute_stage_reg.pc),
             .ALUop1(final_op1[i]),
             .ALUop2(final_op2[i]),
-            .IMM(decoded_immediate[current_warp]),
-            .instruction(decoded_alu_instruction[current_warp]),
-
+            .IMM(execute_stage_reg.immediate),
+            .instruction(execute_stage_reg.alu_instruction),
             .Result(vector_int_alu_result)
-            // .EQ() // unused
         );
-        // Vector Floating ALU
+
         floating_alu vector_fpu_inst(
             .clk(clk),
-            .rst(rst),
-            .valid(vector_fpu_valid[i]),
+            .rst(reset),
+            .enable(alu_enable),
+            .valid(alu_valid),
             .op1(final_op1[i]),
             .op2(final_op2[i]),
-            .instruction(decoded_alu_instruction[current_warp]),
-
+            .instruction(execute_stage_reg.alu_instruction),
             .result(vector_float_alu_result)
         );
 
-        assign alu_out[i] = (decoded_alu_instruction[current_warp] >= FADD) ? vector_float_alu_result : vector_int_alu_result;
-        
+        assign alu_out[i] = (execute_stage_reg.alu_instruction >= FADD) ? 
+                           vector_float_alu_result : vector_int_alu_result;
+
         lsu lsu_inst(
             .clk(clk),
             .reset(reset),
             .enable(t_enable),
-
-            .warp_state(warp_state[current_warp]),
-
-            .decoded_mem_read_enable(decoded_mem_read_enable_per_warp[current_warp]),
-            .decoded_mem_write_enable(decoded_mem_write_enable_per_warp[current_warp]),
-
+            .warp_state(memory_valid ? WARP_WAIT : WARP_IDLE),
+            .decoded_mem_read_enable(execute_stage_reg.mem_read_enable),
+            .decoded_mem_write_enable(execute_stage_reg.mem_write_enable),
             .rs1(final_op1[i]),
             .rs2(final_op2[i]),
-            .imm(decoded_immediate[current_warp]),
-
-            // Data Memory connections
+            .imm(execute_stage_reg.immediate),
             .mem_read_valid(data_mem_read_valid[i]),
             .mem_read_address(data_mem_read_address[i]),
             .mem_read_ready(data_mem_read_ready[i]),
@@ -681,10 +585,320 @@ generate
             .mem_write_address(data_mem_write_address[i]),
             .mem_write_data(data_mem_write_data[i]),
             .mem_write_ready(data_mem_write_ready[i]),
-
             .lsu_state(lsu_state[i]),
             .lsu_out(lsu_out[i])
         );
     end
 endgenerate
+
+// ========== REGISTER FILES (modified for pipeline) ==========
+
+// Note: Register files need to use writeback stage signals for writes
+// but decode stage signals for reads to avoid read-after-write hazards
+
+// Scalar float register file
+floating_scalar_reg_file #(
+    .DATA_WIDTH(32)
+) floating_scalar_reg_file_inst (
+    .clk(clk),
+    .reset(reset),
+    .enable(1'b1), // Always enabled for pipeline
+    .warp_state(writeback_valid ? WARP_UPDATE : WARP_IDLE),
+    .decoded_reg_write_enable(writeback_valid && writeback_stage_reg.reg_write_enable && 
+                             writeback_stage_reg.scalar_instruction && writeback_stage_reg.floatingWrite_flag),
+    .decoded_reg_input_mux(writeback_stage_reg.reg_input_mux),
+    .decoded_immediate(32'h0), // Not used in writeback
+    .decoded_rd_address(writeback_stage_reg.rd_address),
+    .decoded_rs1_address(decoded_rs1_address), // Use decode stage for reads
+    .decoded_rs2_address(decoded_rs2_address), // Use decode stage for reads
+    .alu_out(writeback_stage_reg.scalar_final_result),
+    .lsu_out(writeback_stage_reg.scalar_final_result),
+    .pc(writeback_stage_reg.pc),
+    .vector_to_scalar_data(vector_to_scalar_data),
+    .rs1(scalar_float_rs1),
+    .rs2(scalar_float_rs2)
+);
+
+// Scalar integer register file
+scalar_reg_file #(
+    .DATA_WIDTH(32)
+) scalar_reg_file_inst (
+    .clk(clk),
+    .reset(reset),
+    .enable(1'b1), // Always enabled for pipeline
+    .warp_state(writeback_valid ? WARP_UPDATE : WARP_IDLE),
+    .decoded_reg_write_enable(writeback_valid && writeback_stage_reg.reg_write_enable && 
+                             writeback_stage_reg.scalar_instruction && !writeback_stage_reg.floatingWrite_flag),
+    .decoded_reg_input_mux(writeback_stage_reg.reg_input_mux),
+    .decoded_immediate(32'h0), // Not used in writeback
+    .decoded_rd_address(writeback_stage_reg.rd_address),
+    .decoded_rs1_address(decoded_rs1_address), // Use decode stage for reads
+    .decoded_rs2_address(decoded_rs2_address), // Use decode stage for reads
+    .alu_out(writeback_stage_reg.scalar_final_result),
+    .lsu_out(writeback_stage_reg.scalar_final_result),
+    .pc(writeback_stage_reg.pc),
+    .vector_to_scalar_data(vector_to_scalar_data),
+    .rs1(scalar_int_rs1),
+    .rs2(scalar_int_rs2)
+);
+
+// Vector integer register files
+generate
+    for (genvar i = 0; i < THREADS_PER_WARP; i = i + 1) begin : g_vector_int_regfiles
+        reg_file #(
+            .DATA_WIDTH(32)
+        ) vector_reg_file_inst (
+            .clk(clk),
+            .reset(reset),
+            .enable(1'b1), // Always enabled for pipeline
+            .thread_enable(thread_enable),
+            .warp_state(writeback_valid ? WARP_UPDATE : WARP_IDLE),
+            .decoded_reg_write_enable(writeback_valid && writeback_stage_reg.reg_write_enable && 
+                                     !writeback_stage_reg.scalar_instruction && !writeback_stage_reg.floatingWrite_flag &&
+                                     writeback_stage_reg.execution_mask[i]),
+            .decoded_reg_input_mux(writeback_stage_reg.reg_input_mux),
+            .decoded_immediate(32'h0), // Not used in writeback
+            .decoded_rd_address(writeback_stage_reg.rd_address),
+            .decoded_rs1_address(decoded_rs1_address), // Use decode stage for reads
+            .decoded_rs2_address(decoded_rs2_address), // Use decode stage for reads
+            .alu_out(final_results_reg),
+            .lsu_out(final_results_reg),
+            .warp_id(0),
+            // .pc(writeback_stage_reg.pc),
+            // .thread_id(i[4:0]),
+            .block_id(block_id),
+            .rs1(vector_int_rs1),
+            .rs2(vector_int_rs2)
+        );
+    end
+endgenerate
+
+// Vector floating-point register files
+generate
+    for (genvar i = 0; i < THREADS_PER_WARP; i = i + 1) begin : g_vector_float_regfiles
+        reg_file #(
+            .DATA_WIDTH(32)
+        ) floating_vector_reg_file_inst (
+            .clk(clk),
+            .reset(reset),
+            .enable(1'b1), // Always enabled for pipeline
+            .thread_enable(thread_enable),
+            .warp_state(writeback_valid ? WARP_UPDATE : WARP_IDLE),
+            .decoded_reg_write_enable(writeback_valid && writeback_stage_reg.reg_write_enable && 
+                                     !writeback_stage_reg.scalar_instruction && writeback_stage_reg.floatingWrite_flag &&
+                                     writeback_stage_reg.execution_mask[i]),
+            .decoded_reg_input_mux(writeback_stage_reg.reg_input_mux),
+            .decoded_immediate(32'h0), // Not used in writeback
+            .decoded_rd_address(writeback_stage_reg.rd_address),
+            .decoded_rs1_address(decoded_rs1_address), // Use decode stage for reads
+            .decoded_rs2_address(decoded_rs2_address), // Use decode stage for reads
+            .alu_out(final_results_reg),
+            .lsu_out(final_results_reg),
+            // .pc(writeback_stage_reg.pc),
+            // .thread_id(i[4:0]),
+            .warp_id(0),
+            .block_id(block_id),
+            .rs1(vector_float_rs1),
+            .rs2(vector_float_rs2)
+        );
+    end
+endgenerate
+
+// ========== HAZARD DETECTION AND FORWARDING ==========
+
+// Data hazard detection logic
+logic [2:0] hazard_rs1, hazard_rs2;
+logic stall_for_hazard;
+
+always_comb begin
+    hazard_rs1 = 3'b000;
+    hazard_rs2 = 3'b000;
+    stall_for_hazard = 1'b0;
+    
+    // Check for RAW hazards between decode and later stages
+    if (decode_valid) begin
+        // Check against execute stage
+        if (execute_valid && execute_stage_reg.reg_write_enable && 
+            execute_stage_reg.rd_address != 0) begin
+            if (decoded_rs1_address == execute_stage_reg.rd_address) begin
+                hazard_rs1[0] = 1'b1;
+            end
+            if (decoded_rs2_address == execute_stage_reg.rd_address) begin
+                hazard_rs2[0] = 1'b1;
+            end
+        end
+        
+        // Check against memory stage
+        if (memory_valid && memory_stage_reg.reg_write_enable && 
+            memory_stage_reg.rd_address != 0) begin
+            if (decoded_rs1_address == memory_stage_reg.rd_address) begin
+                hazard_rs1[1] = 1'b1;
+            end
+            if (decoded_rs2_address == memory_stage_reg.rd_address) begin
+                hazard_rs2[1] = 1'b1;
+            end
+        end
+        
+        // Check against writeback stage
+        if (writeback_valid && writeback_stage_reg.reg_write_enable && 
+            writeback_stage_reg.rd_address != 0) begin
+            if (decoded_rs1_address == writeback_stage_reg.rd_address) begin
+                hazard_rs1[2] = 1'b1;
+            end
+            if (decoded_rs2_address == writeback_stage_reg.rd_address) begin
+                hazard_rs2[2] = 1'b1;
+            end
+        end
+        
+        // For simplicity, stall on any load-use hazard
+        // In a more sophisticated design, we could implement forwarding
+        if ((hazard_rs1 != 3'b000) || (hazard_rs2 != 3'b000)) begin
+            // Check if it's a load instruction that causes the hazard
+            if ((execute_valid && execute_stage_reg.reg_input_mux == LSU_OUT) ||
+                (memory_valid && memory_stage_reg.reg_input_mux == LSU_OUT && memory_stall)) begin
+                stall_for_hazard = 1'b1;
+            end
+        end
+    end
+end
+
+// ========== BRANCH PREDICTION AND CONTROL ==========
+
+// Simple branch prediction (always not taken)
+logic branch_prediction;
+logic branch_mispredicted;
+instruction_memory_address_t predicted_pc, actual_pc;
+
+always_comb begin
+    // Simple prediction: always not taken
+    branch_prediction = 1'b0;
+    predicted_pc = pc + 1;
+    
+    // Check for misprediction in writeback stage
+    if (writeback_valid && writeback_stage_reg.branch) begin
+        if (writeback_stage_reg.scalar_final_result == 1) begin
+            actual_pc = writeback_stage_reg.pc + writeback_stage_reg.immediate;
+        end else begin
+            actual_pc = writeback_stage_reg.pc + 1;
+        end
+        
+        branch_mispredicted = (actual_pc != (writeback_stage_reg.pc + 1));
+    end else begin
+        branch_mispredicted = 1'b0;
+        actual_pc = predicted_pc;
+    end
+end
+
+// Pipeline flush logic for branch misprediction
+logic flush_pipeline;
+assign flush_pipeline = branch_mispredicted;
+
+// ========== ENHANCED PIPELINE CONTROL ==========
+
+// Update stall conditions to include hazard detection
+always_comb begin
+    // Memory stage stalls if LSUs are still processing
+    memory_stall = 1'b0;
+    for (int i = 0; i < THREADS_PER_WARP; i++) begin
+        if (lsu_state[i] == LSU_REQUESTING || lsu_state[i] == LSU_WAITING) begin
+            memory_stall = 1'b1;
+            break;
+        end
+    end
+    if (scalar_lsu_state == LSU_REQUESTING || scalar_lsu_state == LSU_WAITING) begin
+        memory_stall = 1'b1;
+    end
+    
+    // Execute stage stalls if memory stage is stalled or hazard detected
+    execute_stall = (memory_stall && memory_valid) || stall_for_hazard;
+    
+    // Decode stage stalls if execute stage is stalled
+    decode_stall = execute_stall && execute_valid;
+    
+    // Fetch stage stalls if decode stage is stalled or instruction fetch not ready
+    fetch_stall = (decode_stall && decode_valid) || 
+                  (warp_state == WARP_FETCH && fetcher_state != FETCHER_DONE);
+end
+
+// ========== PERFORMANCE COUNTERS ==========
+
+// Optional performance monitoring counters
+logic [31:0] cycle_count;
+logic [31:0] instruction_count;
+logic [31:0] stall_count;
+logic [31:0] branch_count;
+logic [31:0] branch_mispredict_count;
+
+always_ff @(posedge clk) begin
+    if (reset) begin
+        cycle_count <= 32'h0;
+        instruction_count <= 32'h0;
+        stall_count <= 32'h0;
+        branch_count <= 32'h0;
+        branch_mispredict_count <= 32'h0;
+    end else if (start_execution && !done) begin
+        cycle_count <= cycle_count + 1;
+        
+        if (writeback_valid) begin
+            instruction_count <= instruction_count + 1;
+        end
+        
+        if (fetch_stall || decode_stall || execute_stall || memory_stall) begin
+            stall_count <= stall_count + 1;
+        end
+        
+        if (writeback_valid && writeback_stage_reg.branch) begin
+            branch_count <= branch_count + 1;
+            if (branch_mispredicted) begin
+                branch_mispredict_count <= branch_mispredict_count + 1;
+            end
+        end
+    end
+end
+
+// ========== WARP SCHEDULER ENHANCEMENT ==========
+
+// Enhanced warp scheduling for multiple warps
+logic [31:0] warp_pc [2]; // Support up to 2 warps for simplicity
+warp_state_t warp_states [2];
+logic [1:0] active_warps;
+
+always_ff @(posedge clk) begin
+    if (reset) begin
+        for (int i = 0; i < 2; i++) begin
+            warp_pc[i] <= 32'h0;
+            warp_states[i] <= WARP_IDLE;
+        end
+        active_warps <= 2'b00;
+    end else if (start_execution) begin
+        // Initialize warps based on kernel configuration
+        for (int i = 0; i < 2; i++) begin
+            if (i < num_warps) begin
+                warp_pc[i] <= kernel_config.base_instructions_address;
+                warp_states[i] <= WARP_FETCH;
+                active_warps[i] <= 1'b1;
+            end else begin
+                warp_states[i] <= WARP_IDLE;
+                active_warps[i] <= 1'b0;
+            end
+        end
+    end else begin
+        // Update warp states and PCs
+        if (writeback_valid) begin
+            int warp_id = writeback_stage_reg.warp_id;
+            if (writeback_stage_reg.halt) begin
+                warp_states[warp_id] <= WARP_DONE;
+                active_warps[warp_id] <= 1'b0;
+            end else if (writeback_stage_reg.branch && branch_mispredicted) begin
+                warp_pc[warp_id] <= actual_pc;
+            end else if (!fetch_stall) begin
+                warp_pc[warp_id] <= next_pc;
+            end
+        end
+    end
+end
+
+// Check if all warps are done
+assign all_warps_done = (active_warps == 2'b00);
+
 endmodule

@@ -3,14 +3,14 @@
 
 `include "common.svh"
 
-module scalar_reg_file #(
+module floating_scalar_reg_file #(
     parameter int DATA_WIDTH = `DATA_WIDTH
 ) (
     input   wire                            clk,
     input   wire                            reset,
     input   wire                            enable, // Warp enable signal
 
-    output  data_t                          warp_execution_mask,
+    //output  data_t                          warp_execution_mask,
 
     input   warp_state_t                    warp_state,
 
@@ -39,7 +39,7 @@ localparam int EXECUTION_MASK_REG = 31;
 
 (* ram_style = "block" *) data_t registers [32];
 
-assign warp_execution_mask = registers[EXECUTION_MASK_REG];
+//assign warp_execution_mask = registers[EXECUTION_MASK_REG];
 
 // always_comb begin
 //     $display("RS1, RS2 from scalar_reg ", rs1, rs2);
@@ -64,7 +64,7 @@ always @(posedge clk) begin
         for (int i = 2; i < 31; i++) begin
             registers[i] <= {DATA_WIDTH{1'b0}};
         end
-        registers[EXECUTION_MASK_REG] <= {DATA_WIDTH{1'b1}};
+        // registers[EXECUTION_MASK_REG] <= {DATA_WIDTH{1'b1}};
     end else if (enable) begin
         // if (warp_state == WARP_REQUEST) begin
         //     $display("Asynchronous read: ", rs1, rs2);

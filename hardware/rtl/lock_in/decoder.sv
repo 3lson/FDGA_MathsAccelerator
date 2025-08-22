@@ -129,7 +129,7 @@ module decoder(
                             4'b0000: decoded_alu_instruction <= ADD;
                             4'b0001: decoded_alu_instruction <= SUB;
                             4'b0010: decoded_alu_instruction <= MUL;
-                            4'b1011: decoded_alu_instruction <= NEG;
+                            4'b0011: decoded_alu_instruction <= DIV;
                             4'b0100: decoded_alu_instruction <= SLT;
                             4'b0101: decoded_alu_instruction <= SLL;
                             4'b0110: decoded_alu_instruction <= SEQ;
@@ -153,6 +153,7 @@ module decoder(
                         unique case (funct4)
                             4'b0000: decoded_alu_instruction <= ADDI;
                             4'b0010: decoded_alu_instruction <= MULI;
+                            4'b0011: decoded_alu_instruction <= DIVI;
                             4'b1010: decoded_alu_instruction <= SLLI;
                             4'b1011: decoded_alu_instruction <= SEQI;
                             default: $error("Invalid I-type instruction with funct4 %b", funct4);
@@ -171,7 +172,9 @@ module decoder(
                         unique case (funct4)
                             4'b0000: begin decoded_alu_instruction <= FADD; floatingRead <= 2'b11; floatingWrite <= 1'b1; end
                             4'b0001: begin decoded_alu_instruction <= FSUB; floatingRead <= 2'b11; floatingWrite <= 1'b1; end 
-                            4'b0010: begin decoded_alu_instruction <= FMUL; floatingRead <= 2'b11; floatingWrite <= 1'b1; end                            4'b0100: begin decoded_alu_instruction <= FSLT; floatingRead <= 2'b11; floatingWrite <= 1'b0; end // Write to int
+                            4'b0010: begin decoded_alu_instruction <= FMUL; floatingRead <= 2'b11; floatingWrite <= 1'b1; end
+                            4'b0011: begin decoded_alu_instruction <= FDIV; floatingRead <= 2'b11; floatingWrite <= 1'b1; end
+                            4'b0100: begin decoded_alu_instruction <= FSLT; floatingRead <= 2'b11; floatingWrite <= 1'b0; end // Write to int
                             4'b0101: begin decoded_alu_instruction <= FNEG; floatingRead <= 2'b01; floatingWrite <= 1'b1; end
                             4'b0110: begin decoded_alu_instruction <= FEQ; floatingRead <= 2'b11; floatingWrite <= 1'b0; end // Write to int
                             4'b0111: begin decoded_alu_instruction <= FMIN; floatingRead <= 2'b11; floatingWrite <= 1'b1; end

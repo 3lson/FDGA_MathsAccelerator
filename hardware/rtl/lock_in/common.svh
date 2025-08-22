@@ -1,4 +1,4 @@
-// common.svh
+// common.sv
 `ifndef COMMON_SV
 `define COMMON_SV
 
@@ -10,9 +10,13 @@
 
 // Type Definitions
 typedef logic [`DATA_WIDTH-1:0] data_t;
+typedef logic [`DATA_WIDTH-1:0] data_packed;
 typedef logic [`INSTRUCTION_WIDTH-1:0] instruction_t;
+typedef logic [`INSTRUCTION_WIDTH-1:0] instruction_packed;
 typedef logic [`DATA_MEMORY_ADDRESS_WIDTH-1:0] data_memory_address_t;
+typedef logic [`DATA_MEMORY_ADDRESS_WIDTH-1:0] data_memory_address_packed;
 typedef logic [`INSTRUCTION_MEMORY_ADDRESS_WIDTH-1:0] instruction_memory_address_t;
+typedef logic [`INSTRUCTION_MEMORY_ADDRESS_WIDTH-1:0] instruction_memory_address_packed;
 
 typedef struct packed {
     instruction_memory_address_t base_instructions_address;
@@ -53,7 +57,7 @@ typedef enum logic [4:0] {
     ADD, // 00000
     SUB, // 00001
     MUL, // 00010
-    NEG, // 00011
+    DIV, // 00011
     SLT, // 00100
     SLL, // 00101
     SEQ, // 00110
@@ -63,12 +67,14 @@ typedef enum logic [4:0] {
 
     ADDI, // 01010
     MULI, // 01011
+    DIVI, // 01100
     SLLI, // 01101
 
     // F-type instructions
     FADD, // 01110
     FSUB, // 01111
     FMUL, // 10000
+    FDIV, // 10001
     FSLT, // 10010
     FNEG, // 10011
     FEQ, // 10100
@@ -97,13 +103,10 @@ typedef enum logic [3:0] {
     WARP_FETCH,
     WARP_DECODE,
     WARP_REQUEST,
-    WARP_REG_WAIT,
     WARP_WAIT,
     WARP_EXECUTE,
-    WARP_ALU_WAIT,
-    WARP_INT_ALU_WAIT,
     WARP_UPDATE,
-    WARP_SYNC_WAIT,
+    WARP_WRITEBACK,
     WARP_DONE
 } warp_state_t;
 
@@ -154,9 +157,9 @@ endfunction
 function automatic data_t sign_extend_16(logic[15:0] imm16);
     data_t signed_imm16;
     if (imm16[15]) begin
-        signed_imm16 = {{14{1'b1}}, imm16};
+        signed_imm16 = {{16{1'b1}}, imm16};
     end else begin
-        signed_imm16 = {{14{1'b0}}, imm16};
+        signed_imm16 = {{16{1'b0}}, imm16};
     end
     return signed_imm16;
 endfunction

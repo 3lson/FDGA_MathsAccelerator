@@ -3,11 +3,12 @@
 `include "common.svh"
 // =================================================
 // A 32-bit Floating Point ALU
-// with ADD, SUB, MUL, EQ, NEQ, ABS and SLT
+// with ADD, SUB, MUL, DIV, EQ, NEQ, ABS and SLT
 // =================================================
 module floating_alu (
     input   logic       clk,
     input   logic       rst,
+    input logic enable,
     output   logic       valid,
     input   logic [31:0] op1,
     input   logic [31:0] op2,
@@ -106,7 +107,7 @@ always_ff @(posedge clk) begin
         s1_op2 <= 32'd0;
         s1_instruction <= FADD;
         s1_valid <= 1'b0;
-    end else begin
+    end else if (enable) begin
         s1_op1 <= op1;
         s1_op2 <= op2;
         s1_instruction <= instruction;
@@ -162,7 +163,7 @@ always_ff @(posedge clk) begin
         s2_op1_larger <= 1'b0;
         s2_aligned_exp <= 8'd0;
         s2_result_sign_bit <= 1'b0;
-    end else begin
+    end else if (enable) begin
         s2_op1 <= s1_op1;
         s2_op2 <= s1_op2;
         // $display("s2_instruction: ", s2_instruction);
@@ -181,6 +182,10 @@ always_ff @(posedge clk) begin
     end
 end
 
+logic [24:0] aligned_op1, aligned_op2;
+logic [47:0] numerator, denominator;
+logic [7:0] unbiased_exp;
+
 always_comb begin
     // Default values
     s2_mantissa_result = 25'd0;
@@ -195,12 +200,12 @@ always_comb begin
     
     case (s2_instruction)
         FADD, FSUB: begin
-            logic [24:0] aligned_op1, aligned_op2;
+
 
             // $display("s2_op1_biased_exp: ", s2_op1_biased_exp);
             // $display("s2_op2_biased_exp: ", s2_op2_biased_exp);
-            //$display("s2_op1_significand: %b", s2_op1_significand);
-            //$display("s2_op2_significand: %b", s2_op2_significand);
+            // $display("s2_op1_significand: %b", s2_op1_significand);
+            // $display("s2_op2_significand: %b", s2_op2_significand);
             
             // Align mantissas based on which operand has the larger exponent
             if (s2_op1_larger) begin
@@ -218,9 +223,9 @@ always_comb begin
                 s2_mantissa_result = aligned_op1 + aligned_op2;
                 s2_final_sign = s2_op1_sign_bit; // Sign is the same as either operand
             end else begin
-                // EFFECTIVE SUBTRACTION: (A + -B) or (-A + B)
-                //$display("aligned_op1: %b", aligned_op1);
-                //$display("aligned_op2: %b", aligned_op2);
+                // // EFFECTIVE SUBTRACTION: (A + -B) or (-A + B)
+                // $display("aligned_op1: %b", aligned_op1);
+                // $display("aligned_op2: %b", aligned_op2);
                 if (aligned_op1 >= aligned_op2) begin
                     s2_mantissa_result = aligned_op1 - aligned_op2;
                     s2_final_sign = s2_op1_sign_bit; // Result takes sign of the larger operand
@@ -232,7 +237,7 @@ always_comb begin
             
             // The final exponent is the exponent of the larger-exponent operand
             s2_final_exp = s2_aligned_exp;
-            //$display("s2_mantissa_result: ", s2_mantissa_result);
+            // $display("s2_mantissa_result: ", s2_mantissa_result);
         end
         
         FMUL: begin
@@ -241,8 +246,15 @@ always_comb begin
             s2_final_sign = s2_op1_sign_bit ^ s2_op2_sign_bit;
         end
         
+        FDIV: begin
+            numerator = {s2_op1_significand, 24'd0};
+            denominator = {s2_op2_significand, 24'd0};
+            s2_quotient = numerator / denominator;
+            s2_final_exp = s2_op1_biased_exp - s2_op2_biased_exp + 8'd127;
+            s2_final_sign = s2_op1_sign_bit ^ s2_op2_sign_bit;
+        end
+        
         FCVT_W_S: begin
-            logic [7:0] unbiased_exp;
             unbiased_exp = s2_op1_biased_exp - 8'd127;
             
             if (s2_op1_biased_exp == 8'hFF) begin
@@ -293,7 +305,7 @@ always_ff @(posedge clk) begin
         s3_underflow <= 1'b0;
         s3_op1 <= 32'b0;
         s3_op2 <= 32'b0;
-    end else begin
+    end else if(enable) begin
         s3_instruction <= s2_instruction;
         s3_valid <= s2_valid;
         s3_mantissa_result <= s2_mantissa_result;
@@ -310,6 +322,11 @@ always_ff @(posedge clk) begin
     end
 end
 
+logic [7:0] temp_exp;
+logic [24:0] temp_mantissa;
+int leading_one_pos;
+int shift_count;
+
 always_comb begin
     // Default values
     s3_normalized_mantissa = 24'd0;
@@ -322,8 +339,6 @@ always_comb begin
     
     case (s3_instruction)
         FADD, FSUB: begin
-            logic [7:0] temp_exp;
-            logic [24:0] temp_mantissa;
             
             temp_exp = s3_final_exp;
             temp_mantissa = s3_mantissa_result;
@@ -341,7 +356,7 @@ always_comb begin
                 s3_round_bit = temp_mantissa[0];
             end else begin
                 // Normalize by shifting left
-                int shift_count = 0;
+                shift_count = 0;
                 for (int i = 23; i >= 0; i--) begin
                     if (temp_mantissa[i] == 1'b1) begin
                         shift_count = 23 - i;
@@ -382,13 +397,39 @@ always_comb begin
             s3_normalized_sign = s3_final_sign;
         end
         
+        FDIV: begin
+            // The quotient sig1/sig2 is in (0.5, 2.0).
+            // The fixed-point result s3_quotient = (sig1/sig2) * 2^24.
+            // So the MSB of the result is at bit 24 or 23.
+
+            if (s3_quotient[24]) begin // Result is of the form 1x.xxxxxxxx...
+                // The quotient is >= 1.0. We need to shift right by 1 to normalize.
+                // This is equivalent to taking the mantissa from a different position.
+                s3_normalized_mantissa = s3_quotient[24:1];
+                s3_normalized_exp = s3_final_exp + 1; // Exponent increases
+                s3_guard_bit = s3_quotient[0];
+                s3_round_bit = 1'b0; // No bits beyond the guard bit in this simple model
+                s3_sticky_bit = 1'b0;
+            end else begin // Result is of the form 01.xxxxxxxx... (MSB is at bit 23)
+                // The quotient is < 1.0. It's already normalized.
+                s3_normalized_mantissa = s3_quotient[23:0];
+                s3_normalized_exp = s3_final_exp; // Exponent is unchanged
+                // For a more precise model, you would need more bits from the divider
+                // to calculate rounding bits. For now, we can assume they are zero.
+                s3_guard_bit = 1'b0;
+                s3_round_bit = 1'b0;
+                s3_sticky_bit = 1'b0;
+            end
+            s3_normalized_sign = s3_final_sign;
+        end
+        
         FCVT_S_W: begin
             if (s3_abs_op1 == 32'd0) begin
                 s3_normalized_mantissa = 24'd0;
                 s3_normalized_exp = 8'd0;
                 s3_normalized_sign = 1'b0;
             end else begin
-                int leading_one_pos = 0;
+                leading_one_pos = 0;
                 for (int i = 31; i >= 0; i--) begin
                     if (s3_abs_op1[i]) begin
                         leading_one_pos = i;
@@ -446,7 +487,7 @@ always_ff @(posedge clk) begin
         s4_round_up <= 1'b0;
         s4_op1 <= 32'b0;
         s4_op2 <= 32'b0;
-    end else begin
+    end else if (enable) begin
         s4_instruction <= s3_instruction;
         s4_valid <= s3_valid;
         s4_normalized_mantissa <= s3_normalized_mantissa;
@@ -460,14 +501,25 @@ always_ff @(posedge clk) begin
         s4_op2 <= s3_op2;
     end
 end
-
 // Final result composition
 always_comb begin
+    logic [23:0] final_mantissa;
+    logic [7:0]  final_exp;
+    logic        a_sign, b_sign;
+    logic [30:0] a_mag, b_mag;
+    logic        is_less;
+
+    // Default assignments to prevent latches
+    final_mantissa = 24'd0;
+    final_exp = 8'd0;
+    a_sign = 1'b0;
+    b_sign = 1'b0;
+    a_mag = 31'd0;
+    b_mag = 31'd0;
+    is_less = 1'b0;
     result = 32'd0;    
     case (s4_instruction)
-        FADD, FSUB, FMUL, FCVT_S_W: begin
-            logic [23:0] final_mantissa;
-            logic [7:0] final_exp;
+        FADD, FSUB, FMUL, FDIV, FCVT_S_W: begin 
             
             final_mantissa = s4_normalized_mantissa;
             final_exp = s4_normalized_exp;
@@ -489,8 +541,8 @@ always_comb begin
             end else begin
                 result = {s4_normalized_sign, final_exp, final_mantissa[22:0]};
             end
-            //$display("final mantissa: %b", final_mantissa);
-            //$display("final_exp: %b", final_exp);
+            // $display("final mantissa: %b", final_mantissa);
+            // $display("final_exp: %b", final_exp);
         end
         
         FCVT_W_S: begin
@@ -506,45 +558,26 @@ always_comb begin
         end
         
         FEQ: begin
-            // Compare original operands from stage 2
-                logic both_are_zero = (s4_op1[30:0] == 31'd0) && (s4_op2[30:0] == 31'd0);
-            if (both_are_zero) begin
-                result = 32'd1;
-            end else begin
-                result = (s4_op1 == s4_op2) ? 32'd1 : 32'd0;
-            end
+            if ((s4_op1[30:0] == 0) && (s4_op2[30:0] == 0)) result = 32'd1;
+            else result = (s4_op1 == s4_op2) ? 32'd1 : 32'd0;
         end
 
         FSLT: begin
-            // Compare original operands from stage 2
-            logic a_sign = s4_op1[31];
-            logic b_sign = s4_op2[31];
-            logic [30:0] a_mag = s4_op1[30:0];
-            logic [30:0] b_mag = s4_op2[30:0];
-
-            logic is_less;
-            if (a_sign != b_sign) begin
-                is_less = a_sign; 
-            end else begin
-                if (!a_sign) begin // Both positive
-                    is_less = (a_mag < b_mag);
-                end else begin // Both negative
-                    is_less = (a_mag > b_mag);
-                end
-            end
+            a_sign = s4_op1[31]; b_sign = s4_op2[31];
+            a_mag = s4_op1[30:0]; b_mag = s4_op2[30:0];
             
-            if ((a_mag == 31'd0) && (b_mag == 31'd0)) begin
-                result = 32'd0;
-            end else begin
-                result = is_less ? 32'd1 : 32'd0;
-            end
+            if (a_mag == 0 && b_mag == 0) is_less = 1'b0;
+            else if (a_sign != b_sign) is_less = a_sign; // If a is neg, it's less
+            else is_less = a_sign ? (a_mag > b_mag) : (a_mag < b_mag); // If neg, bigger mag is less. If pos, smaller mag is less.
+            
+            result = is_less ? 32'd1 : 32'd0;
         end
         
         default: begin
             result = 32'd0;
         end
     endcase
-    //$display("result: %h", result);
+    // $display("result: %h", result);
 end
 
 // Valid signal follows the pipeline
